@@ -75,6 +75,19 @@ export class Order {
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, any>;
 
+  // Approval gate statuses
+  @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
+  approvalStatus: {
+    labDip?: 'pending' | 'approved' | 'rejected';
+    trimsCard?: 'pending' | 'approved' | 'rejected';
+    fabricTest?: 'pending' | 'approved' | 'rejected';
+    fitSample?: 'pending' | 'approved' | 'rejected';
+    ppSample?: 'pending' | 'approved' | 'rejected';
+  };
+
+  @Column({ default: 'Design' })
+  currentStage: string; // Design, In Development, Production, Delivered
+
   @ManyToOne(() => UserProfile, (user) => user.orders, { nullable: true })
   @JoinColumn({ name: 'merchandiser_id' })
   merchandiser: UserProfile;

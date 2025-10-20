@@ -5,12 +5,14 @@ import { Order } from '../../database/entities/order.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderStatus, OrderCategory } from '../../common/enums/order-status.enum';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    private readonly activityLogService: ActivityLogService,
   ) {}
 
   async create(createOrderDto: CreateOrderDto, userId: string) {
@@ -121,6 +123,76 @@ export class OrdersService {
       runningOrders,
       archivedOrders,
     };
+  }
+
+  async updateApproval(orderId: string, approvalType: string, status: string, user: any) {
+    const order = await this.findOne(orderId);
+
+    // Initialize approvalStatus if it doesn't exist
+    if (!order.approvalStatus) {
+      order.approvalStatus = {};
+    }
+
+    // Update the specific approval
+    order.approvalStatus[approvalType] = status as any;
+
+    // Save the order
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // Log the activity
+    await this.activityLogService.logActivity({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'UPDATE_APPROVAL',
+      entityType: 'Order',
+      entityId: orderId,
+      metadata: {
+        merchandiser_id: order.merchandiser_id,
+        orderNumber: order.orderNumber,
+        approvalType,
+        newStatus: status,
+        userName: user.fullName || user.email,
+      },
+    });
+
+    return updatedOrder;
+  }
+
+  async changeStage(orderId: string, newStage: string, user: any) {
+    const order = await this.findOne(orderId);
+    const oldStage = order.currentStage;
+
+    order.currentStage = newStage;
+
+    // Update category based on stage
+    if (newStage === 'Design') {
+      order.category = OrderCategory.UPCOMING;
+    } else if (newStage === 'In Development' || newStage === 'Production') {
+      order.category = OrderCategory.RUNNING;
+    } else if (newStage === 'Delivered') {
+      order.category = OrderCategory.ARCHIVED;
+      order.actualDeliveryDate = new Date();
+    }
+
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // Log the activity
+    await this.activityLogService.logActivity({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'CHANGE_STAGE',
+      entityType: 'Order',
+      entityId: orderId,
+      metadata: {
+        merchandiser_id: order.merchandiser_id,
+        orderNumber: order.orderNumber,
+        oldStage,
+        newStage,
+        userName: user.fullName || user.email,
+      },
+    });
+
+    return updatedOrder;
   }
 
   private async generateOrderNumber(): Promise<string> {

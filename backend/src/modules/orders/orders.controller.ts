@@ -73,4 +73,26 @@ export class OrdersController {
   async remove(@Param('id') id: string) {
     return this.ordersService.remove(id);
   }
+
+  @Patch(':id/approvals')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
+  @ApiOperation({ summary: 'Update order approval status' })
+  async updateApproval(
+    @Param('id') id: string,
+    @Body() body: { approvalType: string; status: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.ordersService.updateApproval(id, body.approvalType, body.status, user);
+  }
+
+  @Post(':id/change-stage')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
+  @ApiOperation({ summary: 'Change order stage' })
+  async changeStage(
+    @Param('id') id: string,
+    @Body() body: { stage: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.ordersService.changeStage(id, body.stage, user);
+  }
 }

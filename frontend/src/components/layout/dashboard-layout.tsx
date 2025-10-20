@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/toaster';
 import { 
   Package, 
   LayoutDashboard, 
@@ -112,6 +113,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   );
 }
