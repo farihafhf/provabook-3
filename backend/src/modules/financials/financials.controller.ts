@@ -17,6 +17,7 @@ import { UpdateProformaInvoiceDto } from './dto/update-proforma-invoice.dto';
 import { CreateLetterOfCreditDto } from './dto/create-letter-of-credit.dto';
 import { UpdateLetterOfCreditDto } from './dto/update-letter-of-credit.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../../common/enums/user-role.enum';
 
@@ -31,14 +32,14 @@ export class FinancialsController {
   @Post('proforma-invoices')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
   @ApiOperation({ summary: 'Create a new Proforma Invoice' })
-  async createPI(@Body() createPiDto: CreateProformaInvoiceDto) {
-    return this.financialsService.createPI(createPiDto);
+  async createPI(@Body() createPiDto: CreateProformaInvoiceDto, @CurrentUser() user: any) {
+    return this.financialsService.createPI(createPiDto, user.id);
   }
 
   @Get('proforma-invoices')
   @ApiOperation({ summary: 'Get all Proforma Invoices' })
-  async findAllPIs(@Query('orderId') orderId?: string) {
-    return this.financialsService.findAllPIs(orderId);
+  async findAllPIs(@Query('orderId') orderId?: string, @CurrentUser() user?: any) {
+    return this.financialsService.findAllPIs(orderId, user?.id, user?.role);
   }
 
   @Get('proforma-invoices/:id')
@@ -65,14 +66,14 @@ export class FinancialsController {
   @Post('letters-of-credit')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
   @ApiOperation({ summary: 'Create a new Letter of Credit' })
-  async createLC(@Body() createLcDto: CreateLetterOfCreditDto) {
-    return this.financialsService.createLC(createLcDto);
+  async createLC(@Body() createLcDto: CreateLetterOfCreditDto, @CurrentUser() user: any) {
+    return this.financialsService.createLC(createLcDto, user.id);
   }
 
   @Get('letters-of-credit')
   @ApiOperation({ summary: 'Get all Letters of Credit' })
-  async findAllLCs(@Query('orderId') orderId?: string) {
-    return this.financialsService.findAllLCs(orderId);
+  async findAllLCs(@Query('orderId') orderId?: string, @CurrentUser() user?: any) {
+    return this.financialsService.findAllLCs(orderId, user?.id, user?.role);
   }
 
   @Get('letters-of-credit/expiring')

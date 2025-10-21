@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { LCStatus } from '../../common/enums/financial.enum';
 import { Order } from './order.entity';
+import { UserProfile } from './user-profile.entity';
 
 @Entity('letters_of_credit')
 export class LetterOfCredit {
@@ -64,6 +65,13 @@ export class LetterOfCredit {
 
   @Column('uuid')
   order_id: string;
+
+  @ManyToOne(() => UserProfile, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_id' })
+  createdBy: UserProfile;
+
+  @Column('uuid', { nullable: true })
+  created_by_id: string;
 
   @CreateDateColumn()
   createdAt: Date;

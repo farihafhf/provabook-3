@@ -144,9 +144,9 @@ export class DashboardService {
   private formatApprovalType(type: string): string {
     const types: Record<string, string> = {
       labDip: 'Lab Dip',
-      trimsCard: 'Trims Card',
-      fabricTest: 'Fabric Test',
-      fitSample: 'Fit Sample',
+      strikeOff: 'Strike-Off',
+      qualityTest: 'Quality Test',
+      bulkSwatch: 'Bulk Swatch',
       ppSample: 'PP Sample',
     };
     return types[type] || type;

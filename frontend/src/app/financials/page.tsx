@@ -25,6 +25,11 @@ interface ProformaInvoice {
   currency: string;
   issueDate?: string;
   order_id: string;
+  createdBy?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
 }
 
 interface LetterOfCredit {
@@ -37,6 +42,11 @@ interface LetterOfCredit {
   expiryDate: string;
   issuingBank?: string;
   order_id: string;
+  createdBy?: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
 }
 
 interface Order {
@@ -356,6 +366,11 @@ export default function FinancialsPage() {
                         <div>
                           <p className="font-medium">{pi.piNumber}</p>
                           <p className="text-sm text-gray-500">Version {pi.version}</p>
+                          {pi.createdBy && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Handled by: {pi.createdBy.fullName}
+                            </p>
+                          )}
                         </div>
                         <Badge variant="secondary" className="capitalize">
                           {pi.status}
@@ -522,6 +537,11 @@ export default function FinancialsPage() {
                           <p className="font-medium">{lc.lcNumber}</p>
                           {lc.issuingBank && (
                             <p className="text-sm text-gray-500">{lc.issuingBank}</p>
+                          )}
+                          {lc.createdBy && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Handled by: {lc.createdBy.fullName}
+                            </p>
                           )}
                         </div>
                         <Badge variant="secondary" className="capitalize">

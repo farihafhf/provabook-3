@@ -31,11 +31,38 @@ export class Order {
   @Column({ nullable: true })
   buyerName: string;
 
+  @Column({ nullable: true })
+  styleNumber: string;
+
   @Column()
   fabricType: string;
 
   @Column('text', { nullable: true })
   fabricSpecifications: string;
+
+  @Column({ nullable: true })
+  fabricComposition: string;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  gsm: number;
+
+  @Column({ nullable: true })
+  finishType: string;
+
+  @Column({ nullable: true })
+  construction: string;
+
+  @Column({ nullable: true })
+  millName: string;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  millPrice: number;
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  provaPrice: number;
+
+  @Column({ default: 'USD' })
+  currency: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
   quantity: number;
@@ -43,8 +70,17 @@ export class Order {
   @Column({ default: 'meters' })
   unit: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  colorQuantityBreakdown: Array<{ color: string; quantity: number }>;
+
   @Column('simple-array', { nullable: true })
   colorways: string[];
+
+  @Column('date', { nullable: true })
+  etd: Date;
+
+  @Column('date', { nullable: true })
+  eta: Date;
 
   @Column({
     type: 'enum',
@@ -79,9 +115,9 @@ export class Order {
   @Column({ type: 'jsonb', nullable: true, default: () => "'{}'" })
   approvalStatus: {
     labDip?: 'pending' | 'approved' | 'rejected';
-    trimsCard?: 'pending' | 'approved' | 'rejected';
-    fabricTest?: 'pending' | 'approved' | 'rejected';
-    fitSample?: 'pending' | 'approved' | 'rejected';
+    strikeOff?: 'pending' | 'approved' | 'rejected';
+    qualityTest?: 'pending' | 'approved' | 'rejected';
+    bulkSwatch?: 'pending' | 'approved' | 'rejected';
     ppSample?: 'pending' | 'approved' | 'rejected';
   };
 

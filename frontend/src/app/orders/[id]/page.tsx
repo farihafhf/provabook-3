@@ -18,10 +18,22 @@ interface Order {
   orderNumber: string;
   customerName: string;
   buyerName?: string;
+  styleNumber?: string;
   fabricType: string;
   fabricSpecifications?: string;
+  fabricComposition?: string;
+  gsm?: number;
+  finishType?: string;
+  construction?: string;
+  millName?: string;
+  millPrice?: number;
+  provaPrice?: number;
+  currency?: string;
   quantity: number;
   unit: string;
+  colorQuantityBreakdown?: Array<{ color: string; quantity: number }>;
+  etd?: string;
+  eta?: string;
   status: string;
   category: string;
   currentStage: string;
@@ -31,9 +43,9 @@ interface Order {
   notes?: string;
   approvalStatus?: {
     labDip?: string;
-    trimsCard?: string;
-    fabricTest?: string;
-    fitSample?: string;
+    strikeOff?: string;
+    qualityTest?: string;
+    bulkSwatch?: string;
     ppSample?: string;
   };
   createdAt: string;
@@ -160,9 +172,9 @@ export default function OrderDetailPage() {
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
-      trimsCard: 'Trims Card',
-      fabricTest: 'Fabric Test',
-      fitSample: 'Fit Sample',
+      strikeOff: 'Strike-Off',
+      qualityTest: 'Quality Test',
+      bulkSwatch: 'Bulk Swatch',
       ppSample: 'PP Sample',
     };
     return names[type] || type;
@@ -178,9 +190,9 @@ export default function OrderDetailPage() {
     if (!order?.approvalStatus) return 0;
     const statuses = [
       order.approvalStatus.labDip,
-      order.approvalStatus.trimsCard,
-      order.approvalStatus.fabricTest,
-      order.approvalStatus.fitSample,
+      order.approvalStatus.strikeOff,
+      order.approvalStatus.qualityTest,
+      order.approvalStatus.bulkSwatch,
     ];
     return statuses.filter(s => s === 'approved').length;
   };
@@ -189,9 +201,9 @@ export default function OrderDetailPage() {
     if (!order?.approvalStatus) return false;
     return (
       order.approvalStatus.labDip === 'approved' &&
-      order.approvalStatus.trimsCard === 'approved' &&
-      order.approvalStatus.fabricTest === 'approved' &&
-      order.approvalStatus.fitSample === 'approved'
+      order.approvalStatus.strikeOff === 'approved' &&
+      order.approvalStatus.qualityTest === 'approved' &&
+      order.approvalStatus.bulkSwatch === 'approved'
     );
   };
 
@@ -279,7 +291,7 @@ export default function OrderDetailPage() {
             <div className="space-y-4">
               {/* Parallel Approvals */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['labDip', 'trimsCard', 'fabricTest', 'fitSample'] as const).map((type) => (
+                {(['labDip', 'strikeOff', 'qualityTest', 'bulkSwatch'] as const).map((type) => (
                   <div key={type} className="border rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
