@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/utils';
+import { FileUpload } from '@/components/file-upload';
+import { DocumentList } from '@/components/document-list';
+import { PrintableOrder } from '@/components/printable-order';
 
 interface Order {
   id: string;
@@ -60,6 +64,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('info');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -68,6 +74,7 @@ export default function OrderDetailPage() {
     }
 
     fetchOrder();
+    fetchDocuments();
   }, [isAuthenticated, router, params.id]);
 
   const fetchOrder = async () => {
@@ -78,6 +85,25 @@ export default function OrderDetailPage() {
       console.error('Failed to fetch order:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await api.get(`/orders/${params.id}/documents`);
+      setDocuments(response.data);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    try {
+      await api.delete(`/orders/documents/${documentId}`);
+      await fetchDocuments();
+    } catch (error) {
+      console.error('Failed to delete document:', error);
+      throw error;
     }
   };
 
@@ -169,6 +195,10 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
@@ -258,6 +288,10 @@ export default function OrderDetailPage() {
             <p className="text-gray-500 mt-2">{order.customerName}</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print Order
+            </Button>
             {(order.currentStage === 'In Development' || order.currentStage === 'Production') && (
               <Button onClick={handleMarkDelivered} disabled={updating}>
                 <Package className="mr-2 h-4 w-4" />
@@ -277,8 +311,114 @@ export default function OrderDetailPage() {
           </Badge>
         </div>
 
-        {/* Approval Gate Section */}
-        <Card className="border-2 border-blue-200">
+        {/* Tabs Section */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="info">Order Info</TabsTrigger>
+            <TabsTrigger value="approval">Approval Gate</TabsTrigger>
+            <TabsTrigger value="documents">
+              <FileText className="h-4 w-4 mr-2" />
+              Documents ({documents.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Info Tab */}
+          <TabsContent value="info" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Order Number</p>
+                    <p className="font-medium">{order.orderNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Customer Name</p>
+                    <p className="font-medium">{order.customerName}</p>
+                  </div>
+                  {order.buyerName && (
+                    <div>
+                      <p className="text-sm text-gray-500">Buyer Name</p>
+                      <p className="font-medium">{order.buyerName}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">Status</p>
+                    <Badge className="mt-1">{order.status}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Category</p>
+                    <Badge variant="secondary" className="mt-1">{order.category}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fabric Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Fabric Type</p>
+                    <p className="font-medium">{order.fabricType}</p>
+                  </div>
+                  {order.fabricSpecifications && (
+                    <div>
+                      <p className="text-sm text-gray-500">Specifications</p>
+                      <p className="font-medium">{order.fabricSpecifications}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-500">Quantity</p>
+                    <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dates</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {order.orderDate && (
+                    <div>
+                      <p className="text-sm text-gray-500">Order Date</p>
+                      <p className="font-medium">{formatDate(order.orderDate)}</p>
+                    </div>
+                  )}
+                  {order.expectedDeliveryDate && (
+                    <div>
+                      <p className="text-sm text-gray-500">Expected Delivery</p>
+                      <p className="font-medium">{formatDate(order.expectedDeliveryDate)}</p>
+                    </div>
+                  )}
+                  {order.actualDeliveryDate && (
+                    <div>
+                      <p className="text-sm text-gray-500">Actual Delivery</p>
+                      <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {order.notes && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-700">{order.notes}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Approval Gate Tab */}
+          <TabsContent value="approval">
+            <Card className="border-2 border-blue-200">
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Approval Gate</CardTitle>
@@ -353,97 +493,69 @@ export default function OrderDetailPage() {
             </div>
           </CardContent>
         </Card>
+          </TabsContent>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500">Order Number</p>
-                <p className="font-medium">{order.orderNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Customer Name</p>
-                <p className="font-medium">{order.customerName}</p>
-              </div>
-              {order.buyerName && (
-                <div>
-                  <p className="text-sm text-gray-500">Buyer Name</p>
-                  <p className="font-medium">{order.buyerName}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                <Badge className="mt-1">{order.status}</Badge>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Category</p>
-                <Badge variant="secondary" className="mt-1">{order.category}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Fabric Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500">Fabric Type</p>
-                <p className="font-medium">{order.fabricType}</p>
-              </div>
-              {order.fabricSpecifications && (
-                <div>
-                  <p className="text-sm text-gray-500">Specifications</p>
-                  <p className="font-medium">{order.fabricSpecifications}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-500">Quantity</p>
-                <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {order.orderDate && (
-                <div>
-                  <p className="text-sm text-gray-500">Order Date</p>
-                  <p className="font-medium">{formatDate(order.orderDate)}</p>
-                </div>
-              )}
-              {order.expectedDeliveryDate && (
-                <div>
-                  <p className="text-sm text-gray-500">Expected Delivery</p>
-                  <p className="font-medium">{formatDate(order.expectedDeliveryDate)}</p>
-                </div>
-              )}
-              {order.actualDeliveryDate && (
-                <div>
-                  <p className="text-sm text-gray-500">Actual Delivery</p>
-                  <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {order.notes && (
+          {/* Documents Tab */}
+          <TabsContent value="documents" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Notes</CardTitle>
+                <CardTitle>Upload Document</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700">{order.notes}</p>
+                <FileUpload 
+                  orderId={order.id} 
+                  onUploadComplete={fetchDocuments}
+                />
               </CardContent>
             </Card>
-          )}
-        </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DocumentList 
+                  documents={documents}
+                  onDelete={handleDeleteDocument}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Hidden Printable Order (only visible when printing) */}
+        <PrintableOrder 
+          order={{
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            buyerName: order.buyerName,
+            styleNumber: order.styleNumber,
+            fabricType: order.fabricType,
+            fabricSpecifications: order.fabricSpecifications,
+            fabricComposition: order.fabricComposition,
+            gsm: order.gsm,
+            finishType: order.finishType,
+            construction: order.construction,
+            millName: order.millName,
+            millPrice: order.millPrice,
+            provaPrice: order.provaPrice,
+            currency: order.currency,
+            quantity: order.quantity,
+            unit: order.unit,
+            colorQuantityBreakdown: order.colorQuantityBreakdown,
+            etd: order.etd,
+            eta: order.eta,
+            status: order.status,
+            category: order.category,
+            currentStage: order.currentStage,
+            orderDate: order.orderDate,
+            expectedDeliveryDate: order.expectedDeliveryDate,
+            actualDeliveryDate: order.actualDeliveryDate,
+            notes: order.notes,
+            merchandiser: undefined,
+          }}
+        />
       </div>
     </DashboardLayout>
   );

@@ -56,6 +56,8 @@ export class DashboardService {
       action: this.formatAction(log.action, log.metadata),
       userName: log.metadata?.userName || log.userEmail,
       orderNumber: log.metadata?.orderNumber || 'N/A',
+      customerName: log.metadata?.customerName,
+      buyerName: log.metadata?.buyerName,
       timestamp: log.createdAt,
       details: this.getActionDetails(log),
     }));
@@ -87,6 +89,8 @@ export class DashboardService {
       action: this.formatAction(log.action, log.metadata),
       userName: log.metadata?.userName || log.userEmail,
       orderNumber: log.metadata?.orderNumber || 'N/A',
+      customerName: log.metadata?.customerName,
+      buyerName: log.metadata?.buyerName,
       timestamp: log.createdAt,
       details: this.getActionDetails(log),
     }));

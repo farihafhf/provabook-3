@@ -14,6 +14,8 @@ interface DashboardActivity {
   action: string;
   userName: string;
   orderNumber: string;
+  customerName?: string;
+  buyerName?: string;
   timestamp: string;
   details: any;
 }
@@ -166,11 +168,28 @@ export default function DashboardPage() {
                           <span className="font-medium text-gray-900">{activity.userName}</span>
                           {' '}
                           <span className="text-gray-600">{activity.action}</span>
-                          {' '}
-                          <span className="text-sm font-medium text-blue-600">
-                            {activity.orderNumber}
-                          </span>
                         </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {activity.customerName && (
+                            <span className="text-sm text-gray-700">
+                              <span className="text-gray-500">Customer:</span> {activity.customerName}
+                            </span>
+                          )}
+                          {activity.buyerName && (
+                            <>
+                              {activity.customerName && <span className="text-gray-400">•</span>}
+                              <span className="text-sm text-gray-700">
+                                <span className="text-gray-500">Buyer:</span> {activity.buyerName}
+                              </span>
+                            </>
+                          )}
+                          {(activity.customerName || activity.buyerName) && (
+                            <span className="text-gray-400">•</span>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {activity.orderNumber}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-gray-500 mt-1">
                           {formatTimestamp(activity.timestamp)}
                         </p>
@@ -261,12 +280,31 @@ export default function DashboardPage() {
                     <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                       <Package className="h-5 w-5 text-gray-400 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm">
+                        <p className="text-sm">
                           <span className="font-medium text-gray-900">{activity.userName}</span>
                           {' '}
                           <span className="text-gray-600">{activity.action}</span>
-                          {' '}
-                          <Badge variant="outline" className="ml-1">{activity.orderNumber}</Badge>
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {activity.customerName && (
+                            <span className="text-sm text-gray-700">
+                              <span className="text-gray-500">Customer:</span> {activity.customerName}
+                            </span>
+                          )}
+                          {activity.buyerName && (
+                            <>
+                              {activity.customerName && <span className="text-gray-400">•</span>}
+                              <span className="text-sm text-gray-700">
+                                <span className="text-gray-500">Buyer:</span> {activity.buyerName}
+                              </span>
+                            </>
+                          )}
+                          {(activity.customerName || activity.buyerName) && (
+                            <span className="text-gray-400">•</span>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {activity.orderNumber}
+                          </Badge>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
                           {formatTimestamp(activity.timestamp)}
