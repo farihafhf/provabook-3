@@ -5,11 +5,11 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate } from '@/lib/utils';
@@ -36,6 +36,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
@@ -188,6 +191,43 @@ export default function OrdersPage() {
       return 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100';
     }
     return 'bg-gray-100 text-gray-600 border border-gray-200';
+  };
+
+  const handleDeleteClick = (order: Order) => {
+    setOrderToDelete(order);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!orderToDelete) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/orders/${orderToDelete.id}`);
+
+      toast({
+        title: 'Success',
+        description: 'Order deleted successfully',
+      });
+
+      setDeleteDialogOpen(false);
+      setOrderToDelete(null);
+      
+      // Refresh orders list
+      await fetchOrders();
+    } catch (error: any) {
+      console.error('Error deleting order:', error);
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete order';
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const addColorRow = () => {
@@ -420,13 +460,25 @@ export default function OrdersPage() {
                         <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
                         <td className="py-4">{order.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate) : '-'}</td>
                         <td className="py-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/orders/${order.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/orders/${order.id}`)}
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteClick(order)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Delete Order"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -436,6 +488,44 @@ export default function OrdersPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Order</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this order? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {orderToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>Order #:</strong> {orderToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {orderToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Fabric:</strong> {orderToDelete.fabricType}</p>
+                  <p className="text-sm"><strong>Quantity:</strong> {orderToDelete.quantity} {orderToDelete.unit}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete Order'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

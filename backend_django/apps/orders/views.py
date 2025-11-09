@@ -1,0 +1,235 @@
+"""
+Orders views
+"""
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Sum, Count, Q
+from .models import Order, OrderStatus, OrderCategory, Document
+from .serializers import (
+    OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
+    OrderListSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
+    StageChangeSerializer, DocumentSerializer
+)
+from .filters import OrderFilter
+from apps.core.permissions import IsMerchandiser, IsAdminOrManager
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Order CRUD operations
+    
+    Endpoints:
+    - GET /orders/ - List all orders (filtered by role)
+    - POST /orders/ - Create new order
+    - GET /orders/{id}/ - Get order details
+    - PATCH /orders/{id}/ - Update order
+    - DELETE /orders/{id}/ - Delete order
+    - GET /orders/stats/ - Get order statistics
+    - PATCH /orders/{id}/approvals/ - Update approval status
+    - POST /orders/{id}/change_stage/ - Change order stage
+    """
+    queryset = Order.objects.select_related('merchandiser').all()
+    permission_classes = [permissions.IsAuthenticated, IsMerchandiser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = OrderFilter
+    search_fields = ['order_number', 'customer_name', 'buyer_name', 'fabric_type', 'style_number']
+    ordering_fields = ['created_at', 'order_date', 'expected_delivery_date', 'order_number']
+    ordering = ['-created_at']
+    pagination_class = None  # Disable pagination - frontend expects array directly
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'list':
+            return OrderListSerializer
+        elif self.action == 'create':
+            return OrderCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return OrderUpdateSerializer
+        elif self.action == 'stats':
+            return OrderStatsSerializer
+        return OrderSerializer
+    
+    def get_queryset(self):
+        """
+        Filter orders based on user role:
+        - Merchandisers see only their orders
+        - Managers and Admins see all orders
+        """
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # Merchandisers only see their own orders
+        if user.role == 'merchandiser':
+            queryset = queryset.filter(merchandiser=user)
+        
+        # Apply query parameters
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        
+        category_param = self.request.query_params.get('category')
+        if category_param:
+            queryset = queryset.filter(category=category_param)
+        
+        merchandiser_param = self.request.query_params.get('merchandiserId')
+        if merchandiser_param and user.role in ['admin', 'manager']:
+            queryset = queryset.filter(merchandiser_id=merchandiser_param)
+        
+        return queryset
+    
+    def perform_create(self, serializer):
+        """Set merchandiser to current user when creating order"""
+        serializer.save(merchandiser=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        """Create order with custom response"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order = serializer.save(merchandiser=request.user)
+        
+        # Return full order data
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        """Update order with custom response"""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Return full order data
+        response_serializer = OrderSerializer(instance)
+        return Response(response_serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='stats')
+    def stats(self, request):
+        """
+        GET /orders/stats/
+        Get order statistics
+        """
+        queryset = self.get_queryset()
+        
+        # Calculate statistics
+        stats = {
+            'total_orders': queryset.count(),
+            'upcoming_orders': queryset.filter(category=OrderCategory.UPCOMING).count(),
+            'running_orders': queryset.filter(category=OrderCategory.RUNNING).count(),
+            'completed_orders': queryset.filter(status=OrderStatus.COMPLETED).count(),
+            'archived_orders': queryset.filter(category=OrderCategory.ARCHIVED).count(),
+            'total_value': queryset.aggregate(
+                total=Sum('prova_price')
+            )['total'] or 0,
+            'recent_orders': queryset.order_by('-created_at')[:5]
+        }
+        
+        serializer = OrderStatsSerializer(stats)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'], url_path='approvals')
+    def update_approval(self, request, pk=None):
+        """
+        PATCH /orders/{id}/approvals/
+        Update order approval status
+        
+        Request body:
+        {
+            "approvalType": "labDip",
+            "status": "approved"
+        }
+        """
+        order = self.get_object()
+        serializer = ApprovalUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        approval_type = serializer.validated_data['approval_type']
+        approval_status = serializer.validated_data['status']
+        
+        # Update approval status
+        order.update_approval_status(approval_type, approval_status)
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='change-stage')
+    def change_stage(self, request, pk=None):
+        """
+        POST /orders/{id}/change-stage/
+        Change order stage
+        
+        Request body:
+        {
+            "stage": "Production"
+        }
+        """
+        order = self.get_object()
+        serializer = StageChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        new_stage = serializer.validated_data['stage']
+        
+        # Change stage
+        order.change_stage(new_stage)
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='documents')
+    def get_documents(self, request, pk=None):
+        """
+        GET /orders/{id}/documents/
+        Get all documents for this order
+        """
+        order = self.get_object()
+        documents = Document.objects.filter(order=order)
+        serializer = DocumentSerializer(documents, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='documents/upload', 
+            permission_classes=[permissions.IsAuthenticated, IsMerchandiser])
+    def upload_document(self, request, pk=None):
+        """
+        POST /orders/{id}/documents/upload/
+        Upload document for order - saves to local disk
+        """
+        order = self.get_object()
+        
+        # Get file and metadata from request
+        uploaded_file = request.FILES.get('file')
+        category = request.data.get('category')
+        subcategory = request.data.get('subcategory', None)
+        description = request.data.get('description', None)
+        
+        if not uploaded_file:
+            return Response({
+                'error': 'No file provided'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate category
+        if category not in dict(Document.Category.choices).keys():
+            return Response({
+                'error': f'Invalid category. Must be one of: {", ".join(dict(Document.Category.choices).keys())}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Create document record and save file
+        document = Document.objects.create(
+            order=order,
+            file=uploaded_file,
+            file_name=uploaded_file.name,
+            file_type=uploaded_file.content_type,
+            file_size=uploaded_file.size,
+            category=category,
+            subcategory=subcategory if subcategory else None,
+            description=description if description else None,
+            uploaded_by=request.user
+        )
+        
+        # Return serialized document
+        serializer = DocumentSerializer(document, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

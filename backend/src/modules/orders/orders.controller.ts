@@ -82,7 +82,7 @@ export class OrdersController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
   @ApiOperation({ summary: 'Delete order' })
   async remove(@Param('id') id: string) {
     return this.ordersService.remove(id);
