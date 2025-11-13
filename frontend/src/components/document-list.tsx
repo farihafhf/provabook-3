@@ -87,36 +87,17 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  const handleView = async (documentId: string, fileName: string, fileType: string) => {
+  const handleView = async (documentId: string, fileName: string, fileType: string, fileUrl: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const url = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/orders/documents/${documentId}/signed-url`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`Failed to get signed URL: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // If it's an image, show in modal. Otherwise, open in new tab
       if (fileType.startsWith('image/')) {
         setViewingDocument({
           id: documentId,
           fileName,
           fileType,
-          signedUrl: data.signedUrl,
+          signedUrl: fileUrl,
         });
       } else {
-        // For PDFs and other files, open in new tab
-        window.open(data.signedUrl, '_blank');
+        window.open(fileUrl, '_blank');
       }
     } catch (error) {
       console.error('View error:', error);
@@ -128,26 +109,9 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     }
   };
 
-  const handleDownload = async (documentId: string, fileName: string) => {
+  const handleDownload = async (documentId: string, fileName: string, fileUrl: string) => {
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/orders/documents/${documentId}/signed-url`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get signed URL');
-      }
-
-      const data = await response.json();
-      
-      // Download using the signed URL
-      const fileResponse = await fetch(data.signedUrl);
+      const fileResponse = await fetch(fileUrl);
       const blob = await fileResponse.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -275,7 +239,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleView(doc.id, doc.fileName, doc.fileType)}
+                        onClick={() => handleView(doc.id, doc.fileName, doc.fileType, doc.fileUrl)}
                         title="View"
                       >
                         <Eye className="h-4 w-4" />
@@ -283,7 +247,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDownload(doc.id, doc.fileName)}
+                        onClick={() => handleDownload(doc.id, doc.fileName, doc.fileUrl)}
                         title="Download"
                       >
                         <Download className="h-4 w-4" />

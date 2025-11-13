@@ -151,6 +151,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Update approval status
         order.update_approval_status(approval_type, approval_status)
+
+        # Auto-progress: if all gates approved and ppSample approved, move to running
+        approvals = order.approval_status or {}
+        required_gates = ['labDip', 'strikeOff', 'qualityTest', 'bulkSwatch']
+        if approvals.get('ppSample') == 'approved' and all(approvals.get(g) == 'approved' for g in required_gates):
+            if order.status != OrderStatus.RUNNING:
+                order.status = OrderStatus.RUNNING
+                order.category = OrderCategory.RUNNING
+                # Optionally update stage to Production when PP sample approved
+                order.current_stage = 'Production'
+                order.save(update_fields=['status', 'category', 'current_stage', 'updated_at'])
         
         # Return updated order
         response_serializer = OrderSerializer(order)

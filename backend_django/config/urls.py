@@ -33,6 +33,8 @@ urlpatterns = [
     
     # API v1 endpoints
     path('api/v1/auth/', include('apps.authentication.urls')),
+    # Expose orders with and without trailing slash
+    path('api/v1/orders', include('apps.orders.urls')),
     path('api/v1/orders/', include('apps.orders.urls')),
     
     # Dashboard (temporary endpoint in core)

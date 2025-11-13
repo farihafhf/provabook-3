@@ -26,6 +26,9 @@ DEBUG = env('DEBUG', default=True)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
 
+# URL Configuration
+APPEND_SLASH = False  # Don't automatically add trailing slashes
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -163,10 +166,13 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ),
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
     'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S.%fZ',
     'DATE_FORMAT': '%Y-%m-%d',
+    'DEFAULT_ROUTER_CLASS': 'rest_framework.routers.DefaultRouter',
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.AutoSchema',
 }
 
 # JWT Configuration
