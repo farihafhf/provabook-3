@@ -33,16 +33,19 @@ urlpatterns = [
     
     # API v1 endpoints
     path('api/v1/auth/', include('apps.authentication.urls')),
-    # Expose orders with and without trailing slash
+    # Orders API (no trailing slash)
     path('api/v1/orders', include('apps.orders.urls')),
-    path('api/v1/orders/', include('apps.orders.urls')),
     
     # Dashboard (temporary endpoint in core)
     path('api/v1/dashboard', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),
     
-    # Placeholder endpoints (return empty arrays until implemented)
-    path('api/v1/samples', lambda request: __import__('apps.core.views', fromlist=['samples_list_view']).samples_list_view(request)),
-    path('api/v1/financials', lambda request: __import__('apps.core.views', fromlist=['financials_list_view']).financials_list_view(request)),
+    # Samples API (no trailing slash)
+    path('api/v1/samples', include('apps.samples.urls')),
+    
+    # Financials
+    path('api/v1/financials/', include('apps.financials.urls')),
+    
+    # Placeholder endpoints
     path('api/v1/orders/documents/<str:document_id>', lambda request, document_id: __import__('apps.core.views', fromlist=['document_delete_view']).document_delete_view(request, document_id)),
     
     # TODO: Uncomment as you create these apps

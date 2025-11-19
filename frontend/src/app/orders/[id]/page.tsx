@@ -8,10 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Calendar, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
@@ -66,6 +69,9 @@ export default function OrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [documents, setDocuments] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('info');
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
+  const [dateFormData, setDateFormData] = useState({ etd: '', eta: '' });
+  const [stageSelection, setStageSelection] = useState<string>('Design');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -81,6 +87,9 @@ export default function OrderDetailPage() {
     try {
       const response = await api.get(`/orders/${params.id}`);
       setOrder(response.data);
+      if (response.data?.currentStage) {
+        setStageSelection(response.data.currentStage);
+      }
     } catch (error) {
       console.error('Failed to fetch order:', error);
     } finally {
@@ -197,6 +206,66 @@ export default function OrderDetailPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleOpenDateDialog = () => {
+    setDateFormData({
+      etd: order?.etd || '',
+      eta: order?.eta || '',
+    });
+    setDateDialogOpen(true);
+  };
+
+  const handleUpdateDates = async () => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}`, {
+        etd: dateFormData.etd || null,
+        eta: dateFormData.eta || null,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Delivery dates updated successfully',
+      });
+
+      setDateDialogOpen(false);
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update dates:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update dates',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleConfirmStageChange = async () => {
+    if (!order) return;
+    setUpdating(true);
+    try {
+      const resp = await api.post(`/orders/${order.id}/change-stage`, { stage: stageSelection });
+      toast({
+        title: 'Stage Updated',
+        description: `Stage changed to ${resp.data.currentStage}`,
+      });
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to change stage:', error);
+      const msg = error.response?.data?.stage?.[0] || error.response?.data?.message || 'Failed to change stage';
+      toast({
+        title: 'Error',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const formatApprovalName = (type: string): string => {
@@ -344,13 +413,34 @@ export default function OrderDetailPage() {
                       <p className="font-medium">{order.buyerName}</p>
                     </div>
                   )}
+                  {/* Status and Category are omitted per UX: show Stage only */}
                   <div>
-                    <p className="text-sm text-gray-500">Status</p>
-                    <Badge className="mt-1">{order.status}</Badge>
+                    <p className="text-sm text-gray-500 mb-1">Stage</p>
+                    <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      {order.currentStage || '—'}
+                    </div>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Category</p>
-                    <Badge variant="secondary" className="mt-1">{order.category}</Badge>
+                    <p className="text-sm text-gray-500 mb-2 mt-3">Set Stage</p>
+                    <div className="flex items-center gap-2">
+                      <Select value={stageSelection} onValueChange={setStageSelection}>
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="Select stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Design">Design</SelectItem>
+                          <SelectItem value="Greige">Greige</SelectItem>
+                          <SelectItem value="Let Me Know">Let Me Know</SelectItem>
+                          <SelectItem value="In Development">In Development</SelectItem>
+                          <SelectItem value="Production">Production</SelectItem>
+                          <SelectItem value="Delivered">Delivered</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" onClick={handleConfirmStageChange} disabled={updating}>
+                        {updating ? 'Updating...' : 'Confirm'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Changing to Delivered will auto-archive and set Actual Delivery Date.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -378,14 +468,36 @@ export default function OrderDetailPage() {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Dates</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Dates & Delivery</CardTitle>
+                  <Button variant="outline" size="sm" onClick={handleOpenDateDialog}>
+                    <Edit2 className="mr-2 h-3 w-3" />
+                    Edit Dates
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {order.orderDate && (
                     <div>
                       <p className="text-sm text-gray-500">Order Date</p>
                       <p className="font-medium">{formatDate(order.orderDate)}</p>
+                    </div>
+                  )}
+                  {order.etd && (
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        ETD (Estimated Time of Dispatch)
+                      </p>
+                      <p className="font-medium text-blue-600">{formatDate(order.etd)}</p>
+                    </div>
+                  )}
+                  {order.eta && (
+                    <div>
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        ETA (Estimated Time of Arrival)
+                      </p>
+                      <p className="font-medium text-green-600">{formatDate(order.eta)}</p>
                     </div>
                   )}
                   {order.expectedDeliveryDate && (
@@ -399,6 +511,9 @@ export default function OrderDetailPage() {
                       <p className="text-sm text-gray-500">Actual Delivery</p>
                       <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
                     </div>
+                  )}
+                  {!order.etd && !order.eta && !order.orderDate && !order.expectedDeliveryDate && !order.actualDeliveryDate && (
+                    <p className="text-sm text-gray-400 text-center py-4">No dates recorded yet</p>
                   )}
                 </CardContent>
               </Card>
@@ -522,6 +637,45 @@ export default function OrderDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* ETD/ETA Edit Dialog */}
+        <Dialog open={dateDialogOpen} onOpenChange={setDateDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Delivery Dates</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="etd">ETD (Estimated Time of Dispatch)</Label>
+                <Input
+                  id="etd"
+                  type="date"
+                  value={dateFormData.etd}
+                  onChange={(e) => setDateFormData({ ...dateFormData, etd: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">When the order is expected to leave the mill</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eta">ETA (Estimated Time of Arrival)</Label>
+                <Input
+                  id="eta"
+                  type="date"
+                  value={dateFormData.eta}
+                  onChange={(e) => setDateFormData({ ...dateFormData, eta: e.target.value })}
+                />
+                <p className="text-xs text-gray-500">When the order is expected to arrive at destination</p>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setDateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateDates} disabled={updating}>
+                  {updating ? 'Saving...' : 'Save Dates'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Hidden Printable Order (only visible when printing) */}
         <PrintableOrder 

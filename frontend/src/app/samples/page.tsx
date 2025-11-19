@@ -13,11 +13,14 @@ import { api } from '@/lib/api';
 import { Plus, FileText, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 
 interface Sample {
   id: string;
+  orderId: string;
+  orderNumber?: string;
+  customerName?: string;
   type: string;
   version: number;
   status: string;
@@ -26,7 +29,8 @@ interface Sample {
   courierName?: string;
   awbNumber?: string;
   notes?: string;
-  order_id: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Order {
@@ -47,7 +51,7 @@ export default function SamplesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     type: 'lab_dip',
-    order_id: '',
+    orderId: '',
     recipient: '',
     courierName: '',
     awbNumber: '',
@@ -92,7 +96,7 @@ export default function SamplesPage() {
     try {
       const sampleData = {
         type: formData.type,
-        order_id: formData.order_id,
+        orderId: formData.orderId,
         recipient: formData.recipient || undefined,
         courierName: formData.courierName || undefined,
         awbNumber: formData.awbNumber || undefined,
@@ -112,7 +116,7 @@ export default function SamplesPage() {
       setDialogOpen(false);
       setFormData({
         type: 'lab_dip',
-        order_id: '',
+        orderId: '',
         recipient: '',
         courierName: '',
         awbNumber: '',
@@ -188,8 +192,8 @@ export default function SamplesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="order_id">Order *</Label>
-                    <Select value={formData.order_id} onValueChange={(value) => setFormData({ ...formData, order_id: value })}>
+                    <Label htmlFor="orderId">Order *</Label>
+                    <Select value={formData.orderId} onValueChange={(value) => setFormData({ ...formData, orderId: value })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select order" />
                       </SelectTrigger>
@@ -248,7 +252,7 @@ export default function SamplesPage() {
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={submitting || !formData.order_id}>
+                  <Button type="submit" disabled={submitting || !formData.orderId}>
                     {submitting ? 'Creating...' : 'Create Sample'}
                   </Button>
                 </div>

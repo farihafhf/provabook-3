@@ -98,6 +98,35 @@ class OrderSerializer(serializers.ModelSerializer):
                 if 'color' not in item or 'quantity' not in item:
                     raise serializers.ValidationError("Each item must have 'color' and 'quantity' fields")
         return value
+    
+    def validate(self, data):
+        """Validate ETD and ETA dates relationship"""
+        from datetime import date, timedelta
+        
+        etd = data.get('etd')
+        eta = data.get('eta')
+        
+        # If both ETD and ETA are provided, ETA should be after or equal to ETD
+        if etd and eta:
+            if eta < etd:
+                raise serializers.ValidationError({
+                    'eta': 'ETA (Estimated Time of Arrival) must be on or after ETD (Estimated Time of Dispatch)'
+                })
+        
+        # Warn if dates are too far in the past (more than 1 year)
+        one_year_ago = date.today() - timedelta(days=365)
+        
+        if etd and etd < one_year_ago:
+            raise serializers.ValidationError({
+                'etd': 'ETD cannot be more than 1 year in the past'
+            })
+        
+        if eta and eta < one_year_ago:
+            raise serializers.ValidationError({
+                'eta': 'ETA cannot be more than 1 year in the past'
+            })
+        
+        return data
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
@@ -197,6 +226,37 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             converted_data[new_key] = value
         
         return super().to_internal_value(converted_data)
+    
+    def validate(self, data):
+        """Validate ETD and ETA dates relationship"""
+        from datetime import date, timedelta
+        
+        # Get current values from instance if this is an update
+        instance = self.instance
+        etd = data.get('etd', instance.etd if instance else None)
+        eta = data.get('eta', instance.eta if instance else None)
+        
+        # If both ETD and ETA are provided, ETA should be after or equal to ETD
+        if etd and eta:
+            if eta < etd:
+                raise serializers.ValidationError({
+                    'eta': 'ETA (Estimated Time of Arrival) must be on or after ETD (Estimated Time of Dispatch)'
+                })
+        
+        # Warn if dates are too far in the past (more than 1 year)
+        one_year_ago = date.today() - timedelta(days=365)
+        
+        if etd and etd < one_year_ago:
+            raise serializers.ValidationError({
+                'etd': 'ETD cannot be more than 1 year in the past'
+            })
+        
+        if eta and eta < one_year_ago:
+            raise serializers.ValidationError({
+                'eta': 'ETA cannot be more than 1 year in the past'
+            })
+        
+        return data
 
 
 class OrderListSerializer(serializers.ModelSerializer):
@@ -279,7 +339,7 @@ class StageChangeSerializer(serializers.Serializer):
     Serializer for changing order stage
     """
     stage = serializers.ChoiceField(
-        choices=['Design', 'In Development', 'Production', 'Delivered']
+        choices=['Design', 'Greige', 'Let Me Know', 'In Development', 'Production', 'Delivered']
     )
 
 

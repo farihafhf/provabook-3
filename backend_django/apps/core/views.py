@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Sum
 from apps.orders.models import Order, OrderStatus, OrderCategory
+from datetime import date, timedelta
 
 
 @api_view(['GET'])
@@ -112,4 +113,28 @@ def dashboard_view(request):
             'recentActivities': recent_activities
         }
     
+    # Common additions: Orders by current stage and upcoming ETD/ETA windows
+    stage_counts = orders.values('current_stage').annotate(count=Count('id')).order_by()
+    by_stage = {item['current_stage'] or 'Unknown': item['count'] for item in stage_counts}
+
+    today = date.today()
+    in_7 = today + timedelta(days=7)
+    in_14 = today + timedelta(days=14)
+    in_30 = today + timedelta(days=30)
+
+    def date_window_counts(field_name):
+        # Exclusive windows: 0-7, 8-14, 15-30 days
+        return {
+            'next7': orders.filter(**{f"{field_name}__gte": today, f"{field_name}__lte": in_7}).count(),
+            'next14': orders.filter(**{f"{field_name}__gt": in_7, f"{field_name}__lte": in_14}).count(),
+            'next30': orders.filter(**{f"{field_name}__gt": in_14, f"{field_name}__lte": in_30}).count(),
+            'overdue': orders.filter(**{f"{field_name}__lt": today}).count(),
+        }
+
+    stats['byStage'] = by_stage
+    stats['upcoming'] = {
+        'etd': date_window_counts('etd'),
+        'eta': date_window_counts('eta'),
+    }
+
     return Response(stats)

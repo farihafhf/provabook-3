@@ -13,27 +13,31 @@ import { api } from '@/lib/api';
 import { Plus, FileText, DollarSign } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 
 interface ProformaInvoice {
   id: string;
+  orderId: string;
+  orderNumber?: string;
+  customerName?: string;
   piNumber: string;
   version: number;
   status: string;
   amount: number;
   currency: string;
   issueDate?: string;
-  order_id: string;
-  createdBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface LetterOfCredit {
   id: string;
+  orderId: string;
+  orderNumber?: string;
+  customerName?: string;
   lcNumber: string;
   status: string;
   amount: number;
@@ -41,12 +45,10 @@ interface LetterOfCredit {
   issueDate: string;
   expiryDate: string;
   issuingBank?: string;
-  order_id: string;
-  createdBy?: {
-    id: string;
-    fullName: string;
-    email: string;
-  };
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Order {
@@ -69,25 +71,19 @@ export default function FinancialsPage() {
   const [lcSubmitting, setLcSubmitting] = useState(false);
   
   const [piFormData, setPiFormData] = useState({
-    order_id: '',
+    orderId: '',
     amount: '',
     currency: 'USD',
     issueDate: '',
-    terms: '',
-    notes: '',
   });
 
   const [lcFormData, setLcFormData] = useState({
-    order_id: '',
-    lcNumber: '',
+    orderId: '',
     amount: '',
     currency: 'USD',
     issueDate: '',
     expiryDate: '',
     issuingBank: '',
-    advisingBank: '',
-    terms: '',
-    notes: '',
   });
 
   useEffect(() => {
@@ -103,8 +99,8 @@ export default function FinancialsPage() {
   const fetchFinancials = async () => {
     try {
       const [pisResponse, lcsResponse] = await Promise.all([
-        api.get('/financials/proforma-invoices'),
-        api.get('/financials/letters-of-credit'),
+        api.get('/financials/pis'),
+        api.get('/financials/lcs'),
       ]);
       setPis(pisResponse.data);
       setLcs(lcsResponse.data);
@@ -130,17 +126,15 @@ export default function FinancialsPage() {
 
     try {
       const piData = {
-        order_id: piFormData.order_id,
+        orderId: piFormData.orderId,
         amount: parseFloat(piFormData.amount),
         currency: piFormData.currency,
         issueDate: piFormData.issueDate || undefined,
-        terms: piFormData.terms || undefined,
-        notes: piFormData.notes || undefined,
       };
 
       console.log('Creating PI with data:', piData);
 
-      await api.post('/financials/proforma-invoices', piData);
+      await api.post('/financials/pis', piData);
 
       toast({
         title: 'Success',
@@ -149,12 +143,10 @@ export default function FinancialsPage() {
 
       setPiDialogOpen(false);
       setPiFormData({
-        order_id: '',
+        orderId: '',
         amount: '',
         currency: 'USD',
         issueDate: '',
-        terms: '',
-        notes: '',
       });
       fetchFinancials();
     } catch (error: any) {
@@ -183,21 +175,17 @@ export default function FinancialsPage() {
 
     try {
       const lcData = {
-        order_id: lcFormData.order_id,
-        lcNumber: lcFormData.lcNumber,
+        orderId: lcFormData.orderId,
         amount: parseFloat(lcFormData.amount),
         currency: lcFormData.currency,
         issueDate: lcFormData.issueDate,
         expiryDate: lcFormData.expiryDate,
         issuingBank: lcFormData.issuingBank || undefined,
-        advisingBank: lcFormData.advisingBank || undefined,
-        terms: lcFormData.terms || undefined,
-        notes: lcFormData.notes || undefined,
       };
 
       console.log('Creating LC with data:', lcData);
 
-      await api.post('/financials/letters-of-credit', lcData);
+      await api.post('/financials/lcs', lcData);
 
       toast({
         title: 'Success',
@@ -206,16 +194,12 @@ export default function FinancialsPage() {
 
       setLcDialogOpen(false);
       setLcFormData({
-        order_id: '',
-        lcNumber: '',
+        orderId: '',
         amount: '',
         currency: 'USD',
         issueDate: '',
         expiryDate: '',
         issuingBank: '',
-        advisingBank: '',
-        terms: '',
-        notes: '',
       });
       fetchFinancials();
     } catch (error: any) {
@@ -276,7 +260,7 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="pi_order">Order *</Label>
-                        <Select value={piFormData.order_id} onValueChange={(value) => setPiFormData({ ...piFormData, order_id: value })}>
+                        <Select value={piFormData.orderId} onValueChange={(value) => setPiFormData({ ...piFormData, orderId: value })}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select order" />
                           </SelectTrigger>
@@ -323,28 +307,12 @@ export default function FinancialsPage() {
                           onChange={(e) => setPiFormData({ ...piFormData, issueDate: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="pi_terms">Terms</Label>
-                        <Input
-                          id="pi_terms"
-                          value={piFormData.terms}
-                          onChange={(e) => setPiFormData({ ...piFormData, terms: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="pi_notes">Notes</Label>
-                        <Input
-                          id="pi_notes"
-                          value={piFormData.notes}
-                          onChange={(e) => setPiFormData({ ...piFormData, notes: e.target.value })}
-                        />
-                      </div>
                     </div>
                     <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setPiDialogOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={piSubmitting || !piFormData.order_id || !piFormData.amount}>
+                      <Button type="submit" disabled={piSubmitting || !piFormData.orderId || !piFormData.amount}>
                         {piSubmitting ? 'Creating...' : 'Create PI'}
                       </Button>
                     </div>
@@ -366,9 +334,9 @@ export default function FinancialsPage() {
                         <div>
                           <p className="font-medium">{pi.piNumber}</p>
                           <p className="text-sm text-gray-500">Version {pi.version}</p>
-                          {pi.createdBy && (
+                          {pi.createdByName && (
                             <p className="text-xs text-blue-600 mt-1">
-                              Handled by: {pi.createdBy.fullName}
+                              Handled by: {pi.createdByName}
                             </p>
                           )}
                         </div>
@@ -410,7 +378,7 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="lc_order">Order *</Label>
-                        <Select value={lcFormData.order_id} onValueChange={(value) => setLcFormData({ ...lcFormData, order_id: value })}>
+                        <Select value={lcFormData.orderId} onValueChange={(value) => setLcFormData({ ...lcFormData, orderId: value })}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select order" />
                           </SelectTrigger>
@@ -422,15 +390,6 @@ export default function FinancialsPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lc_lcNumber">LC Number *</Label>
-                        <Input
-                          id="lc_lcNumber"
-                          required
-                          value={lcFormData.lcNumber}
-                          onChange={(e) => setLcFormData({ ...lcFormData, lcNumber: e.target.value })}
-                        />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="lc_amount">Amount *</Label>
@@ -485,36 +444,12 @@ export default function FinancialsPage() {
                           onChange={(e) => setLcFormData({ ...lcFormData, issuingBank: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lc_advisingBank">Advising Bank</Label>
-                        <Input
-                          id="lc_advisingBank"
-                          value={lcFormData.advisingBank}
-                          onChange={(e) => setLcFormData({ ...lcFormData, advisingBank: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="lc_terms">Terms</Label>
-                        <Input
-                          id="lc_terms"
-                          value={lcFormData.terms}
-                          onChange={(e) => setLcFormData({ ...lcFormData, terms: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label htmlFor="lc_notes">Notes</Label>
-                        <Input
-                          id="lc_notes"
-                          value={lcFormData.notes}
-                          onChange={(e) => setLcFormData({ ...lcFormData, notes: e.target.value })}
-                        />
-                      </div>
                     </div>
                     <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setLcDialogOpen(false)}>
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={lcSubmitting || !lcFormData.order_id || !lcFormData.lcNumber || !lcFormData.amount || !lcFormData.issueDate || !lcFormData.expiryDate}>
+                      <Button type="submit" disabled={lcSubmitting || !lcFormData.orderId || !lcFormData.amount || !lcFormData.issueDate || !lcFormData.expiryDate}>
                         {lcSubmitting ? 'Creating...' : 'Create LC'}
                       </Button>
                     </div>
@@ -538,9 +473,9 @@ export default function FinancialsPage() {
                           {lc.issuingBank && (
                             <p className="text-sm text-gray-500">{lc.issuingBank}</p>
                           )}
-                          {lc.createdBy && (
+                          {lc.createdByName && (
                             <p className="text-xs text-blue-600 mt-1">
-                              Handled by: {lc.createdBy.fullName}
+                              Handled by: {lc.createdByName}
                             </p>
                           )}
                         </div>

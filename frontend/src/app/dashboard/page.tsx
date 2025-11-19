@@ -20,12 +20,24 @@ interface DashboardActivity {
   details: any;
 }
 
+type DateWindow = {
+  next7: number;
+  next14: number;
+  next30: number;
+  overdue: number;
+}
+
 interface ManagerDashboard {
   totalCount: number;
   upcomingCount: number;
   runningCount: number;
   archivedCount: number;
   recentActivities: DashboardActivity[];
+  byStage?: Record<string, number>;
+  upcoming?: {
+    etd: DateWindow;
+    eta: DateWindow;
+  };
 }
 
 interface MerchandiserDashboard {
@@ -34,6 +46,11 @@ interface MerchandiserDashboard {
   myRunningCount: number;
   myArchivedCount: number;
   recentActivities: DashboardActivity[];
+  byStage?: Record<string, number>;
+  upcoming?: {
+    etd: DateWindow;
+    eta: DateWindow;
+  };
 }
 
 export default function DashboardPage() {
@@ -99,6 +116,80 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold">Manager Dashboard</h1>
             <p className="text-gray-500 mt-2">Company-wide overview and activity</p>
           </div>
+
+          {/* Orders by Stage */}
+          {data.byStage && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Orders by Stage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(data.byStage).map(([stage, count]) => (
+                    <div key={stage} className="rounded-full px-3 py-1 text-sm bg-gray-100 border text-gray-700">
+                      <span className="font-medium">{stage}</span>: {count}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Upcoming ETD/ETA */}
+          {data.upcoming && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upcoming ETD</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.etd.next7}</div>
+                      <p className="text-xs text-gray-500">Next 7d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.etd.next14}</div>
+                      <p className="text-xs text-gray-500">Next 14d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.etd.next30}</div>
+                      <p className="text-xs text-gray-500">Next 30d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-600">{data.upcoming.etd.overdue}</div>
+                      <p className="text-xs text-gray-500">Overdue</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upcoming ETA</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.eta.next7}</div>
+                      <p className="text-xs text-gray-500">Next 7d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.eta.next14}</div>
+                      <p className="text-xs text-gray-500">Next 14d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{data.upcoming.eta.next30}</div>
+                      <p className="text-xs text-gray-500">Next 30d</p>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-600">{data.upcoming.eta.overdue}</div>
+                      <p className="text-xs text-gray-500">Overdue</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -49,9 +49,9 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.orders',
     'apps.core',
+    'apps.samples',
+    'apps.financials',
     # TODO: Uncomment as you create these apps
-    # 'apps.samples',
-    # 'apps.financials',
     # 'apps.production',
     # 'apps.incidents',
     # 'apps.shipments',

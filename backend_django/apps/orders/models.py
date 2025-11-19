@@ -129,6 +129,22 @@ class Order(TimestampedModel):
         self.save(update_fields=['approval_status', 'updated_at'])
     
     def change_stage(self, new_stage):
-        """Change the current stage"""
+        """
+        Change the current stage
+        Auto-archives order and sets delivery date when marked as Delivered
+        """
+        from datetime import date
+        
         self.current_stage = new_stage
-        self.save(update_fields=['current_stage', 'updated_at'])
+        
+        # Auto-archive when order is marked as Delivered
+        if new_stage == 'Delivered':
+            # mark as completed in status and archived in category
+            self.status = OrderStatus.COMPLETED
+            self.category = OrderCategory.ARCHIVED
+            # Auto-populate actual_delivery_date if not already set
+            if not self.actual_delivery_date:
+                self.actual_delivery_date = date.today()
+            self.save(update_fields=['current_stage', 'status', 'category', 'actual_delivery_date', 'updated_at'])
+        else:
+            self.save(update_fields=['current_stage', 'updated_at'])
