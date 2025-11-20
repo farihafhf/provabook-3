@@ -111,12 +111,12 @@ backend_django/
 - ✅ Logging configuration
 - ✅ File upload utilities
 - ✅ Production-ready settings
+- ✅ Orders module v1 (core CRUD, role-based access, filters, and API docs)
 
 ### In Progress ⏳
-- ⏳ Orders module
 - ⏳ Samples module
 - ⏳ Financials module
-- ⏳ Other modules...
+- ⏳ Remaining domain modules (production, incidents, shipments, notifications, documents, dashboard)
 
 ---
 
@@ -274,9 +274,9 @@ server {
 ## 📖 Documentation
 
 ### Available Docs
-- **MIGRATION_LOG.md** - What was built and what remains
-- **SETUP_AND_MIGRATION_GUIDE.md** - Step-by-step setup instructions
-- **DJANGO_MIGRATION_PLAN.md** - Comprehensive migration strategy
+- **SETUP_AND_MIGRATION_GUIDE.md** - Full Django setup and migration walkthrough.
+- **../README.md** - Root project overview (legacy stack + Django migration).
+- **../OFFICE_SETUP_GUIDE.md** - Beginner-friendly environment setup and Git workflow.
 - **requirements.txt** - Python dependencies
 - **.env.example** - Environment variables template
 

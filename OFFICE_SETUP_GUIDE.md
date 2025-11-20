@@ -707,11 +707,12 @@ python manage.py test
 ## 📞 Getting Help
 
 ### Documentation Files
-1. **SETUP_GUIDE.md** - Original setup guide
-2. **README.md** - Project overview
-3. **DJANGO_MIGRATION_COMPLETE_SUMMARY.md** - Migration status
-4. **ORDERS_APP_COMPLETE.md** - Orders module details
-5. **This file** - Office setup guide
+1. **README.md** - High-level project overview (legacy stack + Django migration).
+2. **backend_django/README.md** - Django backend structure, features, and commands.
+3. **backend_django/SETUP_AND_MIGRATION_GUIDE.md** - Full Django setup and Supabase migration.
+4. **backend/README.md** - Legacy NestJS/Supabase backend quick start (for reference).
+5. **frontend/README.md** - Next.js frontend quick start.
+6. **This file** - Office/home computer setup and workflow.
 
 ### Useful Commands
 ```powershell

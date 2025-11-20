@@ -237,12 +237,43 @@ Your Supabase database is already production-ready. Just ensure:
 - Row Level Security (RLS) policies enabled
 - Regular backups configured
 
-## 📚 Additional Documentation
+## 🧭 Current Architecture & Migration
 
-- [Backend Documentation](./backend/README.md)
-- [Frontend Documentation](./frontend/README.md)
-- [API Reference](http://localhost:3000/api/docs)
-- [Architecture Decisions](./docs/architecture.md)
+Provabook currently has:
+- A **legacy implementation** using NestJS + Supabase (documented below and in `backend/README.md`).
+- A **new Django backend** in progress (`backend_django/`), which is the long-term direction.
+
+### Legacy (NestJS + Supabase)
+- Still contains the full original backend implementation.
+- Use this only if you specifically want to run or compare the old stack.
+- Full quick start remains in the sections above and in `backend/README.md`.
+
+### New Backend (Django + PostgreSQL + GCS)
+- Django 5 + Django REST Framework.
+- PostgreSQL database (local or remote).
+- JWT authentication (`djangorestframework-simplejwt`).
+- Google Cloud Storage for document uploads.
+- Orders & Authentication modules already implemented.
+
+To work with the Django backend:
+- See `backend_django/README.md` for structure, commands, and API overview.
+- See `backend_django/SETUP_AND_MIGRATION_GUIDE.md` for full setup + Supabase migration steps.
+
+## 📚 Documentation Map
+
+Start here if you are new:
+- **Root overview (this file)** – big picture of the project and legacy setup.
+- **Office setup guide** – `OFFICE_SETUP_GUIDE.md` (step-by-step, beginner-friendly PC setup).
+
+When working on the new Django backend:
+- `backend_django/README.md` – features, project structure, commands, and API docs.
+- `backend_django/SETUP_AND_MIGRATION_GUIDE.md` – detailed backend setup + data migration.
+
+When you need the legacy NestJS backend:
+- `backend/README.md` – how to run the original NestJS + Supabase API.
+
+Frontend:
+- `frontend/README.md` – Next.js app quick start and structure.
 
 ## 🐛 Troubleshooting
 
