@@ -9,86 +9,58 @@ Provabook is a centralized operations platform designed to replace scattered ema
 ## 🏗️ Architecture
 
 ### Tech Stack
-- **Backend**: NestJS + TypeORM + PostgreSQL
+- **Backend (current)**: Django 5 + Django REST Framework + PostgreSQL
+- **Backend (legacy, optional)**: NestJS + TypeORM + Supabase (PostgreSQL)
 - **Frontend**: Next.js 14 (App Router) + TypeScript
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Storage**: Supabase Storage
+- **Database**: PostgreSQL
+- **Authentication**: Django JWT auth (SimpleJWT)
+- **Storage**: Google Cloud Storage (documents)
 - **UI Framework**: Tailwind CSS + Shadcn/UI
-- **Hosting**: Vercel (Frontend), Supabase (Backend & DB)
+- **Hosting**: Vercel (Frontend), custom server or VPS for Django backend
 
 ### Project Structure
 ```
 provabook/
-├── backend/          # NestJS REST API
+├── backend/          # Legacy NestJS REST API (optional)
+├── backend_django/   # Django REST API (current backend)
 ├── frontend/         # Next.js application
 └── README.md         # This file
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+ and npm/yarn/pnpm
-- A Supabase account (free tier works)
-- Git
+### Recommended: Django backend + Next.js frontend
 
-### 1. Supabase Setup
-
-#### Create a Supabase Project
-1. Go to [supabase.com](https://supabase.com) and sign up/login
-2. Click "New Project"
-3. Name it "provabook" and set a strong database password
-4. Wait for the project to be provisioned (~2 minutes)
-
-#### Get Your Credentials
-After your project is ready:
-1. Go to **Project Settings** → **API**
-2. Copy these values (you'll need them in step 3):
-   - `Project URL` (e.g., `https://xxxxx.supabase.co`)
-   - `anon/public key` (starts with `eyJ...`)
-   - `service_role key` (starts with `eyJ...`, keep this secret!)
-3. Go to **Project Settings** → **Database**
-4. Copy the connection string under "Connection string" → "URI"
-   - It looks like: `postgresql://postgres:[YOUR-PASSWORD]@db.xxxxx.supabase.co:5432/postgres`
-   - Replace `[YOUR-PASSWORD]` with your actual database password
-
-#### Enable Storage
-1. In Supabase dashboard, go to **Storage**
-2. Create a new bucket named `documents`
-3. Set it to **Private** (not public)
-4. Add storage policies (see backend README for SQL)
-
-### 2. Backend Setup
+**Backend (Django):**
 
 ```bash
-cd backend
+cd backend_django
+
+# Create and activate virtual environment
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
 
 # Install dependencies
-npm install
+pip install -r requirements.txt
 
-# Create .env file
-cp .env.example .env
-
-# Edit .env with your Supabase credentials:
-# - DATABASE_URL from Supabase (connection string)
-# - SUPABASE_URL (project URL)
-# - SUPABASE_ANON_KEY (anon key)
-# - SUPABASE_SERVICE_ROLE_KEY (service role key)
-# - JWT_SECRET (generate a strong random string)
+# Configure environment
+copy .env.example .env
+# Edit .env with your PostgreSQL DATABASE_URL and other settings
 
 # Run database migrations
-npm run migration:run
+python manage.py migrate
 
-# Seed demo data (optional but recommended)
-npm run seed
+# Create superuser (for admin panel)
+python manage.py createsuperuser
 
 # Start development server
-npm run start:dev
+python manage.py runserver 0.0.0.0:8000
 ```
 
-Backend will be available at `http://localhost:3000`
+Django API docs: `http://localhost:8000/api/docs/`
 
-### 3. Frontend Setup
+**Frontend (Next.js):**
 
 ```bash
 cd frontend
@@ -96,19 +68,22 @@ cd frontend
 # Install dependencies
 npm install
 
-# Create .env.local file
+# Create env file
 cp .env.example .env.local
 
-# Edit .env.local with your Supabase credentials:
-# - NEXT_PUBLIC_SUPABASE_URL (same as backend SUPABASE_URL)
-# - NEXT_PUBLIC_SUPABASE_ANON_KEY (same as backend SUPABASE_ANON_KEY)
-# - NEXT_PUBLIC_API_URL (http://localhost:3000 for development)
+# Edit .env.local:
+# NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 # Start development server
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:3001`
+Frontend: `http://localhost:3001`
+
+### Legacy NestJS backend (optional)
+
+If you ever need to run or inspect the **old NestJS + Supabase backend**, see `backend/README.md`.
+Most people can ignore it and use only the Django backend.
 
 ### 4. First Login
 
@@ -181,7 +156,7 @@ After running the seed script, you can login with:
 ## 🗄️ Database Schema
 
 The application uses PostgreSQL with the following main entities:
-- Users (managed by Supabase Auth + custom profiles)
+- Users (managed by Django auth + custom profiles)
 - Orders
 - Samples
 - Proforma Invoices (PI)
@@ -197,8 +172,8 @@ See `backend/src/database/migrations/` for complete schema.
 
 ## 📱 API Documentation
 
-Once the backend is running, API documentation is available at:
-- Swagger UI: `http://localhost:3000/api/docs`
+Once the Django backend is running, API documentation is available at:
+- Swagger UI: `http://localhost:8000/api/docs/`
 
 ## 🧪 Testing
 
@@ -232,10 +207,10 @@ npm run test:e2e      # Playwright E2E tests
 4. Deploy automatically on every push to main
 
 ### Database
-Your Supabase database is already production-ready. Just ensure:
+Your PostgreSQL database (used by the Django backend) should be configured securely:
 - Strong database password
-- Row Level Security (RLS) policies enabled
-- Regular backups configured
+- Appropriate roles and permissions configured
+- Regular backups scheduled
 
 ## 🧭 Current Architecture & Migration
 
@@ -284,13 +259,13 @@ Frontend:
 
 ### Frontend can't connect to backend
 - Verify NEXT_PUBLIC_API_URL in `.env.local`
-- Ensure backend is running on port 3000
+- Ensure the Django backend is running on port 8000
 - Check browser console for CORS errors
 
 ### Authentication issues
-- Verify Supabase credentials in both frontend and backend
-- Check Supabase dashboard for auth errors
-- Ensure JWT_SECRET matches in backend .env
+- Verify your Django authentication settings and environment variables
+- Check backend logs for authentication errors
+- Ensure JWT/secret settings in `.env` match what the frontend expects
 
 ### Database migration errors
 - Ensure DATABASE_URL is correct

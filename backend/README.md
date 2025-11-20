@@ -1,4 +1,8 @@
-# Provabook Backend
+# Provabook Backend (Legacy)
+
+> This folder contains the **old NestJS + Supabase backend**. The active backend is the
+> Django project in `backend_django/`. You usually do **not** need to run this service
+> unless you are maintaining or inspecting the legacy stack.
 
 NestJS REST API for Provabook textile operations management platform.
 
