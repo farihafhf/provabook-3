@@ -42,3 +42,6 @@ Thumbs.db
 
 # Tooling
 .aider*
+
+*/.git*
+.windsurf/
