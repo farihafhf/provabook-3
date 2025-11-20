@@ -357,10 +357,6 @@ notepad .env.local
 ```env
 # Point to your local Django backend
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-
-# If using Supabase for auth (you might not need this with Django)
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key
 ```
 
 **Start frontend:**
@@ -709,8 +705,8 @@ python manage.py test
 ### Documentation Files
 1. **README.md** - High-level project overview (Django backend as the current stack, legacy backend optional).
 2. **backend_django/README.md** - Django backend structure, features, and commands.
-3. **backend_django/SETUP_AND_MIGRATION_GUIDE.md** - Full Django setup and optional migration from the old database.
-4. **backend/README.md** - Legacy NestJS/Supabase backend quick start (for reference).
+3. **backend_django/SETUP_AND_MIGRATION_GUIDE.md** - Full Django setup and optional migration from the old backend/database.
+4. **backend/README.md** - Legacy NestJS backend quick start (for reference).
 5. **frontend/README.md** - Next.js frontend quick start.
 6. **This file** - Office/home computer setup and workflow.
 

@@ -10,7 +10,7 @@ Provabook is a centralized operations platform designed to replace scattered ema
 
 ### Tech Stack
 - **Backend (current)**: Django 5 + Django REST Framework + PostgreSQL
-- **Backend (legacy, optional)**: NestJS + TypeORM + Supabase (PostgreSQL)
+- **Backend (legacy, optional)**: NestJS + TypeORM + PostgreSQL (legacy backend, not used by default)
 - **Frontend**: Next.js 14 (App Router) + TypeScript
 - **Database**: PostgreSQL
 - **Authentication**: Django JWT auth (SimpleJWT)
@@ -82,7 +82,7 @@ Frontend: `http://localhost:3001`
 
 ### Legacy NestJS backend (optional)
 
-If you ever need to run or inspect the **old NestJS + Supabase backend**, see `backend/README.md`.
+If you ever need to run or inspect the **old NestJS backend**, see `backend/README.md`.
 Most people can ignore it and use only the Django backend.
 
 ### 4. First Login
@@ -215,13 +215,13 @@ Your PostgreSQL database (used by the Django backend) should be configured secur
 ## 🧭 Current Architecture & Migration
 
 Provabook currently has:
-- A **legacy implementation** using NestJS + Supabase (documented below and in `backend/README.md`).
+- A **legacy implementation** using a NestJS backend (documented below and in `backend/README.md`).
 - A **new Django backend** in progress (`backend_django/`), which is the long-term direction.
 
-### Legacy (NestJS + Supabase)
+### Legacy (NestJS backend)
 - Still contains the full original backend implementation.
 - Use this only if you specifically want to run or compare the old stack.
-- Full quick start remains in the sections above and in `backend/README.md`.
+- Quick start details live in `backend/README.md`.
 
 ### New Backend (Django + PostgreSQL + GCS)
 - Django 5 + Django REST Framework.
@@ -232,7 +232,7 @@ Provabook currently has:
 
 To work with the Django backend:
 - See `backend_django/README.md` for structure, commands, and API overview.
-- See `backend_django/SETUP_AND_MIGRATION_GUIDE.md` for full setup + Supabase migration steps.
+- See `backend_django/SETUP_AND_MIGRATION_GUIDE.md` for full setup and optional data migration from the old backend.
 
 ## 📚 Documentation Map
 
@@ -242,10 +242,10 @@ Start here if you are new:
 
 When working on the new Django backend:
 - `backend_django/README.md` – features, project structure, commands, and API docs.
-- `backend_django/SETUP_AND_MIGRATION_GUIDE.md` – detailed backend setup + data migration.
+- `backend_django/SETUP_AND_MIGRATION_GUIDE.md` – detailed backend setup + optional data migration from the old backend.
 
 When you need the legacy NestJS backend:
-- `backend/README.md` – how to run the original NestJS + Supabase API.
+- `backend/README.md` – how to run the original NestJS-based legacy API.
 
 Frontend:
 - `frontend/README.md` – Next.js app quick start and structure.
