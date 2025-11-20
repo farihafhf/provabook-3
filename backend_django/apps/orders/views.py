@@ -1,9 +1,11 @@
 """
 Orders views
 """
+from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
@@ -52,12 +54,28 @@ class OrderViewSet(viewsets.ModelViewSet):
             return OrderStatsSerializer
         return OrderSerializer
     
+    def _validate_date_params(self):
+        date_params = ['order_date_from', 'order_date_to', 'etd_from', 'etd_to']
+        request = getattr(self, 'request', None)
+        if request is None:
+            return
+        params_source = getattr(request, 'query_params', getattr(request, 'GET', {}))
+        for param in date_params:
+            value = params_source.get(param)
+            if value:
+                try:
+                    datetime.strptime(value, '%Y-%m-%d').date()
+                except ValueError:
+                    raise ValidationError('Invalid date format. Use YYYY-MM-DD')
+
     def get_queryset(self):
         """
         Filter orders based on user role:
         - Merchandisers see only their orders
         - Managers and Admins see all orders
         """
+        if self.action in ['list', 'stats']:
+            self._validate_date_params()
         queryset = super().get_queryset()
         user = self.request.user
         

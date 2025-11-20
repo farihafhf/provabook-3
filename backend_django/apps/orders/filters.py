@@ -16,10 +16,14 @@ class OrderFilter(filters.FilterSet):
     # Date range filters
     order_date_after = filters.DateFilter(field_name='order_date', lookup_expr='gte')
     order_date_before = filters.DateFilter(field_name='order_date', lookup_expr='lte')
+    order_date_from = filters.DateFilter(field_name='order_date', lookup_expr='gte')
+    order_date_to = filters.DateFilter(field_name='order_date', lookup_expr='lte')
     created_after = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
     created_before = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
     expected_delivery_after = filters.DateFilter(field_name='expected_delivery_date', lookup_expr='gte')
     expected_delivery_before = filters.DateFilter(field_name='expected_delivery_date', lookup_expr='lte')
+    etd_from = filters.DateFilter(field_name='etd', lookup_expr='gte')
+    etd_to = filters.DateFilter(field_name='etd', lookup_expr='lte')
     
     # Text filters
     customer_name = filters.CharFilter(lookup_expr='icontains')
