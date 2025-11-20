@@ -1,0 +1,44 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+logs/
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django project files
+staticfiles/
+media/
+
+# Backend local environment
+backend_django/.env
+backend_django/venv/
+backend_django/logs/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+frontend/.vercel/
+frontend/next-env.d.ts
+frontend/.env
+frontend/.env.*
+
+# IDE / editor
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tooling
+.aider*
