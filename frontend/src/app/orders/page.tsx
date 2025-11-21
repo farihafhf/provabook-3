@@ -71,7 +71,17 @@ export default function OrdersPage() {
   });
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
-    setFilters(newFilters);
+    setFilters((prev) => {
+      if (
+        prev.search === newFilters.search &&
+        prev.status === newFilters.status &&
+        prev.orderDateFrom === newFilters.orderDateFrom &&
+        prev.orderDateTo === newFilters.orderDateTo
+      ) {
+        return prev;
+      }
+      return newFilters;
+    });
   };
 
   useEffect(() => {
