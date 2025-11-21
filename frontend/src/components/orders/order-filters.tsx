@@ -61,13 +61,6 @@ export function OrderFilters({
     return searchParams.get('order_date_to') ?? initialOrderDateTo ?? '';
   });
 
-  const updateUrlParams = React.useCallback(
-    (_next: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
-      return;
-    },
-    []
-  );
-
   const emitFilterChange = React.useCallback(
     (next: { search: string; status: string; orderDateFrom: string; orderDateTo: string }) => {
       if (!onFilterChange) return;
@@ -82,44 +75,32 @@ export function OrderFilters({
     [onFilterChange]
   );
 
-  // Keep local state in sync if the URL changes via back/forward navigation
-  React.useEffect(() => {
-    const nextSearch = searchParams.get('search') ?? '';
-    const nextStatus = searchParams.get('status') ?? 'all';
-    const nextOrderDateFrom = searchParams.get('order_date_from') ?? '';
-    const nextOrderDateTo = searchParams.get('order_date_to') ?? '';
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
-    setSearch(nextSearch);
-    setStatus(nextStatus);
-    setOrderDateFrom(nextOrderDateFrom);
-    setOrderDateTo(nextOrderDateTo);
-
+    // Emit filters to parent
     emitFilterChange({
-      search: nextSearch,
-      status: nextStatus,
-      orderDateFrom: nextOrderDateFrom,
-      orderDateTo: nextOrderDateTo,
+      search,
+      status,
+      orderDateFrom,
+      orderDateTo,
     });
-  }, [searchParams, emitFilterChange]);
 
-  // Debounce search updates to the URL by 300ms
-  React.useEffect(() => {
-    const handle = setTimeout(() => {
-      updateUrlParams({ search });
-      emitFilterChange({
-        search,
-        status,
-        orderDateFrom,
-        orderDateTo,
-      });
-    }, 300);
+    // Update URL query for shareable/filterable links
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (status && status !== 'all') params.set('status', status);
+    if (orderDateFrom) params.set('order_date_from', orderDateFrom);
+    if (orderDateTo) params.set('order_date_to', orderDateTo);
 
-    return () => clearTimeout(handle);
-  }, [search, status, orderDateFrom, orderDateTo, updateUrlParams, emitFilterChange]);
+    const query = params.toString();
+    const url = query ? `${pathname}?${query}` : pathname;
+    router.push(url, { scroll: false });
+  };
 
   const handleStatusChange = (value: string) => {
     setStatus(value);
-    updateUrlParams({ status: value });
+    // Optionally emit immediately when status changes
     emitFilterChange({
       search,
       status: value,
@@ -130,24 +111,10 @@ export function OrderFilters({
 
   const handleOrderDateFromChange = (value: string) => {
     setOrderDateFrom(value);
-    updateUrlParams({ orderDateFrom: value });
-    emitFilterChange({
-      search,
-      status,
-      orderDateFrom: value,
-      orderDateTo,
-    });
   };
 
   const handleOrderDateToChange = (value: string) => {
     setOrderDateTo(value);
-    updateUrlParams({ orderDateTo: value });
-    emitFilterChange({
-      search,
-      status,
-      orderDateFrom,
-      orderDateTo: value,
-    });
   };
 
   const handleReset = () => {
@@ -155,7 +122,6 @@ export function OrderFilters({
     setStatus('all');
     setOrderDateFrom('');
     setOrderDateTo('');
-    updateUrlParams({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
     emitFilterChange({
       search: '',
       status: 'all',
@@ -165,8 +131,9 @@ export function OrderFilters({
   };
 
   return (
-    <section className={cn('w-full rounded-lg bg-white border border-gray-200 p-4 md:p-5 shadow-sm', className)}>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
+    <form onSubmit={handleSubmit} className={cn('w-full', className)}>
+      <section className="w-full rounded-lg bg-white border border-gray-200 p-4 md:p-5 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
         {/* Search */}
         <div className="md:col-span-2 flex flex-col gap-1">
           <Label htmlFor="order-search">Search</Label>
@@ -200,14 +167,17 @@ export function OrderFilters({
         </div>
 
         {/* Reset */}
-        <div className="flex justify-start md:justify-end">
+        <div className="flex justify-start md:justify-end gap-2">
+          <Button type="submit" className="mt-6 md:mt-0">
+            Search
+          </Button>
           <Button type="button" variant="outline" className="mt-6 md:mt-0" onClick={handleReset}>
             Reset filters
           </Button>
         </div>
-      </div>
+        </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Order Date From */}
         <div className="flex flex-col gap-1">
           <Label htmlFor="order-date-from">Order Date (From)</Label>
@@ -235,7 +205,8 @@ export function OrderFilters({
             }}
           />
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </form>
   );
 }
