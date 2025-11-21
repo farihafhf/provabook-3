@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,20 +44,65 @@ export function OrderFilters({
   initialOrderDateTo,
   onFilterChange,
 }: OrderFiltersProps) {
-  const [search, setSearch] = React.useState(initialSearch ?? '');
-  const [status, setStatus] = React.useState<string>(initialStatus ?? 'all');
-  const [orderDateFrom, setOrderDateFrom] = React.useState(initialOrderDateFrom ?? '');
-  const [orderDateTo, setOrderDateTo] = React.useState(initialOrderDateTo ?? '');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  const emitChange = React.useCallback(
-    (next?: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
+  const [search, setSearch] = React.useState<string>(() => {
+    return searchParams.get('search') ?? initialSearch ?? '';
+  });
+  const [status, setStatus] = React.useState<string>(() => {
+    return searchParams.get('status') ?? initialStatus ?? 'all';
+  });
+  const [orderDateFrom, setOrderDateFrom] = React.useState<string>(() => {
+    return searchParams.get('order_date_from') ?? initialOrderDateFrom ?? '';
+  });
+  const [orderDateTo, setOrderDateTo] = React.useState<string>(() => {
+    return searchParams.get('order_date_to') ?? initialOrderDateTo ?? '';
+  });
+
+  const updateUrlParams = React.useCallback(
+    (next: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      const apply = (key: string, value: string | undefined | null, removeIfAll?: boolean) => {
+        if (!value || value === '' || (removeIfAll && value === 'all')) {
+          params.delete(key);
+        } else {
+          params.set(key, value);
+        }
+      };
+
+      if ('search' in next) {
+        apply('search', next.search ?? '');
+      }
+      if ('status' in next) {
+        apply('status', next.status ?? '', true);
+      }
+      if ('orderDateFrom' in next) {
+        apply('order_date_from', next.orderDateFrom ?? '');
+      }
+      if ('orderDateTo' in next) {
+        apply('order_date_to', next.orderDateTo ?? '');
+      }
+
+      const query = params.toString();
+      const url = query ? `${pathname}?${query}` : pathname;
+      router.push(url, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
+  const emitFilterChange = React.useCallback(
+    (overrides?: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
       if (!onFilterChange) return;
 
       const merged = {
-        search: next?.search ?? search,
-        status: next?.status ?? status,
-        orderDateFrom: next?.orderDateFrom ?? orderDateFrom,
-        orderDateTo: next?.orderDateTo ?? orderDateTo,
+        search,
+        status,
+        orderDateFrom,
+        orderDateTo,
+        ...overrides,
       };
 
       onFilterChange({
@@ -69,12 +115,61 @@ export function OrderFilters({
     [onFilterChange, search, status, orderDateFrom, orderDateTo]
   );
 
+  // Keep local state in sync if the URL changes via back/forward navigation
+  React.useEffect(() => {
+    const nextSearch = searchParams.get('search') ?? '';
+    const nextStatus = searchParams.get('status') ?? 'all';
+    const nextOrderDateFrom = searchParams.get('order_date_from') ?? '';
+    const nextOrderDateTo = searchParams.get('order_date_to') ?? '';
+
+    setSearch(nextSearch);
+    setStatus(nextStatus);
+    setOrderDateFrom(nextOrderDateFrom);
+    setOrderDateTo(nextOrderDateTo);
+
+    emitFilterChange({
+      search: nextSearch,
+      status: nextStatus,
+      orderDateFrom: nextOrderDateFrom,
+      orderDateTo: nextOrderDateTo,
+    });
+  }, [searchParams, emitFilterChange]);
+
+  // Debounce search updates to the URL by 300ms
+  React.useEffect(() => {
+    const handle = setTimeout(() => {
+      updateUrlParams({ search });
+      emitFilterChange({ search });
+    }, 300);
+
+    return () => clearTimeout(handle);
+  }, [search, updateUrlParams, emitFilterChange]);
+
+  const handleStatusChange = (value: string) => {
+    setStatus(value);
+    updateUrlParams({ status: value });
+    emitFilterChange({ status: value });
+  };
+
+  const handleOrderDateFromChange = (value: string) => {
+    setOrderDateFrom(value);
+    updateUrlParams({ orderDateFrom: value });
+    emitFilterChange({ orderDateFrom: value });
+  };
+
+  const handleOrderDateToChange = (value: string) => {
+    setOrderDateTo(value);
+    updateUrlParams({ orderDateTo: value });
+    emitFilterChange({ orderDateTo: value });
+  };
+
   const handleReset = () => {
     setSearch('');
     setStatus('all');
     setOrderDateFrom('');
     setOrderDateTo('');
-    emitChange({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
+    updateUrlParams({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
+    emitFilterChange({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
   };
 
   return (
@@ -91,7 +186,6 @@ export function OrderFilters({
             onChange={(event) => {
               const value = event.target.value;
               setSearch(value);
-              emitChange({ search: value });
             }}
           />
         </div>
@@ -99,13 +193,7 @@ export function OrderFilters({
         {/* Status */}
         <div className="flex flex-col gap-1">
           <Label htmlFor="order-status">Status</Label>
-          <Select
-            value={status}
-            onValueChange={(value) => {
-              setStatus(value);
-              emitChange({ status: value });
-            }}
-          >
+          <Select value={status} onValueChange={handleStatusChange}>
             <SelectTrigger id="order-status">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
@@ -137,8 +225,7 @@ export function OrderFilters({
             value={orderDateFrom}
             onChange={(event) => {
               const value = event.target.value;
-              setOrderDateFrom(value);
-              emitChange({ orderDateFrom: value });
+              handleOrderDateFromChange(value);
             }}
           />
         </div>
@@ -152,8 +239,7 @@ export function OrderFilters({
             value={orderDateTo}
             onChange={(event) => {
               const value = event.target.value;
-              setOrderDateTo(value);
-              emitChange({ orderDateTo: value });
+              handleOrderDateToChange(value);
             }}
           />
         </div>

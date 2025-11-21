@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
+import { OrderFilters } from '@/components/orders/order-filters';
 
 interface Order {
   id: string;
@@ -28,6 +29,13 @@ interface Order {
   expectedDeliveryDate: string;
 }
 
+interface OrdersFilterParams {
+  search?: string | null;
+  status?: string | null;
+  orderDateFrom?: string | null;
+  orderDateTo?: string | null;
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -39,6 +47,7 @@ export default function OrdersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
@@ -61,18 +70,28 @@ export default function OrdersPage() {
     colorBreakdown: [{ color: '', quantity: '' }],
   });
 
+  const handleFiltersChange = (newFilters: OrdersFilterParams) => {
+    setFilters(newFilters);
+  };
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
 
-    fetchOrders();
-  }, [isAuthenticated, router]);
+    fetchOrders(filters);
+  }, [isAuthenticated, router, filters]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (filtersToUse?: OrdersFilterParams) => {
     try {
-      const response = await api.get('/orders');
+      const params: Record<string, string> = {};
+      if (filtersToUse?.search) params.search = filtersToUse.search;
+      if (filtersToUse?.status) params.status = filtersToUse.status;
+      if (filtersToUse?.orderDateFrom) params.order_date_from = filtersToUse.orderDateFrom;
+      if (filtersToUse?.orderDateTo) params.order_date_to = filtersToUse.orderDateTo;
+
+      const response = await api.get('/orders', { params });
       setOrders(response.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
@@ -149,8 +168,8 @@ export default function OrdersPage() {
         colorBreakdown: [{ color: '', quantity: '' }],
       });
       
-      // Refresh orders list
-      await fetchOrders();
+      // Refresh orders list with current filters
+      await fetchOrders(filters);
     } catch (error: any) {
       console.error('Error creating order:', error);
       console.error('Error response:', error.response);
@@ -213,8 +232,8 @@ export default function OrdersPage() {
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
       
-      // Refresh orders list
-      await fetchOrders();
+      // Refresh orders list with current filters
+      await fetchOrders(filters);
     } catch (error: any) {
       console.error('Error deleting order:', error);
       
@@ -412,6 +431,10 @@ export default function OrdersPage() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <Suspense fallback={null}>
+          <OrderFilters onFilterChange={handleFiltersChange} />
+        </Suspense>
 
         <Card>
           <CardHeader>
