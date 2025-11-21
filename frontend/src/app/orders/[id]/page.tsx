@@ -19,6 +19,7 @@ import { formatDate } from '@/lib/utils';
 import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
+import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
 
 interface Order {
   id: string;
@@ -44,6 +45,7 @@ interface Order {
   status: string;
   category: string;
   currentStage: string;
+  timelineEvents?: TimelineEvent[];
   orderDate?: string;
   expectedDeliveryDate?: string;
   actualDeliveryDate?: string;
@@ -393,141 +395,154 @@ export default function OrderDetailPage() {
 
           {/* Info Tab */}
           <TabsContent value="info" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Order Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Order Number</p>
-                    <p className="font-medium">{order.orderNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Customer Name</p>
-                    <p className="font-medium">{order.customerName}</p>
-                  </div>
-                  {order.buyerName && (
-                    <div>
-                      <p className="text-sm text-gray-500">Buyer Name</p>
-                      <p className="font-medium">{order.buyerName}</p>
-                    </div>
-                  )}
-                  {/* Status and Category are omitted per UX: show Stage only */}
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Stage</p>
-                    <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                      {order.currentStage || '—'}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2 mt-3">Set Stage</p>
-                    <div className="flex items-center gap-2">
-                      <Select value={stageSelection} onValueChange={setStageSelection}>
-                        <SelectTrigger className="w-[220px]">
-                          <SelectValue placeholder="Select stage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Design">Design</SelectItem>
-                          <SelectItem value="Greige">Greige</SelectItem>
-                          <SelectItem value="Let Me Know">Let Me Know</SelectItem>
-                          <SelectItem value="In Development">In Development</SelectItem>
-                          <SelectItem value="Production">Production</SelectItem>
-                          <SelectItem value="Delivered">Delivered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" onClick={handleConfirmStageChange} disabled={updating}>
-                        {updating ? 'Updating...' : 'Confirm'}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Changing to Delivered will auto-archive and set Actual Delivery Date.</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fabric Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Fabric Type</p>
-                    <p className="font-medium">{order.fabricType}</p>
-                  </div>
-                  {order.fabricSpecifications && (
-                    <div>
-                      <p className="text-sm text-gray-500">Specifications</p>
-                      <p className="font-medium">{order.fabricSpecifications}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-gray-500">Quantity</p>
-                    <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Dates & Delivery</CardTitle>
-                  <Button variant="outline" size="sm" onClick={handleOpenDateDialog}>
-                    <Edit2 className="mr-2 h-3 w-3" />
-                    Edit Dates
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {order.orderDate && (
-                    <div>
-                      <p className="text-sm text-gray-500">Order Date</p>
-                      <p className="font-medium">{formatDate(order.orderDate)}</p>
-                    </div>
-                  )}
-                  {order.etd && (
-                    <div>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        ETD (Estimated Time of Dispatch)
-                      </p>
-                      <p className="font-medium text-blue-600">{formatDate(order.etd)}</p>
-                    </div>
-                  )}
-                  {order.eta && (
-                    <div>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        ETA (Estimated Time of Arrival)
-                      </p>
-                      <p className="font-medium text-green-600">{formatDate(order.eta)}</p>
-                    </div>
-                  )}
-                  {order.expectedDeliveryDate && (
-                    <div>
-                      <p className="text-sm text-gray-500">Expected Delivery</p>
-                      <p className="font-medium">{formatDate(order.expectedDeliveryDate)}</p>
-                    </div>
-                  )}
-                  {order.actualDeliveryDate && (
-                    <div>
-                      <p className="text-sm text-gray-500">Actual Delivery</p>
-                      <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
-                    </div>
-                  )}
-                  {!order.etd && !order.eta && !order.orderDate && !order.expectedDeliveryDate && !order.actualDeliveryDate && (
-                    <p className="text-sm text-gray-400 text-center py-4">No dates recorded yet</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {order.notes && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-6 lg:col-span-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Notes</CardTitle>
+                    <CardTitle>Order Information</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700">{order.notes}</p>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Order Number</p>
+                      <p className="font-medium">{order.orderNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Customer Name</p>
+                      <p className="font-medium">{order.customerName}</p>
+                    </div>
+                    {order.buyerName && (
+                      <div>
+                        <p className="text-sm text-gray-500">Buyer Name</p>
+                        <p className="font-medium">{order.buyerName}</p>
+                      </div>
+                    )}
+                    {/* Status and Category are omitted per UX: show Stage only */}
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Stage</p>
+                      <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        {order.currentStage || '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-2 mt-3">Set Stage</p>
+                      <div className="flex items-center gap-2">
+                        <Select value={stageSelection} onValueChange={setStageSelection}>
+                          <SelectTrigger className="w-[220px]">
+                            <SelectValue placeholder="Select stage" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Design">Design</SelectItem>
+                            <SelectItem value="Greige">Greige</SelectItem>
+                            <SelectItem value="Let Me Know">Let Me Know</SelectItem>
+                            <SelectItem value="In Development">In Development</SelectItem>
+                            <SelectItem value="Production">Production</SelectItem>
+                            <SelectItem value="Delivered">Delivered</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" onClick={handleConfirmStageChange} disabled={updating}>
+                          {updating ? 'Updating...' : 'Confirm'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Changing to Delivered will auto-archive and set Actual Delivery Date.</p>
+                    </div>
                   </CardContent>
                 </Card>
-              )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Fabric Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Fabric Type</p>
+                      <p className="font-medium">{order.fabricType}</p>
+                    </div>
+                    {order.fabricSpecifications && (
+                      <div>
+                        <p className="text-sm text-gray-500">Specifications</p>
+                        <p className="font-medium">{order.fabricSpecifications}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-500">Quantity</p>
+                      <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Dates & Delivery</CardTitle>
+                    <Button variant="outline" size="sm" onClick={handleOpenDateDialog}>
+                      <Edit2 className="mr-2 h-3 w-3" />
+                      Edit Dates
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {order.orderDate && (
+                      <div>
+                        <p className="text-sm text-gray-500">Order Date</p>
+                        <p className="font-medium">{formatDate(order.orderDate)}</p>
+                      </div>
+                    )}
+                    {order.etd && (
+                      <div>
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          ETD (Estimated Time of Dispatch)
+                        </p>
+                        <p className="font-medium text-blue-600">{formatDate(order.etd)}</p>
+                      </div>
+                    )}
+                    {order.eta && (
+                      <div>
+                        <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          ETA (Estimated Time of Arrival)
+                        </p>
+                        <p className="font-medium text-green-600">{formatDate(order.eta)}</p>
+                      </div>
+                    )}
+                    {order.expectedDeliveryDate && (
+                      <div>
+                        <p className="text-sm text-gray-500">Expected Delivery</p>
+                        <p className="font-medium">{formatDate(order.expectedDeliveryDate)}</p>
+                      </div>
+                    )}
+                    {order.actualDeliveryDate && (
+                      <div>
+                        <p className="text-sm text-gray-500">Actual Delivery</p>
+                        <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
+                      </div>
+                    )}
+                    {!order.etd && !order.eta && !order.orderDate && !order.expectedDeliveryDate && !order.actualDeliveryDate && (
+                      <p className="text-sm text-gray-400 text-center py-4">No dates recorded yet</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {order.notes && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-700">{order.notes}</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tracking Timeline</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <OrderTimeline events={order.timelineEvents ?? []} />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 

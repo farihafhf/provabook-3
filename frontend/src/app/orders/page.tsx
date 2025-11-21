@@ -101,7 +101,7 @@ export default function OrdersPage() {
       if (filtersToUse?.orderDateFrom) params.order_date_from = filtersToUse.orderDateFrom;
       if (filtersToUse?.orderDateTo) params.order_date_to = filtersToUse.orderDateTo;
 
-      const response = await api.get('/orders', { params });
+      const response = await api.get('/orders/', { params });
       setOrders(response.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
@@ -146,7 +146,7 @@ export default function OrdersPage() {
 
       console.log('Creating order with data:', orderData);
 
-      const response = await api.post('/orders', orderData);
+      const response = await api.post('/orders/', orderData);
 
       console.log('Order created successfully:', response.data);
 
@@ -480,7 +480,11 @@ export default function OrdersPage() {
                   </thead>
                   <tbody className="divide-y">
                     {orders.map((order) => (
-                      <tr key={order.id} className="text-sm">
+                      <tr
+                        key={order.id}
+                        className="text-sm hover:bg-gray-50 cursor-pointer"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                      >
                         <td className="py-4 font-medium">{order.orderNumber}</td>
                         <td className="py-4">{order.customerName}</td>
                         <td className="py-4">{order.fabricType}</td>
@@ -497,7 +501,10 @@ export default function OrdersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => router.push(`/orders/${order.id}`)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                router.push(`/orders/${order.id}`);
+                              }}
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />
@@ -505,7 +512,10 @@ export default function OrdersPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteClick(order)}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteClick(order);
+                              }}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               title="Delete Order"
                             >
