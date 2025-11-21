@@ -5,6 +5,8 @@ Usage: python manage.py seed_data
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from apps.orders.models import Order, OrderStatus, OrderCategory
+from apps.samples.models import Sample
+from apps.financials.models import ProformaInvoice, LetterOfCredit
 from decimal import Decimal
 from datetime import date, timedelta
 
@@ -22,6 +24,12 @@ class Command(BaseCommand):
         
         # Create sample orders
         self.create_orders()
+        
+        # Create related samples
+        self.create_samples()
+
+        # Create financial documents
+        self.create_financials()
         
         self.stdout.write(self.style.SUCCESS('\n=== Database seeded successfully! ==='))
         self.stdout.write(self.style.SUCCESS('\nDemo Credentials:'))
@@ -235,3 +243,93 @@ class Command(BaseCommand):
                 ))
         
         self.stdout.write(self.style.SUCCESS(f'\n  Created {created_count} sample orders'))
+
+    def create_samples(self):
+        """Create sample records for orders"""
+        self.stdout.write('\nCreating sample records...')
+        
+        orders = Order.objects.all()
+        if not orders.exists():
+            self.stdout.write(self.style.WARNING('  [WARN] No orders found, skipping samples'))
+            return
+        
+        sample_configs = [
+            ('lab_dip', 'submitted'),
+            ('strike_off', 'approved'),
+            ('bulk_swatch', 'pending'),
+            ('pp_sample', 'pending'),
+        ]
+        
+        created_count = 0
+        for order in orders:
+            for version, (sample_type, status) in enumerate(sample_configs, start=1):
+                if not Sample.objects.filter(order=order, type=sample_type, version=version).exists():
+                    submission_date = order.order_date or date.today()
+                    Sample.objects.create(
+                        order=order,
+                        type=sample_type,
+                        version=version,
+                        status=status,
+                        submission_date=submission_date,
+                        recipient=f"{order.buyer_name or order.customer_name} Sample Dept",
+                        courier_name='DHL',
+                        awb_number=f"DHL-{order.order_number}-{version}",
+                        notes=f"{sample_type.replace('_', ' ').title()} for {order.style_number or order.order_number}",
+                    )
+                    created_count += 1
+        
+        self.stdout.write(self.style.SUCCESS(f'\n  Created {created_count} sample records'))
+
+    def create_financials(self):
+        """Create financial documents (PIs and LCs) for orders"""
+        self.stdout.write('\nCreating financial documents...')
+        
+        merchandiser = User.objects.filter(email='merchandiser@provabook.com').first()
+        if not merchandiser:
+            self.stdout.write(self.style.WARNING('  [WARN] Merchandiser not found, skipping financials'))
+            return
+        
+        orders = Order.objects.all()
+        if not orders.exists():
+            self.stdout.write(self.style.WARNING('  [WARN] No orders found, skipping financials'))
+            return
+        
+        pi_created = 0
+        lc_created = 0
+        
+        for order in orders:
+            unit_price = order.prova_price or order.mill_price or Decimal('5.00')
+            quantity = order.quantity or Decimal('1000')
+            amount = unit_price * quantity
+            
+            if not order.proforma_invoices.exists():
+                ProformaInvoice.objects.create(
+                    order=order,
+                    pi_number=f"PI-{order.order_number}",
+                    version=1,
+                    status='confirmed' if order.status == OrderStatus.RUNNING else 'draft',
+                    amount=amount,
+                    currency=order.currency,
+                    issue_date=order.order_date or date.today(),
+                    created_by=merchandiser,
+                )
+                pi_created += 1
+            
+            if not order.letters_of_credit.exists():
+                issue_date = order.etd or date.today()
+                LetterOfCredit.objects.create(
+                    order=order,
+                    lc_number=f"LC-{order.order_number}",
+                    status='issued' if order.status in [OrderStatus.RUNNING, OrderStatus.COMPLETED] else 'pending',
+                    amount=amount,
+                    currency=order.currency,
+                    issue_date=issue_date,
+                    expiry_date=issue_date + timedelta(days=120),
+                    issuing_bank='Demo Bank Ltd',
+                    created_by=merchandiser,
+                )
+                lc_created += 1
+        
+        self.stdout.write(self.style.SUCCESS(
+            f'\n  Created {pi_created} proforma invoices and {lc_created} letters of credit'
+        ))
