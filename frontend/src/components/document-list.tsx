@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { FileIcon, Download, Trash2, Eye, Image as ImageIcon, FileText, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FileIcon, Download, Trash2, Eye, Image as ImageIcon, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/utils';
 
@@ -304,7 +304,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
               variant="outline"
               onClick={() => {
                 if (viewingDocument) {
-                  handleDownload(viewingDocument.id, viewingDocument.fileName);
+                  handleDownload(viewingDocument.id, viewingDocument.fileName, viewingDocument.signedUrl);
                 }
               }}
             >
