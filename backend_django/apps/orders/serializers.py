@@ -13,6 +13,7 @@ class OrderSerializer(serializers.ModelSerializer):
     """
     merchandiser_details = UserSerializer(source='merchandiser', read_only=True)
     total_value = serializers.ReadOnlyField()
+    timeline_events = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -25,7 +26,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
-            'total_value', 'created_at', 'updated_at'
+            'total_value', 'created_at', 'updated_at', 'timeline_events'
         ]
         read_only_fields = ['id', 'order_number', 'created_at', 'updated_at', 'total_value']
     
@@ -81,7 +82,119 @@ class OrderSerializer(serializers.ModelSerializer):
             'totalValue': data.get('total_value'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
+            'timelineEvents': data.get('timeline_events', []),
         }
+    
+    def get_timeline_events(self, obj):
+        """Build timeline events for order details"""
+        events = []
+
+        def to_date_string(value):
+            if value is None:
+                return None
+            # Prefer date() when available (for DateTimeField)
+            date_attr = getattr(value, 'date', None)
+            if callable(date_attr):
+                try:
+                    return date_attr().isoformat()
+                except Exception:
+                    pass
+            iso_attr = getattr(value, 'isoformat', None)
+            if callable(iso_attr):
+                try:
+                    return iso_attr()
+                except Exception:
+                    pass
+            return str(value)
+
+        def add_event(title, date_value, status, description):
+            events.append({
+                'title': title,
+                'date': to_date_string(date_value),
+                'status': status,
+                'description': description,
+            })
+
+        # Order Placed - always completed
+        add_event(
+            title='Order Placed',
+            date_value=obj.created_at,
+            status='completed',
+            description=f"Order #{obj.order_number} created",
+        )
+
+        # Approvals
+        approval_data = obj.approval_status or {}
+        if isinstance(approval_data, dict) and approval_data:
+            approval_values = {str(value).lower() for value in approval_data.values()}
+            approval_status = None
+            if 'approved' in approval_values:
+                approval_status = 'completed'
+            elif 'pending' in approval_values:
+                approval_status = 'current'
+            elif 'rejected' in approval_values:
+                # Treat fully rejected approvals as completed step
+                approval_status = 'completed'
+
+            if approval_status:
+                add_event(
+                    title='Approvals Completed' if approval_status == 'completed' else 'Approvals',
+                    date_value=obj.updated_at,
+                    status=approval_status,
+                    description=f"Approval status updated for order #{obj.order_number}",
+                )
+
+        # Production - inferred from current_stage
+        current_stage = obj.current_stage or ''
+        if current_stage in ['Production', 'Delivered']:
+            production_status = 'current' if current_stage == 'Production' else 'completed'
+            add_event(
+                title='Production Started',
+                date_value=obj.updated_at,
+                status=production_status,
+                description=f"Production started for order #{obj.order_number}",
+            )
+
+        # Shipment - optional, based on related Shipment objects if present
+        shipments_rel = getattr(obj, 'shipments', None)
+        if shipments_rel is not None and hasattr(shipments_rel, 'all'):
+            first_shipment = None
+            try:
+                shipments_qs = shipments_rel.all()
+                if hasattr(shipments_qs, 'order_by'):
+                    shipments_qs = shipments_qs.order_by('shipment_date')
+                first_shipment = shipments_qs.first() if hasattr(shipments_qs, 'first') else None
+            except Exception:
+                first_shipment = None
+
+            if first_shipment is not None:
+                shipment_date = getattr(first_shipment, 'shipment_date', None)
+                if shipment_date:
+                    shipped_status = 'completed' if current_stage == 'Delivered' else 'current'
+                    description = f"Shipment created for order #{obj.order_number}"
+                    awb_number = getattr(first_shipment, 'awb_number', None) or getattr(first_shipment, 'tracking_number', None)
+                    if awb_number:
+                        description = f"Shipment {awb_number} created"
+                    add_event(
+                        title='Shipped',
+                        date_value=shipment_date,
+                        status=shipped_status,
+                        description=description,
+                    )
+
+        # Delivered - when stage is Delivered
+        if current_stage == 'Delivered':
+            delivered_date = obj.actual_delivery_date or obj.updated_at
+            add_event(
+                title='Delivered',
+                date_value=delivered_date,
+                status='current',
+                description=f"Order #{obj.order_number} delivered",
+            )
+
+        # Ensure events are sorted by date (oldest first)
+        events.sort(key=lambda item: item['date'] or '9999-12-31')
+        return events
     
     def validate_quantity(self, value):
         """Validate quantity is positive"""
