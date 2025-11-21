@@ -2,6 +2,7 @@
 Orders views
 """
 from datetime import datetime, date, timedelta
+from io import BytesIO
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
+from django.http import HttpResponse
 from .models import Order, OrderStatus, OrderCategory, Document
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
@@ -17,6 +19,7 @@ from .serializers import (
     StageChangeSerializer, DocumentSerializer
 )
 from .filters import OrderFilter
+from .utils.export import generate_orders_excel
 from apps.core.permissions import IsMerchandiser, IsAdminOrManager
 
 
@@ -75,7 +78,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         - Merchandisers see only their orders
         - Managers and Admins see all orders
         """
-        if self.action in ['list', 'stats']:
+        if self.action in ['list', 'stats', 'export_excel']:
             self._validate_date_params()
         queryset = super().get_queryset()
         user = self.request.user
@@ -317,3 +320,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Return serialized document
         serializer = DocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='export-excel')
+    def export_excel(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        workbook = generate_orders_excel(queryset)
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="orders_export.xlsx"'
+        return response
