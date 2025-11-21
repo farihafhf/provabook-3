@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertsWidget } from '@/components/dashboard/alerts-widget';
+import { ApprovalQueue } from '@/components/dashboard/approval-queue';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
 import { Package, TrendingUp, Clock, Archive, Activity } from 'lucide-react';
@@ -236,6 +238,11 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-1">Delivered</p>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AlertsWidget />
+            <ApprovalQueue />
           </div>
 
           {/* Recent Activity Feed */}
