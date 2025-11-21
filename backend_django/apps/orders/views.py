@@ -1,7 +1,7 @@
 """
 Orders views
 """
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,10 +9,11 @@ from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
+from django.utils import timezone
 from .models import Order, OrderStatus, OrderCategory, Document
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
-    OrderListSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
+    OrderListSerializer, OrderAlertSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
     StageChangeSerializer, DocumentSerializer
 )
 from .filters import OrderFilter
@@ -146,6 +147,60 @@ class OrderViewSet(viewsets.ModelViewSet):
         }
         
         serializer = OrderStatsSerializer(stats)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], url_path='alerts/upcoming-etd')
+    def alerts_upcoming_etd(self, request):
+        """Return orders with ETD between today and today + days (default 7).
+        Excludes completed and archived statuses.
+        """
+        days_param = request.query_params.get('days')
+        try:
+            days = int(days_param) if days_param is not None else 7
+            if days < 0:
+                raise ValueError
+        except ValueError:
+            raise ValidationError('Invalid days parameter. Must be a non-negative integer')
+
+        today = date.today()
+        upper_date = today + timedelta(days=days)
+
+        queryset = (
+            self.get_queryset()
+            .filter(etd__isnull=False, etd__gte=today, etd__lte=upper_date)
+            .exclude(status__in=[OrderStatus.COMPLETED, OrderStatus.ARCHIVED])
+            .order_by('etd')
+        )
+
+        serializer = OrderAlertSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='alerts/stuck-approvals')
+    def alerts_stuck_approvals(self, request):
+        """Return orders with pending approvals, ideally stuck for more than 3 days.
+        Uses updated_at <= now - 3 days as the heuristic.
+        """
+        base_queryset = self.get_queryset()
+
+        pending_filter = (
+            Q(approval_status__contains={'labDip': 'pending'}) |
+            Q(approval_status__contains={'strikeOff': 'pending'}) |
+            Q(approval_status__contains={'qualityTest': 'pending'}) |
+            Q(approval_status__contains={'bulkSwatch': 'pending'}) |
+            Q(approval_status__contains={'ppSample': 'pending'})
+        )
+
+        three_days_ago = timezone.now() - timedelta(days=3)
+
+        queryset = (
+            base_queryset
+            .filter(pending_filter)
+            .filter(updated_at__lte=three_days_ago)
+            .exclude(status__in=[OrderStatus.COMPLETED, OrderStatus.ARCHIVED])
+            .order_by('etd')
+        )
+
+        serializer = OrderAlertSerializer(queryset, many=True)
         return Response(serializer.data)
     
     @action(detail=True, methods=['patch'], url_path='approvals')

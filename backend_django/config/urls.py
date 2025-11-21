@@ -8,6 +8,7 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from apps.orders.views import OrderViewSet
 
 # Swagger/OpenAPI Schema
 schema_view = get_schema_view(
@@ -35,6 +36,17 @@ urlpatterns = [
     path('api/v1/auth/', include('apps.authentication.urls')),
     # Orders API (no trailing slash)
     path('api/v1/orders', include('apps.orders.urls')),
+    # Operational alerts (explicit routes to avoid prefix issues)
+    path(
+        'api/v1/orders/alerts/upcoming-etd',
+        OrderViewSet.as_view({'get': 'alerts_upcoming_etd'}),
+        name='order-alerts-upcoming-etd',
+    ),
+    path(
+        'api/v1/orders/alerts/stuck-approvals',
+        OrderViewSet.as_view({'get': 'alerts_stuck_approvals'}),
+        name='order-alerts-stuck-approvals',
+    ),
     
     # Dashboard (temporary endpoint in core)
     path('api/v1/dashboard', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),

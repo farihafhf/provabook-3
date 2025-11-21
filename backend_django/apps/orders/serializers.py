@@ -295,6 +295,34 @@ class OrderListSerializer(serializers.ModelSerializer):
         }
 
 
+class OrderAlertSerializer(serializers.ModelSerializer):
+    style_name = serializers.CharField(source='style_number', read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'order_number',
+            'style_name',
+            'customer_name',
+            'etd',
+            'approval_status',
+            'current_stage',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'orderNumber': data['order_number'],
+            'styleName': data.get('style_name'),
+            'customerName': data['customer_name'],
+            'etd': data.get('etd'),
+            'approvalStatus': data.get('approval_status'),
+            'currentStage': data.get('current_stage'),
+        }
+
+
 class OrderStatsSerializer(serializers.Serializer):
     """
     Serializer for order statistics
