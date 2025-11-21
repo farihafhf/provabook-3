@@ -9,6 +9,7 @@ from apps.samples.models import Sample
 from apps.financials.models import ProformaInvoice, LetterOfCredit
 from decimal import Decimal
 from datetime import date, timedelta
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -104,6 +105,8 @@ class Command(BaseCommand):
                 'unit': 'meters',
                 'order_date': date.today() - timedelta(days=30),
                 'expected_delivery_date': date.today() + timedelta(days=30),
+                'etd': date.today() + timedelta(days=5),
+                'eta': date.today() + timedelta(days=20),
                 'status': OrderStatus.RUNNING,
                 'category': OrderCategory.RUNNING,
                 'current_stage': 'Production',
@@ -131,6 +134,8 @@ class Command(BaseCommand):
                 'unit': 'meters',
                 'order_date': date.today() - timedelta(days=15),
                 'expected_delivery_date': date.today() + timedelta(days=45),
+                'etd': date.today() + timedelta(days=2),
+                'eta': date.today() + timedelta(days=25),
                 'status': OrderStatus.UPCOMING,
                 'category': OrderCategory.UPCOMING,
                 'current_stage': 'Design',
@@ -186,6 +191,8 @@ class Command(BaseCommand):
                 'unit': 'meters',
                 'order_date': date.today() - timedelta(days=20),
                 'expected_delivery_date': date.today() + timedelta(days=40),
+                'etd': date.today() + timedelta(days=7),
+                'eta': date.today() + timedelta(days=35),
                 'status': OrderStatus.RUNNING,
                 'category': OrderCategory.RUNNING,
                 'current_stage': 'In Development',
@@ -213,6 +220,8 @@ class Command(BaseCommand):
                 'unit': 'meters',
                 'order_date': date.today() - timedelta(days=5),
                 'expected_delivery_date': date.today() + timedelta(days=60),
+                'etd': date.today() + timedelta(days=10),
+                'eta': date.today() + timedelta(days=50),
                 'status': OrderStatus.UPCOMING,
                 'category': OrderCategory.UPCOMING,
                 'current_stage': 'Design',
@@ -241,7 +250,20 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(
                     f'  [SKIP] Order for {order_data["customer_name"]} - {order_data["fabric_type"]} already exists'
                 ))
-        
+        three_days_ago = timezone.now() - timedelta(days=4)
+        pending_stuck_qs = Order.objects.filter(
+            merchandiser=merchandiser,
+            status__in=[OrderStatus.UPCOMING, OrderStatus.RUNNING],
+        ).filter(
+            approval_status__contains={'labDip': 'pending'}
+        )
+
+        stuck_updated = pending_stuck_qs.update(updated_at=three_days_ago)
+        if stuck_updated:
+            self.stdout.write(self.style.SUCCESS(
+                f'  Marked {stuck_updated} orders as stuck for approvals alerts'
+            ))
+
         self.stdout.write(self.style.SUCCESS(f'\n  Created {created_count} sample orders'))
 
     def create_samples(self):
