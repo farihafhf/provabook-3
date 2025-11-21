@@ -35,6 +35,11 @@ urlpatterns = [
     # API v1 endpoints
     path('api/v1/auth/', include('apps.authentication.urls')),
     # Orders API - base path with trailing slash so router can correctly map list and detail
+    path(
+        'api/v1/orders/<uuid:pk>/download-po/',
+        OrderViewSet.as_view({'get': 'download_po'}),
+        name='order-download-po',
+    ),
     path('api/v1/orders/', include('apps.orders.urls')),
     # Operational alerts (explicit routes to avoid prefix issues)
     path(

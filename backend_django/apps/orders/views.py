@@ -11,7 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from .models import Order, OrderStatus, OrderCategory, Document
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
@@ -19,7 +19,7 @@ from .serializers import (
     StageChangeSerializer, DocumentSerializer
 )
 from .filters import OrderFilter
-from .utils.export import generate_orders_excel
+from .utils.export import generate_orders_excel, generate_purchase_order_pdf
 from apps.core.permissions import IsMerchandiser, IsAdminOrManager
 
 
@@ -320,6 +320,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Return serialized document
         serializer = DocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='download-po')
+    def download_po(self, request, pk=None):
+        order = self.get_object()
+
+        buffer = BytesIO()
+        generate_purchase_order_pdf(order, buffer)
+        buffer.seek(0)
+
+        order_identifier = getattr(order, "order_number", None) or str(getattr(order, "id", ""))
+        filename = f"PO_{order_identifier}.pdf"
+
+        response = FileResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
