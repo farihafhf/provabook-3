@@ -47,29 +47,8 @@ function getEtdRiskBadge(etd?: string | null) {
   return null;
 }
 
-export const MOCK_ALERTS_WIDGET_ORDERS: AlertsWidgetOrder[] = [
-  {
-    id: '1',
-    orderNumber: 'PB-2025-001',
-    customerName: 'Acme Retail Ltd.',
-    etd: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    orderNumber: 'PB-2025-002',
-    customerName: 'Nordic Fashion Co.',
-    etd: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    orderNumber: 'PB-2025-003',
-    customerName: 'Global Apparel Group',
-    etd: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 export function AlertsWidget({ orders }: AlertsWidgetProps) {
-  const data = (orders && orders.length > 0 ? orders : MOCK_ALERTS_WIDGET_ORDERS).slice(0, 5);
+  const data = (orders ?? []).slice(0, 5);
 
   return (
     <Card>

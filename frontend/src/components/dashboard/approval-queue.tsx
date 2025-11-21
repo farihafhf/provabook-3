@@ -15,29 +15,8 @@ export interface ApprovalQueueProps {
   orders?: ApprovalQueueOrder[];
 }
 
-export const MOCK_APPROVAL_QUEUE_ORDERS: ApprovalQueueOrder[] = [
-  {
-    id: '10',
-    orderNumber: 'PB-2025-010',
-    customerName: 'Atlas Sportswear',
-    stage: 'PP Sample',
-  },
-  {
-    id: '11',
-    orderNumber: 'PB-2025-011',
-    customerName: 'Continental Basics',
-    stage: 'Lab Dip',
-  },
-  {
-    id: '12',
-    orderNumber: 'PB-2025-012',
-    customerName: 'Urban Collective',
-    stage: null,
-  },
-];
-
 export function ApprovalQueue({ orders }: ApprovalQueueProps) {
-  const data = (orders && orders.length > 0 ? orders : MOCK_APPROVAL_QUEUE_ORDERS).slice(0, 5);
+  const data = (orders ?? []).slice(0, 5);
 
   return (
     <Card>

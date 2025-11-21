@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { ApprovalQueue } from '@/components/dashboard/approval-queue';
+import type { AlertsWidgetOrder } from '@/components/dashboard/alerts-widget';
+import type { ApprovalQueueOrder } from '@/components/dashboard/approval-queue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
@@ -61,6 +63,8 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<ManagerDashboard | MerchandiserDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [isManager, setIsManager] = useState(false);
+  const [upcomingEtdAlerts, setUpcomingEtdAlerts] = useState<AlertsWidgetOrder[]>([]);
+  const [stuckApprovalAlerts, setStuckApprovalAlerts] = useState<ApprovalQueueOrder[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -69,6 +73,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboard();
+    fetchAlertData();
   }, [isAuthenticated, router]);
 
   const fetchDashboard = async () => {
@@ -81,6 +86,47 @@ export default function DashboardPage() {
       console.error('Failed to fetch dashboard:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAlertData = async () => {
+    try {
+      const [upcomingResult, stuckResult] = await Promise.allSettled([
+        api.get('/orders/alerts/upcoming-etd'),
+        api.get('/orders/alerts/stuck-approvals'),
+      ]);
+
+      if (upcomingResult.status === 'fulfilled') {
+        const raw = upcomingResult.value.data as any[];
+        const mapped: AlertsWidgetOrder[] = raw.map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          etd: order.etd ?? null,
+        }));
+        setUpcomingEtdAlerts(mapped);
+      } else {
+        console.error('Failed to fetch upcoming ETD alerts:', upcomingResult.reason);
+        setUpcomingEtdAlerts([]);
+      }
+
+      if (stuckResult.status === 'fulfilled') {
+        const raw = stuckResult.value.data as any[];
+        const mapped: ApprovalQueueOrder[] = raw.map((order) => ({
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          stage: order.currentStage ?? null,
+        }));
+        setStuckApprovalAlerts(mapped);
+      } else {
+        console.error('Failed to fetch stuck approvals alerts:', stuckResult.reason);
+        setStuckApprovalAlerts([]);
+      }
+    } catch (error) {
+      console.error('Unexpected error while fetching alerts:', error);
+      setUpcomingEtdAlerts([]);
+      setStuckApprovalAlerts([]);
     }
   };
 
@@ -241,8 +287,8 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AlertsWidget />
-            <ApprovalQueue />
+            <AlertsWidget orders={upcomingEtdAlerts} />
+            <ApprovalQueue orders={stuckApprovalAlerts} />
           </div>
 
           {/* Recent Activity Feed */}
