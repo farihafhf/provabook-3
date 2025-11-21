@@ -62,57 +62,24 @@ export function OrderFilters({
   });
 
   const updateUrlParams = React.useCallback(
-    (next: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      const apply = (key: string, value: string | undefined | null, removeIfAll?: boolean) => {
-        if (!value || value === '' || (removeIfAll && value === 'all')) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      };
-
-      if ('search' in next) {
-        apply('search', next.search ?? '');
-      }
-      if ('status' in next) {
-        apply('status', next.status ?? '', true);
-      }
-      if ('orderDateFrom' in next) {
-        apply('order_date_from', next.orderDateFrom ?? '');
-      }
-      if ('orderDateTo' in next) {
-        apply('order_date_to', next.orderDateTo ?? '');
-      }
-
-      const query = params.toString();
-      const url = query ? `${pathname}?${query}` : pathname;
-      router.push(url, { scroll: false });
+    (_next: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
+      return;
     },
-    [router, pathname, searchParams]
+    []
   );
 
   const emitFilterChange = React.useCallback(
-    (overrides?: Partial<{ search: string; status: string; orderDateFrom: string; orderDateTo: string }>) => {
+    (next: { search: string; status: string; orderDateFrom: string; orderDateTo: string }) => {
       if (!onFilterChange) return;
 
-      const merged = {
-        search,
-        status,
-        orderDateFrom,
-        orderDateTo,
-        ...overrides,
-      };
-
       onFilterChange({
-        search: merged.search,
-        status: merged.status === 'all' ? null : merged.status,
-        orderDateFrom: merged.orderDateFrom || null,
-        orderDateTo: merged.orderDateTo || null,
+        search: next.search,
+        status: next.status === 'all' ? null : next.status,
+        orderDateFrom: next.orderDateFrom || null,
+        orderDateTo: next.orderDateTo || null,
       });
     },
-    [onFilterChange, search, status, orderDateFrom, orderDateTo]
+    [onFilterChange]
   );
 
   // Keep local state in sync if the URL changes via back/forward navigation
@@ -139,28 +106,48 @@ export function OrderFilters({
   React.useEffect(() => {
     const handle = setTimeout(() => {
       updateUrlParams({ search });
-      emitFilterChange({ search });
+      emitFilterChange({
+        search,
+        status,
+        orderDateFrom,
+        orderDateTo,
+      });
     }, 300);
 
     return () => clearTimeout(handle);
-  }, [search, updateUrlParams, emitFilterChange]);
+  }, [search, status, orderDateFrom, orderDateTo, updateUrlParams, emitFilterChange]);
 
   const handleStatusChange = (value: string) => {
     setStatus(value);
     updateUrlParams({ status: value });
-    emitFilterChange({ status: value });
+    emitFilterChange({
+      search,
+      status: value,
+      orderDateFrom,
+      orderDateTo,
+    });
   };
 
   const handleOrderDateFromChange = (value: string) => {
     setOrderDateFrom(value);
     updateUrlParams({ orderDateFrom: value });
-    emitFilterChange({ orderDateFrom: value });
+    emitFilterChange({
+      search,
+      status,
+      orderDateFrom: value,
+      orderDateTo,
+    });
   };
 
   const handleOrderDateToChange = (value: string) => {
     setOrderDateTo(value);
     updateUrlParams({ orderDateTo: value });
-    emitFilterChange({ orderDateTo: value });
+    emitFilterChange({
+      search,
+      status,
+      orderDateFrom,
+      orderDateTo: value,
+    });
   };
 
   const handleReset = () => {
@@ -169,7 +156,12 @@ export function OrderFilters({
     setOrderDateFrom('');
     setOrderDateTo('');
     updateUrlParams({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
-    emitFilterChange({ search: '', status: 'all', orderDateFrom: '', orderDateTo: '' });
+    emitFilterChange({
+      search: '',
+      status: 'all',
+      orderDateFrom: '',
+      orderDateTo: '',
+    });
   };
 
   return (
