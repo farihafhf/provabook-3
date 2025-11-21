@@ -15,6 +15,8 @@ class Sample(TimestampedModel):
         ('strike_off', 'Strike-Off'),
         ('bulk_swatch', 'Bulk Swatch'),
         ('pp_sample', 'PP Sample'),
+        ('hand_loom', 'Hand Loom'),
+        ('presentation', 'Presentation'),
     ]
     
     STATUS_CHOICES = [

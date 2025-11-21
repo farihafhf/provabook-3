@@ -184,10 +184,11 @@ export default function SamplesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="lab_dip">Lab Dip</SelectItem>
-                        <SelectItem value="hand_loom">Hand Loom</SelectItem>
                         <SelectItem value="strike_off">Strike Off</SelectItem>
+                        <SelectItem value="bulk_swatch">Bulk Swatch</SelectItem>
+                        <SelectItem value="pp_sample">PP Sample</SelectItem>
+                        <SelectItem value="hand_loom">Hand Loom</SelectItem>
                         <SelectItem value="presentation">Presentation</SelectItem>
-                        <SelectItem value="pp">PP</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
