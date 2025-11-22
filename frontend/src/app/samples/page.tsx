@@ -116,8 +116,7 @@ export default function SamplesPage() {
         description: 'Sample deleted successfully',
       });
     } catch (error: any) {
-      console.error('Error deleting sample:', error);
-      if (error.response?.status === 404) {
+      if (error?.response?.status === 404) {
         setSamples((prevSamples) => prevSamples.filter((sample) => sample.id !== id));
 
         toast({
@@ -127,6 +126,8 @@ export default function SamplesPage() {
 
         return;
       }
+
+      console.error('Error deleting sample:', error);
 
       toast({
         title: 'Error',
