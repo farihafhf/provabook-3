@@ -10,6 +10,9 @@ from apps.financials.models import ProformaInvoice, LetterOfCredit
 from decimal import Decimal
 from datetime import date, timedelta
 from django.utils import timezone
+from django.core.files.base import ContentFile
+from django.conf import settings
+import os
 
 User = get_user_model()
 
@@ -276,18 +279,78 @@ class Command(BaseCommand):
             return
         
         sample_configs = [
-            ('lab_dip', 'submitted'),
-            ('strike_off', 'approved'),
-            ('bulk_swatch', 'pending'),
-            ('pp_sample', 'pending'),
+            ('lab_dip', 'submitted', True),   # Has attachment
+            ('strike_off', 'approved', True),  # Has attachment
+            ('bulk_swatch', 'pending', False), # No attachment
+            ('pp_sample', 'pending', True),    # Has attachment
         ]
+        
+        # Create dummy PDF content for attachments
+        dummy_pdf_content = b"""%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+/Font <<
+/F1 <<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+>>
+>>
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 12 Tf
+50 700 Td
+(Sample Document) Tj
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000314 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+407
+%%EOF"""
         
         created_count = 0
         for order in orders:
-            for version, (sample_type, status) in enumerate(sample_configs, start=1):
+            for version, (sample_type, status, has_attachment) in enumerate(sample_configs, start=1):
                 if not Sample.objects.filter(order=order, type=sample_type, version=version).exists():
                     submission_date = order.order_date or date.today()
-                    Sample.objects.create(
+                    sample = Sample.objects.create(
                         order=order,
                         type=sample_type,
                         version=version,
@@ -298,9 +361,15 @@ class Command(BaseCommand):
                         awb_number=f"DHL-{order.order_number}-{version}",
                         notes=f"{sample_type.replace('_', ' ').title()} for {order.style_number or order.order_number}",
                     )
+                    
+                    # Add attachment for some samples
+                    if has_attachment:
+                        filename = f"{sample_type}_{order.order_number}_v{version}.pdf"
+                        sample.attachment.save(filename, ContentFile(dummy_pdf_content), save=True)
+                        
                     created_count += 1
         
-        self.stdout.write(self.style.SUCCESS(f'\n  Created {created_count} sample records'))
+        self.stdout.write(self.style.SUCCESS(f'\n  Created {created_count} sample records (some with attachments)'))
 
     def create_financials(self):
         """Create financial documents (PIs and LCs) for orders"""
