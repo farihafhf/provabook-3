@@ -40,7 +40,7 @@ urlpatterns = [
         OrderViewSet.as_view({'get': 'download_po'}),
         name='order-download-po',
     ),
-    path('api/v1/orders/', include('apps.orders.urls')),
+    path('api/v1/orders', include('apps.orders.urls')),
     # Operational alerts (explicit routes to avoid prefix issues)
     path(
         'api/v1/orders/alerts/upcoming-etd',
@@ -57,7 +57,7 @@ urlpatterns = [
     path('api/v1/dashboard', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),
     
     # Samples API
-    path('api/v1/samples/', include('apps.samples.urls')),
+    path('api/v1/samples', include('apps.samples.urls')),
     
     # Financials
     path('api/v1/financials/', include('apps.financials.urls')),
