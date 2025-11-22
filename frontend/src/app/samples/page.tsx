@@ -78,11 +78,15 @@ export default function SamplesPage() {
 
   const fetchSamples = async () => {
     try {
-      const response = await api.get('/samples/');
-      setSamples(response.data);
+      const response = await api.get('/samples/', {
+        params: { _t: Date.now() } // Prevent caching
+      });
+      console.log('Fetched samples:', response.data.length);
+      // Force new array reference to trigger React re-render
+      setSamples([...response.data]);
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch samples:', error);
-    } finally {
       setLoading(false);
     }
   };
@@ -104,20 +108,26 @@ export default function SamplesPage() {
     try {
       console.log('Deleting sample:', id);
       await api.delete(`/samples/${id}`);
-      console.log('Delete successful, refreshing list...');
-      
-      // Wait a moment for backend to process
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      await fetchSamples(); // Refresh the list
-      console.log('List refreshed, new count:', samples.length);
-      
+
+      setSamples((prevSamples) => prevSamples.filter((sample) => sample.id !== id));
+
       toast({
         title: 'Success',
         description: 'Sample deleted successfully',
       });
     } catch (error: any) {
       console.error('Error deleting sample:', error);
+      if (error.response?.status === 404) {
+        setSamples((prevSamples) => prevSamples.filter((sample) => sample.id !== id));
+
+        toast({
+          title: 'Not Found',
+          description: 'This sample was already deleted.',
+        });
+
+        return;
+      }
+
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to delete sample',
