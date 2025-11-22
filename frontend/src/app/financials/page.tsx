@@ -57,6 +57,71 @@ interface Order {
   customerName: string;
 }
 
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+
+const PI_STATUS_BADGE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: BadgeVariant;
+  }
+> = {
+  draft: { label: 'Draft', variant: 'secondary' },
+  sent: { label: 'Sent', variant: 'default' },
+  confirmed: { label: 'Confirmed', variant: 'success' },
+  cancelled: { label: 'Cancelled', variant: 'destructive' },
+  canceled: { label: 'Cancelled', variant: 'destructive' },
+};
+
+const LC_STATUS_BADGE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: BadgeVariant;
+  }
+> = {
+  pending: { label: 'Pending', variant: 'secondary' },
+  issued: { label: 'Issued', variant: 'default' },
+  confirmed: { label: 'Confirmed', variant: 'success' },
+  expired: { label: 'Expired', variant: 'destructive' },
+};
+
+function getPiStatusBadge(status: string) {
+  const key = status?.toLowerCase() ?? '';
+  const config = PI_STATUS_BADGE_CONFIG[key];
+
+  if (config) {
+    return config;
+  }
+
+  if (!status) {
+    return { label: 'Unknown', variant: 'secondary' as BadgeVariant };
+  }
+
+  return {
+    label: status.charAt(0).toUpperCase() + status.slice(1),
+    variant: 'secondary' as BadgeVariant,
+  };
+}
+
+function getLcStatusBadge(status: string) {
+  const key = status?.toLowerCase() ?? '';
+  const config = LC_STATUS_BADGE_CONFIG[key];
+
+  if (config) {
+    return config;
+  }
+
+  if (!status) {
+    return { label: 'Unknown', variant: 'secondary' as BadgeVariant };
+  }
+
+  return {
+    label: status.charAt(0).toUpperCase() + status.slice(1),
+    variant: 'secondary' as BadgeVariant,
+  };
+}
+
 export default function FinancialsPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -328,32 +393,36 @@ export default function FinancialsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pis.map((pi) => (
-                    <div key={pi.id} className="border rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium">{pi.piNumber}</p>
-                          <p className="text-sm text-gray-500">Version {pi.version}</p>
-                          {pi.createdByName && (
-                            <p className="text-xs text-blue-600 mt-1">
-                              Handled by: {pi.createdByName}
-                            </p>
+                  {pis.map((pi) => {
+                    const statusBadge = getPiStatusBadge(pi.status);
+
+                    return (
+                      <div key={pi.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium">{pi.piNumber}</p>
+                            <p className="text-sm text-gray-500">Version {pi.version}</p>
+                            {pi.createdByName && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Handled by: {pi.createdByName}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={statusBadge.variant} className="capitalize">
+                            {statusBadge.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {pi.currency} {pi.amount.toLocaleString()}
+                          </span>
+                          {pi.issueDate && (
+                            <span className="text-gray-500">{formatDate(pi.issueDate)}</span>
                           )}
                         </div>
-                        <Badge variant="secondary" className="capitalize">
-                          {pi.status}
-                        </Badge>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">
-                          {pi.currency} {pi.amount.toLocaleString()}
-                        </span>
-                        {pi.issueDate && (
-                          <span className="text-gray-500">{formatDate(pi.issueDate)}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -465,42 +534,46 @@ export default function FinancialsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {lcs.map((lc) => (
-                    <div key={lc.id} className="border rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium">{lc.lcNumber}</p>
-                          {lc.issuingBank && (
-                            <p className="text-sm text-gray-500">{lc.issuingBank}</p>
-                          )}
-                          {lc.createdByName && (
-                            <p className="text-xs text-blue-600 mt-1">
-                              Handled by: {lc.createdByName}
-                            </p>
-                          )}
+                  {lcs.map((lc) => {
+                    const statusBadge = getLcStatusBadge(lc.status);
+
+                    return (
+                      <div key={lc.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium">{lc.lcNumber}</p>
+                            {lc.issuingBank && (
+                              <p className="text-sm text-gray-500">{lc.issuingBank}</p>
+                            )}
+                            {lc.createdByName && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Handled by: {lc.createdByName}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={statusBadge.variant} className="capitalize">
+                            {statusBadge.label}
+                          </Badge>
                         </div>
-                        <Badge variant="secondary" className="capitalize">
-                          {lc.status}
-                        </Badge>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Amount:</span>
+                            <span className="font-medium">
+                              {lc.currency} {lc.amount.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Issue:</span>
+                            <span className="text-gray-500">{formatDate(lc.issueDate)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Expiry:</span>
+                            <span className="text-gray-500">{formatDate(lc.expiryDate)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount:</span>
-                          <span className="font-medium">
-                            {lc.currency} {lc.amount.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Issue:</span>
-                          <span className="text-gray-500">{formatDate(lc.issueDate)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Expiry:</span>
-                          <span className="text-gray-500">{formatDate(lc.expiryDate)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
