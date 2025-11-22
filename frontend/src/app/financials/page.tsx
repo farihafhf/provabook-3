@@ -9,8 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
-import { Plus, FileText, DollarSign } from 'lucide-react';
+import { Plus, FileText, DollarSign, MoreHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -121,6 +130,20 @@ function getLcStatusBadge(status: string) {
     variant: 'secondary' as BadgeVariant,
   };
 }
+
+const PI_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const LC_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'issued', label: 'Issued' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'expired', label: 'Expired' },
+];
 
 export default function FinancialsPage() {
   const router = useRouter();
@@ -287,6 +310,33 @@ export default function FinancialsPage() {
     }
   };
 
+  const handleStatusChange = async (id: string, newStatus: string, modelType: 'pi' | 'lc') => {
+    try {
+      const endpoint = modelType === 'pi' ? '/financials/pis' : '/financials/lcs';
+
+      await api.patch(`${endpoint}/${id}`, { status: newStatus });
+
+      toast({
+        title: 'Success',
+        description: 'Status updated',
+      });
+
+      await fetchFinancials();
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+
+      const errorMessage = Array.isArray(error?.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error?.response?.data?.message || error.message || 'Failed to update status';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -408,9 +458,34 @@ export default function FinancialsPage() {
                               </p>
                             )}
                           </div>
-                          <Badge variant={statusBadge.variant} className="capitalize">
-                            {statusBadge.label}
-                          </Badge>
+                          <div className="flex items-start gap-2">
+                            <Badge variant={statusBadge.variant} className="capitalize">
+                              {statusBadge.label}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {PI_STATUS_OPTIONS.map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        onClick={() => handleStatusChange(pi.id, option.value, 'pi')}
+                                        disabled={pi.status === option.value}
+                                      >
+                                        {option.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">
@@ -551,9 +626,34 @@ export default function FinancialsPage() {
                               </p>
                             )}
                           </div>
-                          <Badge variant={statusBadge.variant} className="capitalize">
-                            {statusBadge.label}
-                          </Badge>
+                          <div className="flex items-start gap-2">
+                            <Badge variant={statusBadge.variant} className="capitalize">
+                              {statusBadge.label}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {LC_STATUS_OPTIONS.map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        onClick={() => handleStatusChange(lc.id, option.value, 'lc')}
+                                        disabled={lc.status === option.value}
+                                      >
+                                        {option.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
