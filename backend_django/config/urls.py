@@ -43,27 +43,27 @@ urlpatterns = [
     path('api/v1/orders/', include('apps.orders.urls')),
     # Operational alerts (explicit routes to avoid prefix issues)
     path(
-        'api/v1/orders/alerts/upcoming-etd',
+        'api/v1/orders/alerts/upcoming-etd/',
         OrderViewSet.as_view({'get': 'alerts_upcoming_etd'}),
         name='order-alerts-upcoming-etd',
     ),
     path(
-        'api/v1/orders/alerts/stuck-approvals',
+        'api/v1/orders/alerts/stuck-approvals/',
         OrderViewSet.as_view({'get': 'alerts_stuck_approvals'}),
         name='order-alerts-stuck-approvals',
     ),
     
     # Dashboard (temporary endpoint in core)
-    path('api/v1/dashboard', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),
+    path('api/v1/dashboard/', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),
     
     # Samples API
-    path('api/v1/samples', include('apps.samples.urls')),
+    path('api/v1/samples/', include('apps.samples.urls')),
     
     # Financials
     path('api/v1/financials/', include('apps.financials.urls')),
     
     # Placeholder endpoints
-    path('api/v1/orders/documents/<str:document_id>', lambda request, document_id: __import__('apps.core.views', fromlist=['document_delete_view']).document_delete_view(request, document_id)),
+    path('api/v1/orders/documents/<str:document_id>/', lambda request, document_id: __import__('apps.core.views', fromlist=['document_delete_view']).document_delete_view(request, document_id)),
     
     # TODO: Uncomment as you create these apps
     # path('api/v1/production/', include('apps.production.urls')),
