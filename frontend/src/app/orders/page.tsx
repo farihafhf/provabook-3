@@ -127,7 +127,7 @@ export default function OrdersPage() {
       if (orderDateFrom) queryParams.order_date_from = orderDateFrom;
       if (orderDateTo) queryParams.order_date_to = orderDateTo;
 
-      const response = await api.get('/orders/export-excel', {
+      const response = await api.get('/orders/export-excel/', {
         params: queryParams,
         responseType: 'blob',
       });
@@ -279,7 +279,7 @@ export default function OrdersPage() {
 
     setDeleting(true);
     try {
-      await api.delete(`/orders/${orderToDelete.id}`);
+      await api.delete(`/orders/${orderToDelete.id}/`);
 
       toast({
         title: 'Success',

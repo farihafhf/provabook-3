@@ -88,7 +88,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}`);
+      const response = await api.get(`/orders/${params.id}/`);
       setOrder(response.data);
       if (response.data?.currentStage) {
         setStageSelection(response.data.currentStage);
@@ -102,7 +102,7 @@ export default function OrderDetailPage() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}/documents`);
+      const response = await api.get(`/orders/${params.id}/documents/`);
       setDocuments(response.data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
@@ -111,7 +111,7 @@ export default function OrderDetailPage() {
 
   const handleDeleteDocument = async (documentId: string) => {
     try {
-      await api.delete(`/orders/documents/${documentId}`);
+      await api.delete(`/orders/documents/${documentId}/`);
       await fetchDocuments();
     } catch (error) {
       console.error('Failed to delete document:', error);
@@ -124,7 +124,7 @@ export default function OrderDetailPage() {
     
     setUpdating(true);
     try {
-      await api.patch(`/orders/${order.id}/approvals`, {
+      await api.patch(`/orders/${order.id}/approvals/`, {
         approvalType,
         status: newStatus,
       });
@@ -153,12 +153,12 @@ export default function OrderDetailPage() {
 
     setUpdating(true);
     try {
-      await api.patch(`/orders/${order.id}/approvals`, {
+      await api.patch(`/orders/${order.id}/approvals/`, {
         approvalType: 'ppSample',
         status: 'approved',
       });
 
-      await api.post(`/orders/${order.id}/change-stage`, {
+      await api.post(`/orders/${order.id}/change-stage/`, {
         stage: 'In Development',
       });
 
@@ -185,7 +185,7 @@ export default function OrderDetailPage() {
 
     setUpdating(true);
     try {
-      await api.post(`/orders/${order.id}/change-stage`, {
+      await api.post(`/orders/${order.id}/change-stage/`, {
         stage: 'Delivered',
       });
 
@@ -216,7 +216,7 @@ export default function OrderDetailPage() {
 
     setDownloadingPO(true);
     try {
-      const response = await api.get(`/orders/${order.id}/download-po`, {
+      const response = await api.get(`/orders/${order.id}/download-po/`, {
         responseType: 'blob',
       });
 
@@ -262,7 +262,7 @@ export default function OrderDetailPage() {
     
     setUpdating(true);
     try {
-      await api.patch(`/orders/${order.id}`, {
+      await api.patch(`/orders/${order.id}/`, {
         etd: dateFormData.etd || null,
         eta: dateFormData.eta || null,
       });
@@ -290,7 +290,7 @@ export default function OrderDetailPage() {
     if (!order) return;
     setUpdating(true);
     try {
-      const resp = await api.post(`/orders/${order.id}/change-stage`, { stage: stageSelection });
+      const resp = await api.post(`/orders/${order.id}/change-stage/`, { stage: stageSelection });
       toast({
         title: 'Stage Updated',
         description: `Stage changed to ${resp.data.currentStage}`,
