@@ -102,7 +102,7 @@ export default function SamplesPage() {
     }
 
     try {
-      await api.delete(`/samples/${id}/`);
+      await api.delete(`/samples/${id}`);
       toast({
         title: 'Success',
         description: 'Sample deleted successfully',
