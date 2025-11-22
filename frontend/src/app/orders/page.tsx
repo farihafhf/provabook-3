@@ -36,7 +36,7 @@ interface OrdersFilterParams {
   orderDateTo?: string | null;
 }
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -629,5 +629,19 @@ export default function OrdersPage() {
         </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <p>Loading orders...</p>
+        </div>
+      </DashboardLayout>
+    }>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

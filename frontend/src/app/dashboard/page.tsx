@@ -12,6 +12,9 @@ import { api } from '@/lib/api';
 import { Package, TrendingUp, Clock, Archive, Activity } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
+import OrdersByStageChart from '@/components/dashboard/charts/OrdersByStageChart';
+import MerchandiserWorkloadChart from '@/components/dashboard/charts/MerchandiserWorkloadChart';
+import MonthlyTrendsChart from '@/components/dashboard/charts/MonthlyTrendsChart';
 
 interface DashboardActivity {
   id: string;
@@ -57,6 +60,17 @@ interface MerchandiserDashboard {
   };
 }
 
+interface ChartData {
+  name: string;
+  value: number;
+}
+
+interface DashboardStats {
+  orders_by_stage: ChartData[];
+  orders_by_merchandiser: ChartData[];
+  orders_trend: ChartData[];
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -65,6 +79,8 @@ export default function DashboardPage() {
   const [isManager, setIsManager] = useState(false);
   const [upcomingEtdAlerts, setUpcomingEtdAlerts] = useState<AlertsWidgetOrder[]>([]);
   const [stuckApprovalAlerts, setStuckApprovalAlerts] = useState<ApprovalQueueOrder[]>([]);
+  const [chartData, setChartData] = useState<DashboardStats | null>(null);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -74,6 +90,7 @@ export default function DashboardPage() {
 
     fetchDashboard();
     fetchAlertData();
+    fetchChartData();
   }, [isAuthenticated, router]);
 
   const fetchDashboard = async () => {
@@ -127,6 +144,19 @@ export default function DashboardPage() {
       console.error('Unexpected error while fetching alerts:', error);
       setUpcomingEtdAlerts([]);
       setStuckApprovalAlerts([]);
+    }
+  };
+
+  const fetchChartData = async () => {
+    try {
+      const response = await api.get('/dashboard/stats', {
+        params: { _t: Date.now() }
+      });
+      setChartData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+    } finally {
+      setChartLoading(false);
     }
   };
 
@@ -238,6 +268,54 @@ export default function DashboardPage() {
               </Card>
             </div>
           )}
+
+          {/* Dashboard Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Orders by Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Merchandiser Workload</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MerchandiserWorkloadChart data={chartData?.orders_by_merchandiser || []} />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Trends (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -358,6 +436,39 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold">My Dashboard</h1>
             <p className="text-gray-500 mt-2">Your assigned orders and recent activity</p>
+          </div>
+
+          {/* Dashboard Charts - Merchandiser View */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Orders by Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>My Monthly Trends (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* My Orders Summary */}
