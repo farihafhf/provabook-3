@@ -15,6 +15,8 @@ import { useAuthStore } from '@/store/auth-store';
 import OrdersByStageChart from '@/components/dashboard/charts/OrdersByStageChart';
 import MerchandiserWorkloadChart from '@/components/dashboard/charts/MerchandiserWorkloadChart';
 import MonthlyTrendsChart from '@/components/dashboard/charts/MonthlyTrendsChart';
+import { FinancialCharts } from '@/components/dashboard/financial-charts';
+import { PendingLCs } from '@/components/dashboard/pending-lcs';
 
 interface DashboardActivity {
   id: string;
@@ -364,6 +366,16 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+          {/* Financial Analytics & Pending LCs - Responsive Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <FinancialCharts />
+            </div>
+            <div className="lg:col-span-1">
+              <PendingLCs />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AlertsWidget orders={upcomingEtdAlerts} />
             <ApprovalQueue orders={stuckApprovalAlerts} />
@@ -516,6 +528,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-1">Delivered</p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* My Financial Analytics & Pending LCs - Responsive Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <FinancialCharts />
+            </div>
+            <div className="lg:col-span-1">
+              <PendingLCs />
+            </div>
           </div>
 
           {/* My Recent Activity */}
