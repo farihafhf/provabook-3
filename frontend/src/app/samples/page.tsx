@@ -102,12 +102,14 @@ export default function SamplesPage() {
     }
 
     try {
+      console.log('Deleting sample:', id);
       await api.delete(`/samples/${id}`);
+      console.log('Delete successful, refreshing list...');
       toast({
         title: 'Success',
         description: 'Sample deleted successfully',
       });
-      fetchSamples(); // Refresh the list
+      await fetchSamples(); // Refresh the list
     } catch (error: any) {
       console.error('Error deleting sample:', error);
       toast({
