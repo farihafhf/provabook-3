@@ -14,7 +14,7 @@ class SampleSerializer(serializers.ModelSerializer):
         model = Sample
         fields = ['id', 'order', 'order_number', 'customer_name', 'type', 'version', 
                   'status', 'submission_date', 'recipient', 'courier_name', 
-                  'awb_number', 'notes', 'created_at', 'updated_at']
+                  'awb_number', 'attachment', 'notes', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def to_representation(self, instance):
@@ -32,6 +32,7 @@ class SampleSerializer(serializers.ModelSerializer):
             'recipient': data.get('recipient'),
             'courierName': data.get('courier_name'),
             'awbNumber': data.get('awb_number'),
+            'attachment': data.get('attachment'),
             'notes': data.get('notes'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],

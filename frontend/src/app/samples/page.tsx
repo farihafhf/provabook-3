@@ -28,6 +28,7 @@ interface Sample {
   recipient?: string;
   courierName?: string;
   awbNumber?: string;
+  attachment?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -94,19 +95,25 @@ export default function SamplesPage() {
     setSubmitting(true);
 
     try {
-      const sampleData = {
-        type: formData.type,
-        orderId: formData.orderId,
-        recipient: formData.recipient || undefined,
-        courierName: formData.courierName || undefined,
-        awbNumber: formData.awbNumber || undefined,
-        submissionDate: formData.submissionDate || undefined,
-        notes: formData.notes || undefined,
-      };
+      // Create FormData for multipart/form-data request
+      const formDataToSend = new FormData();
+      formDataToSend.append('type', formData.type);
+      formDataToSend.append('orderId', formData.orderId);
+      
+      if (formData.recipient) formDataToSend.append('recipient', formData.recipient);
+      if (formData.courierName) formDataToSend.append('courierName', formData.courierName);
+      if (formData.awbNumber) formDataToSend.append('awbNumber', formData.awbNumber);
+      if (formData.submissionDate) formDataToSend.append('submissionDate', formData.submissionDate);
+      if (formData.notes) formDataToSend.append('notes', formData.notes);
+      if (file) formDataToSend.append('attachment', file);
 
-      console.log('Creating sample with data:', sampleData);
+      console.log('Creating sample with FormData');
 
-      await api.post('/samples', sampleData);
+      await api.post('/samples', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       toast({
         title: 'Success',
@@ -239,6 +246,20 @@ export default function SamplesPage() {
                       value={formData.submissionDate}
                       onChange={(e) => setFormData({ ...formData, submissionDate: e.target.value })}
                     />
+                  </div>
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="attachment">Attachment</Label>
+                    <Input
+                      id="attachment"
+                      type="file"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+                    />
+                    {file && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Selected: {file.name}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2 col-span-2">
                     <Label htmlFor="notes">Notes</Label>
