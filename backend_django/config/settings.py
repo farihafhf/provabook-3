@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     # TODO: Uncomment as you create these apps
     'apps.production',
     # 'apps.incidents',
-    # 'apps.shipments',
+    'apps.shipments',
     # 'apps.notifications',
     # 'apps.documents',
     # 'apps.dashboard',

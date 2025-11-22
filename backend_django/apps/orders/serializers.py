@@ -162,13 +162,13 @@ class OrderSerializer(serializers.ModelSerializer):
             try:
                 shipments_qs = shipments_rel.all()
                 if hasattr(shipments_qs, 'order_by'):
-                    shipments_qs = shipments_qs.order_by('shipment_date')
+                    shipments_qs = shipments_qs.order_by('shipping_date')
                 first_shipment = shipments_qs.first() if hasattr(shipments_qs, 'first') else None
             except Exception:
                 first_shipment = None
 
             if first_shipment is not None:
-                shipment_date = getattr(first_shipment, 'shipment_date', None)
+                shipment_date = getattr(first_shipment, 'shipping_date', None)
                 if shipment_date:
                     shipped_status = 'completed' if current_stage == 'Delivered' else 'current'
                     description = f"Shipment created for order #{obj.order_number}"
