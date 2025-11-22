@@ -26,6 +26,12 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):
         pi_count = ProformaInvoice.objects.count() + 1
         pi_number = f"PI-{pi_count:05d}"
         serializer.save(pi_number=pi_number, created_by=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Ensure update is saved properly"""
+        instance = serializer.save()
+        print(f"PI {instance.id} updated. Status: {instance.status}")
+        return instance
 
 
 class LetterOfCreditViewSet(viewsets.ModelViewSet):
@@ -47,3 +53,9 @@ class LetterOfCreditViewSet(viewsets.ModelViewSet):
         lc_count = LetterOfCredit.objects.count() + 1
         lc_number = f"LC-{lc_count:05d}"
         serializer.save(lc_number=lc_number, created_by=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Ensure update is saved properly"""
+        instance = serializer.save()
+        print(f"LC {instance.id} updated. Status: {instance.status}")
+        return instance

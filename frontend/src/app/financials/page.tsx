@@ -490,24 +490,29 @@ export default function FinancialsPage() {
     try {
       const endpoint = modelType === 'pi' ? '/financials/pis' : '/financials/lcs';
 
-      await api.patch(`${endpoint}/${id}`, { status: newStatus });
+      console.log(`Updating ${modelType} ${id} status to ${newStatus}`);
+      const response = await api.patch(`${endpoint}/${id}`, { status: newStatus });
+      console.log('PATCH response:', response.data);
 
+      // Use the response data to update state to ensure we match what backend saved
       if (modelType === 'pi') {
         setPis((prev) =>
-          prev.map((pi) => (pi.id === id ? { ...pi, status: newStatus } : pi))
+          prev.map((pi) => (pi.id === id ? { ...pi, status: response.data.status } : pi))
         );
       } else {
         setLcs((prev) =>
-          prev.map((lc) => (lc.id === id ? { ...lc, status: newStatus } : lc))
+          prev.map((lc) => (lc.id === id ? { ...lc, status: response.data.status } : lc))
         );
       }
 
       toast({
         title: 'Success',
-        description: 'Status updated',
+        description: `Status updated to ${response.data.status}`,
       });
     } catch (error: any) {
       console.error('Error updating status:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
 
       const errorMessage = Array.isArray(error?.response?.data?.message)
         ? error.response.data.message.join(', ')
