@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Calendar, Edit2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
-import { formatDate } from '@/lib/utils';
+import { formatDate, downloadBlob } from '@/lib/utils';
 import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
@@ -74,6 +74,7 @@ export default function OrderDetailPage() {
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [dateFormData, setDateFormData] = useState({ etd: '', eta: '' });
   const [stageSelection, setStageSelection] = useState<string>('Design');
+  const [downloadingPO, setDownloadingPO] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -208,6 +209,44 @@ export default function OrderDetailPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPO = async () => {
+    if (!order) return;
+
+    setDownloadingPO(true);
+    try {
+      const response = await api.get(`/orders/${order.id}/download-po`, {
+        responseType: 'blob',
+      });
+
+      const disposition =
+        response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      let filename = `PO-${order.orderNumber}.pdf`;
+
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      downloadBlob(response.data, filename);
+
+      toast({
+        title: 'PO Downloaded',
+        description: 'The purchase order PDF has been downloaded.',
+      });
+    } catch (error: any) {
+      console.error('Failed to download PO:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to download PO',
+        variant: 'destructive',
+      });
+    } finally {
+      setDownloadingPO(false);
+    }
   };
 
   const handleOpenDateDialog = () => {
@@ -359,6 +398,14 @@ export default function OrderDetailPage() {
             <p className="text-gray-500 mt-2">{order.customerName}</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleDownloadPO}
+              disabled={downloadingPO}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {downloadingPO ? 'Downloading...' : 'Download PO'}
+            </Button>
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" />
               Print Order
