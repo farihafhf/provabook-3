@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -41,6 +42,21 @@ interface ProductionMetric {
   notes?: string | null;
 }
 
+interface ProductionStageSummary {
+  total: number | string;
+  percent: number | string;
+}
+
+interface ProductionSummary {
+  order_id: string;
+  target: number | string;
+  metrics: {
+    knitting: ProductionStageSummary;
+    dyeing: ProductionStageSummary;
+    finishing: ProductionStageSummary;
+  };
+}
+
 export default function ProductionPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -54,6 +70,9 @@ export default function ProductionPage() {
 
   const [metrics, setMetrics] = useState<ProductionMetric[]>([]);
   const [metricsLoading, setMetricsLoading] = useState(false);
+
+  const [summary, setSummary] = useState<ProductionSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   const [logDialogOpen, setLogDialogOpen] = useState(false);
   const [logSubmitting, setLogSubmitting] = useState(false);
@@ -73,6 +92,15 @@ export default function ProductionPage() {
 
     fetchOrders();
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!selectedOrderId) {
+      setSummary(null);
+      return;
+    }
+
+    fetchSummaryForOrder(selectedOrderId);
+  }, [selectedOrderId]);
 
   const fetchOrders = async () => {
     try {
@@ -116,6 +144,22 @@ export default function ProductionPage() {
     }
   };
 
+  const fetchSummaryForOrder = async (orderId: string) => {
+    if (!orderId) return;
+    try {
+      setSummaryLoading(true);
+      const response = await api.get(`/production/summary/${orderId}/`, {
+        params: { _t: Date.now() },
+      });
+      setSummary(response.data as ProductionSummary);
+    } catch (error) {
+      console.error('Failed to fetch production summary:', error);
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) || null,
     [orders, selectedOrderId],
@@ -131,6 +175,26 @@ export default function ProductionPage() {
       );
     });
   }, [orders, orderSearch]);
+
+  const targetValue = summary ? Number(summary.target || 0) : 0;
+  const formattedTarget = targetValue.toLocaleString();
+
+  const getStageSummary = (stage: keyof ProductionSummary['metrics']) => {
+    if (!summary) {
+      return { total: 0, percent: 0 };
+    }
+
+    const data = summary.metrics[stage];
+    const total = Number(data?.total ?? 0);
+    const percentRaw = Number(data?.percent ?? 0);
+    const percent = Math.max(0, Math.min(100, percentRaw));
+
+    return { total, percent };
+  };
+
+  const knittingSummary = getStageSummary('knitting');
+  const dyeingSummary = getStageSummary('dyeing');
+  const finishingSummary = getStageSummary('finishing');
 
   const handleSelectOrder = (order: Order) => {
     setSelectedOrderId(order.id);
@@ -360,6 +424,77 @@ export default function ProductionPage() {
             )}
           </CardContent>
         </Card>
+
+        {selectedOrderId && (
+          <div className="grid gap-4 md:grid-cols-3">
+            {summaryLoading ? (
+              <div className="col-span-3 flex items-center gap-2 text-gray-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading production summary...</span>
+              </div>
+            ) : summary ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium text-gray-700">Knitting</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">Total / Target</span>
+                      <span className="font-semibold">
+                        {knittingSummary.total.toLocaleString()} / {formattedTarget}
+                      </span>
+                    </div>
+                    <Progress value={knittingSummary.percent} indicatorClassName="bg-blue-500" />
+                    <div className="flex justify-end text-xs text-gray-500">
+                      {knittingSummary.percent.toFixed(1)}%
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium text-gray-700">Dyeing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">Total / Target</span>
+                      <span className="font-semibold">
+                        {dyeingSummary.total.toLocaleString()} / {formattedTarget}
+                      </span>
+                    </div>
+                    <Progress value={dyeingSummary.percent} indicatorClassName="bg-purple-500" />
+                    <div className="flex justify-end text-xs text-gray-500">
+                      {dyeingSummary.percent.toFixed(1)}%
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium text-gray-700">Finishing</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">Total / Target</span>
+                      <span className="font-semibold">
+                        {finishingSummary.total.toLocaleString()} / {formattedTarget}
+                      </span>
+                    </div>
+                    <Progress value={finishingSummary.percent} indicatorClassName="bg-green-500" />
+                    <div className="flex justify-end text-xs text-gray-500">
+                      {finishingSummary.percent.toFixed(1)}%
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <div className="col-span-3 text-sm text-gray-500">
+                No summary data available yet for this order.
+              </div>
+            )}
+          </div>
+        )}
 
         <Card>
           <CardHeader>
