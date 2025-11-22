@@ -40,7 +40,7 @@ urlpatterns = [
         OrderViewSet.as_view({'get': 'download_po'}),
         name='order-download-po',
     ),
-    path('api/v1/orders', include('apps.orders.urls')),
+    path('api/v1/orders/', include('apps.orders.urls')),
     # Operational alerts (explicit routes to avoid prefix issues)
     path(
         'api/v1/orders/alerts/upcoming-etd',
