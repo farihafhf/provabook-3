@@ -9,8 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
-import { Plus, FileText, Upload } from 'lucide-react';
+import { Plus, FileText, Download, Trash, MoreHorizontal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -87,6 +93,28 @@ export default function SamplesPage() {
       setOrders(response.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this sample?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/samples/${id}`);
+      toast({
+        title: 'Success',
+        description: 'Sample deleted successfully',
+      });
+      fetchSamples(); // Refresh the list
+    } catch (error: any) {
+      console.error('Error deleting sample:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete sample',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -313,6 +341,8 @@ export default function SamplesPage() {
                       <th className="pb-3 font-medium">Courier</th>
                       <th className="pb-3 font-medium">AWB</th>
                       <th className="pb-3 font-medium">Submission Date</th>
+                      <th className="pb-3 font-medium">Attachment</th>
+                      <th className="pb-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -329,6 +359,39 @@ export default function SamplesPage() {
                         <td className="py-4">{sample.courierName || '-'}</td>
                         <td className="py-4">{sample.awbNumber || '-'}</td>
                         <td className="py-4">{sample.submissionDate ? formatDate(sample.submissionDate) : '-'}</td>
+                        <td className="py-4">
+                          {sample.attachment ? (
+                            <a
+                              href={sample.attachment}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              <Download className="h-4 w-4" />
+                              View
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(sample.id)}
+                                className="text-red-600 focus:text-red-600 cursor-pointer"
+                              >
+                                <Trash className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
