@@ -8,7 +8,6 @@ from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from apps.orders.models import Order, OrderStatus, OrderCategory
 from datetime import date, timedelta
-from dateutil.relativedelta import relativedelta
 
 
 @api_view(['GET'])
@@ -196,7 +195,10 @@ def dashboard_stats_view(request):
     # 3. Orders Trend (last 6 months)
     orders_trend = []
     today = date.today()
-    six_months_ago = today - relativedelta(months=6)
+    
+    # Calculate 6 months ago using timedelta (approximately)
+    # Go back roughly 180 days to cover 6 months
+    six_months_ago = today - timedelta(days=180)
     
     # Get orders from last 6 months, grouped by month
     monthly_counts = orders.filter(
@@ -213,10 +215,21 @@ def dashboard_stats_view(request):
         if item['month']:
             month_map[item['month'].strftime('%b')] = item['count']
     
-    # Fill in all 6 months (including zeros)
+    # Fill in all 6 months (including zeros) using simple month calculation
     for i in range(6):
-        month_date = today - relativedelta(months=5-i)
+        # Calculate month offset from current month
+        target_year = today.year
+        target_month = today.month - (5 - i)
+        
+        # Adjust year if month goes negative
+        while target_month <= 0:
+            target_month += 12
+            target_year -= 1
+        
+        # Create date for that month
+        month_date = date(target_year, target_month, 1)
         month_name = month_date.strftime('%b')
+        
         orders_trend.append({
             'name': month_name,
             'value': month_map.get(month_name, 0)
