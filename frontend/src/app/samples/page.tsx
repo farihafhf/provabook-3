@@ -46,6 +46,36 @@ interface Order {
   customerName: string;
 }
 
+const DELETED_SAMPLES_KEY = 'deleted_sample_ids';
+
+const getDeletedSampleIds = (): string[] => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(DELETED_SAMPLES_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const addDeletedSampleId = (id: string) => {
+  if (typeof window === 'undefined') return;
+
+  const existing = getDeletedSampleIds();
+  if (existing.includes(id)) return;
+
+  const next = [...existing, id];
+  try {
+    window.localStorage.setItem(DELETED_SAMPLES_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 export default function SamplesPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -81,9 +111,15 @@ export default function SamplesPage() {
       const response = await api.get('/samples/', {
         params: { _t: Date.now() } // Prevent caching
       });
-      console.log('Fetched samples:', response.data.length);
+      const deletedIds = getDeletedSampleIds();
+
+      const filteredSamples = Array.isArray(response.data)
+        ? (response.data as Sample[]).filter((sample) => !deletedIds.includes(sample.id))
+        : [];
+
+      console.log('Fetched samples (after filtering deleted):', filteredSamples.length);
       // Force new array reference to trigger React re-render
-      setSamples([...response.data]);
+      setSamples([...filteredSamples]);
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch samples:', error);
@@ -110,6 +146,7 @@ export default function SamplesPage() {
       await api.delete(`/samples/${id}`);
 
       setSamples((prevSamples) => prevSamples.filter((sample) => sample.id !== id));
+      addDeletedSampleId(id);
 
       toast({
         title: 'Success',
@@ -118,6 +155,7 @@ export default function SamplesPage() {
     } catch (error: any) {
       if (error?.response?.status === 404) {
         setSamples((prevSamples) => prevSamples.filter((sample) => sample.id !== id));
+        addDeletedSampleId(id);
 
         toast({
           title: 'Not Found',
