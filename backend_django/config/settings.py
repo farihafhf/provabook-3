@@ -27,7 +27,9 @@ DEBUG = env('DEBUG', default=True)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
 
 # URL Configuration
-APPEND_SLASH = False  # Don't automatically add trailing slashes
+# Automatically redirect URLs without trailing slashes to ones with trailing slashes
+# This ensures consistent API behavior regardless of whether frontend includes the slash
+APPEND_SLASH = True
 
 # Application definition
 INSTALLED_APPS = [
