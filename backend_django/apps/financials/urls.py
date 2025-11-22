@@ -7,7 +7,7 @@ from .views import ProformaInvoiceViewSet, LetterOfCreditViewSet
 
 app_name = 'financials'
 
-router = DefaultRouter(trailing_slash=False)
+router = DefaultRouter(trailing_slash=True)
 router.register(r'pis', ProformaInvoiceViewSet, basename='pi')
 router.register(r'lcs', LetterOfCreditViewSet, basename='lc')
 

@@ -7,10 +7,10 @@ from .views import SampleViewSet
 
 app_name = 'samples'
 
-# Configure router to work without trailing slashes (consistent with orders app)
-router = DefaultRouter(trailing_slash=False)
+# Configure router with trailing slashes for consistency
+router = DefaultRouter(trailing_slash=True)
 router.register(r'', SampleViewSet, basename='sample')
 
 urlpatterns = [
-    path('/', include(router.urls)),
+    path('', include(router.urls)),
 ]
