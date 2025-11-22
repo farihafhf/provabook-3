@@ -330,8 +330,6 @@ export default function FinancialsPage() {
         title: 'Success',
         description: 'Status updated',
       });
-
-      await fetchFinancials();
     } catch (error: any) {
       console.error('Error updating status:', error);
 
