@@ -10,6 +10,9 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source='order.order_number', read_only=True)
     customer_name = serializers.CharField(source='order.customer_name', read_only=True)
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    pi_number = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
     
     class Meta:
         model = ProformaInvoice
@@ -55,6 +58,9 @@ class LetterOfCreditSerializer(serializers.ModelSerializer):
     order_number = serializers.CharField(source='order.order_number', read_only=True)
     customer_name = serializers.CharField(source='order.customer_name', read_only=True)
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    lc_number = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
     
     class Meta:
         model = LetterOfCredit
