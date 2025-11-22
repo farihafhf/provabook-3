@@ -233,6 +233,253 @@ class Command(BaseCommand):
                     'labDip': 'pending'
                 }
             },
+            {
+                'customer_name': 'Continental Knits',
+                'buyer_name': 'C&A',
+                'style_number': 'CA-2025-101',
+                'fabric_type': 'Interlock',
+                'fabric_composition': '100% Cotton',
+                'gsm': Decimal('200.00'),
+                'finish_type': 'Bio Wash',
+                'construction': '24s Combed',
+                'mill_name': 'Continental Mills',
+                'mill_price': Decimal('5.10'),
+                'prova_price': Decimal('5.90'),
+                'currency': 'USD',
+                'quantity': Decimal('9000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=12),
+                'expected_delivery_date': date.today() + timedelta(days=35),
+                'etd': date.today() + timedelta(days=4),
+                'eta': date.today() + timedelta(days=22),
+                'status': OrderStatus.RUNNING,
+                'category': OrderCategory.RUNNING,
+                'current_stage': 'Production',
+                'colorways': ['Navy', 'Olive', 'White'],
+                'approval_status': {
+                    'labDip': 'approved',
+                    'strikeOff': 'pending'
+                }
+            },
+            {
+                'customer_name': 'Delta Apparel Ltd',
+                'buyer_name': 'Tesco',
+                'style_number': 'TS-2025-222',
+                'fabric_type': 'Rib Knit',
+                'fabric_composition': '95% Cotton, 5% Elastane',
+                'gsm': Decimal('240.00'),
+                'finish_type': 'Enzyme Wash',
+                'construction': '2x2 Rib',
+                'mill_name': 'Delta Textiles',
+                'mill_price': Decimal('5.70'),
+                'prova_price': Decimal('6.40'),
+                'currency': 'USD',
+                'quantity': Decimal('11000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=18),
+                'expected_delivery_date': date.today() + timedelta(days=50),
+                'etd': date.today() + timedelta(days=6),
+                'eta': date.today() + timedelta(days=28),
+                'status': OrderStatus.UPCOMING,
+                'category': OrderCategory.UPCOMING,
+                'current_stage': 'Development',
+                'colorways': ['Black', 'Heather Grey'],
+                'approval_status': {
+                    'labDip': 'pending'
+                }
+            },
+            {
+                'customer_name': 'Modern Knitwear',
+                'buyer_name': 'Marks & Spencer',
+                'style_number': 'MS-2024-333',
+                'fabric_type': 'Jacquard',
+                'fabric_composition': '100% Cotton',
+                'gsm': Decimal('260.00'),
+                'finish_type': 'Reactive Dyed',
+                'construction': 'Jacquard',
+                'mill_name': 'Modern Mills',
+                'mill_price': Decimal('7.20'),
+                'prova_price': Decimal('8.00'),
+                'currency': 'USD',
+                'quantity': Decimal('7000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=75),
+                'expected_delivery_date': date.today() - timedelta(days=2),
+                'actual_delivery_date': date.today() - timedelta(days=1),
+                'status': OrderStatus.COMPLETED,
+                'category': OrderCategory.ARCHIVED,
+                'current_stage': 'Delivered',
+                'colorways': ['White', 'Navy'],
+                'approval_status': {
+                    'labDip': 'approved',
+                    'strikeOff': 'approved',
+                    'qualityTest': 'approved'
+                }
+            },
+            {
+                'customer_name': 'Prime Textiles BD',
+                'buyer_name': 'Lidl',
+                'style_number': 'LD-2025-444',
+                'fabric_type': 'French Terry',
+                'fabric_composition': '80% Cotton, 20% Polyester',
+                'gsm': Decimal('300.00'),
+                'finish_type': 'Brushed',
+                'construction': 'French Terry',
+                'mill_name': 'Prime Mills',
+                'mill_price': Decimal('5.90'),
+                'prova_price': Decimal('6.70'),
+                'currency': 'USD',
+                'quantity': Decimal('13000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=8),
+                'expected_delivery_date': date.today() + timedelta(days=55),
+                'etd': date.today() + timedelta(days=9),
+                'eta': date.today() + timedelta(days=38),
+                'status': OrderStatus.RUNNING,
+                'category': OrderCategory.RUNNING,
+                'current_stage': 'Production',
+                'colorways': ['Charcoal', 'Black'],
+                'approval_status': {
+                    'labDip': 'approved',
+                    'strikeOff': 'approved'
+                }
+            },
+            {
+                'customer_name': 'Atlas Fashion',
+                'buyer_name': 'Target',
+                'style_number': 'TG-2025-555',
+                'fabric_type': 'Slub Jersey',
+                'fabric_composition': '100% Cotton',
+                'gsm': Decimal('170.00'),
+                'finish_type': 'Softener Wash',
+                'construction': 'Slub Jersey',
+                'mill_name': 'Atlas Textiles',
+                'mill_price': Decimal('4.30'),
+                'prova_price': Decimal('5.00'),
+                'currency': 'USD',
+                'quantity': Decimal('9500'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=22),
+                'expected_delivery_date': date.today() + timedelta(days=32),
+                'etd': date.today() + timedelta(days=3),
+                'eta': date.today() + timedelta(days=19),
+                'status': OrderStatus.UPCOMING,
+                'category': OrderCategory.UPCOMING,
+                'current_stage': 'Design',
+                'colorways': ['Blue', 'Red'],
+                'approval_status': {
+                    'labDip': 'pending'
+                }
+            },
+            {
+                'customer_name': 'Heritage Mills',
+                'buyer_name': 'Kohl\'s',
+                'style_number': 'KH-2024-666',
+                'fabric_type': 'Pique Polo Premium',
+                'fabric_composition': '95% Cotton, 5% Elastane',
+                'gsm': Decimal('230.00'),
+                'finish_type': 'Silicon Wash',
+                'construction': '20s Combed',
+                'mill_name': 'Heritage Fabrics',
+                'mill_price': Decimal('6.50'),
+                'prova_price': Decimal('7.20'),
+                'currency': 'USD',
+                'quantity': Decimal('10500'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=40),
+                'expected_delivery_date': date.today() + timedelta(days=20),
+                'etd': date.today() + timedelta(days=1),
+                'eta': date.today() + timedelta(days=18),
+                'status': OrderStatus.RUNNING,
+                'category': OrderCategory.RUNNING,
+                'current_stage': 'Production',
+                'colorways': ['White', 'Navy', 'Green'],
+                'approval_status': {
+                    'labDip': 'approved',
+                    'strikeOff': 'approved'
+                }
+            },
+            {
+                'customer_name': 'Evergreen Apparels',
+                'buyer_name': 'Old Navy',
+                'style_number': 'ON-2025-777',
+                'fabric_type': 'Brushed Fleece',
+                'fabric_composition': '60% Cotton, 40% Polyester',
+                'gsm': Decimal('290.00'),
+                'finish_type': 'Brushed',
+                'construction': 'Fleece',
+                'mill_name': 'Evergreen Textiles',
+                'mill_price': Decimal('5.40'),
+                'prova_price': Decimal('6.10'),
+                'currency': 'USD',
+                'quantity': Decimal('14000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=10),
+                'expected_delivery_date': date.today() + timedelta(days=48),
+                'etd': date.today() + timedelta(days=6),
+                'eta': date.today() + timedelta(days=30),
+                'status': OrderStatus.UPCOMING,
+                'category': OrderCategory.UPCOMING,
+                'current_stage': 'Development',
+                'colorways': ['Grey', 'Navy'],
+                'approval_status': {
+                    'labDip': 'pending'
+                }
+            },
+            {
+                'customer_name': 'Skyline Textiles',
+                'buyer_name': 'Gap',
+                'style_number': 'GP-2025-888',
+                'fabric_type': 'Modal Jersey',
+                'fabric_composition': '50% Cotton, 50% Modal',
+                'gsm': Decimal('190.00'),
+                'finish_type': 'Soft Finish',
+                'construction': 'Jersey',
+                'mill_name': 'Skyline Fabrics',
+                'mill_price': Decimal('6.00'),
+                'prova_price': Decimal('6.80'),
+                'currency': 'USD',
+                'quantity': Decimal('10000'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=28),
+                'expected_delivery_date': date.today() + timedelta(days=42),
+                'etd': date.today() + timedelta(days=5),
+                'eta': date.today() + timedelta(days=27),
+                'status': OrderStatus.RUNNING,
+                'category': OrderCategory.RUNNING,
+                'current_stage': 'Production',
+                'colorways': ['Black', 'White'],
+                'approval_status': {
+                    'labDip': 'approved'
+                }
+            },
+            {
+                'customer_name': 'Oceanic Fabrics',
+                'buyer_name': 'Uniqlo',
+                'style_number': 'UQ-2025-999',
+                'fabric_type': 'Air Flow Jersey',
+                'fabric_composition': '60% Cotton, 40% Polyester',
+                'gsm': Decimal('160.00'),
+                'finish_type': 'Moisture Wicking',
+                'construction': 'Mesh Jersey',
+                'mill_name': 'Oceanic Mills',
+                'mill_price': Decimal('4.90'),
+                'prova_price': Decimal('5.60'),
+                'currency': 'USD',
+                'quantity': Decimal('12500'),
+                'unit': 'meters',
+                'order_date': date.today() - timedelta(days=3),
+                'expected_delivery_date': date.today() + timedelta(days=65),
+                'etd': date.today() + timedelta(days=12),
+                'eta': date.today() + timedelta(days=45),
+                'status': OrderStatus.UPCOMING,
+                'category': OrderCategory.UPCOMING,
+                'current_stage': 'Design',
+                'colorways': ['Navy', 'Black'],
+                'approval_status': {
+                    'labDip': 'pending'
+                }
+            },
         ]
         
         # Create orders
@@ -393,10 +640,12 @@ startxref
             quantity = order.quantity or Decimal('1000')
             amount = unit_price * quantity
             
-            if not order.proforma_invoices.exists():
+            # Use unique PI/LC numbers and skip if they already exist so the command is idempotent
+            pi_number = f"PI-{order.order_number}"
+            if not ProformaInvoice.objects.filter(pi_number=pi_number).exists():
                 ProformaInvoice.objects.create(
                     order=order,
-                    pi_number=f"PI-{order.order_number}",
+                    pi_number=pi_number,
                     version=1,
                     status='confirmed' if order.status == OrderStatus.RUNNING else 'draft',
                     amount=amount,
@@ -405,12 +654,13 @@ startxref
                     created_by=merchandiser,
                 )
                 pi_created += 1
-            
-            if not order.letters_of_credit.exists():
+
+            lc_number = f"LC-{order.order_number}"
+            if not LetterOfCredit.objects.filter(lc_number=lc_number).exists():
                 issue_date = order.etd or date.today()
                 LetterOfCredit.objects.create(
                     order=order,
-                    lc_number=f"LC-{order.order_number}",
+                    lc_number=lc_number,
                     status='issued' if order.status in [OrderStatus.RUNNING, OrderStatus.COMPLETED] else 'pending',
                     amount=amount,
                     currency=order.currency,
