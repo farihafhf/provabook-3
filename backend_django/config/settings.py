@@ -54,7 +54,7 @@ INSTALLED_APPS = [
     'apps.samples',
     'apps.financials',
     # TODO: Uncomment as you create these apps
-    # 'apps.production',
+    'apps.production',
     # 'apps.incidents',
     # 'apps.shipments',
     # 'apps.notifications',

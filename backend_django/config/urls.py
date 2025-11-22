@@ -66,7 +66,7 @@ urlpatterns = [
     path('api/v1/orders/documents/<str:document_id>/', lambda request, document_id: __import__('apps.core.views', fromlist=['document_delete_view']).document_delete_view(request, document_id)),
     
     # TODO: Uncomment as you create these apps
-    # path('api/v1/production/', include('apps.production.urls')),
+    path('api/v1/production/', include('apps.production.urls')),
     # path('api/v1/incidents/', include('apps.incidents.urls')),
     # path('api/v1/shipments/', include('apps.shipments.urls')),
     # path('api/v1/notifications/', include('apps.notifications.urls')),
