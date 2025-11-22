@@ -7,7 +7,7 @@ from .views import SampleViewSet
 
 app_name = 'samples'
 
-router = DefaultRouter(trailing_slash=False)
+router = DefaultRouter()
 router.register(r'', SampleViewSet, basename='sample')
 
 urlpatterns = [
