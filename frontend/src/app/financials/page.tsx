@@ -145,6 +145,8 @@ const LC_STATUS_OPTIONS = [
   { value: 'expired', label: 'Expired' },
 ];
 
+const PAGE_SIZE = 10;
+
 export default function FinancialsPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -157,7 +159,13 @@ export default function FinancialsPage() {
   const [lcDialogOpen, setLcDialogOpen] = useState(false);
   const [piSubmitting, setPiSubmitting] = useState(false);
   const [lcSubmitting, setLcSubmitting] = useState(false);
-  
+  const [piPage, setPiPage] = useState(0);
+  const [lcPage, setLcPage] = useState(0);
+  const [editPiDialogOpen, setEditPiDialogOpen] = useState(false);
+  const [editLcDialogOpen, setEditLcDialogOpen] = useState(false);
+  const [editingPi, setEditingPi] = useState<ProformaInvoice | null>(null);
+  const [editingLc, setEditingLc] = useState<LetterOfCredit | null>(null);
+
   const [piFormData, setPiFormData] = useState({
     orderId: '',
     amount: '',
@@ -166,6 +174,22 @@ export default function FinancialsPage() {
   });
 
   const [lcFormData, setLcFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+    expiryDate: '',
+    issuingBank: '',
+  });
+
+  const [editPiFormData, setEditPiFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+  });
+
+  const [editLcFormData, setEditLcFormData] = useState({
     orderId: '',
     amount: '',
     currency: 'USD',
@@ -184,6 +208,14 @@ export default function FinancialsPage() {
     fetchOrders();
   }, [isAuthenticated, router]);
 
+  useEffect(() => {
+    setPiPage(0);
+  }, [pis.length]);
+
+  useEffect(() => {
+    setLcPage(0);
+  }, [lcs.length]);
+
   const fetchFinancials = async () => {
     try {
       const [pisResponse, lcsResponse] = await Promise.all([
@@ -201,11 +233,35 @@ export default function FinancialsPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/orders');
+      const response = await api.get('/orders/');
       setOrders(response.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
+  };
+
+  const handleOpenEditPI = (pi: ProformaInvoice) => {
+    setEditingPi(pi);
+    setEditPiFormData({
+      orderId: pi.orderId,
+      amount: pi.amount != null ? pi.amount.toString() : '',
+      currency: pi.currency || 'USD',
+      issueDate: pi.issueDate ? pi.issueDate.slice(0, 10) : '',
+    });
+    setEditPiDialogOpen(true);
+  };
+
+  const handleOpenEditLC = (lc: LetterOfCredit) => {
+    setEditingLc(lc);
+    setEditLcFormData({
+      orderId: lc.orderId,
+      amount: lc.amount != null ? lc.amount.toString() : '',
+      currency: lc.currency || 'USD',
+      issueDate: lc.issueDate ? lc.issueDate.slice(0, 10) : '',
+      expiryDate: lc.expiryDate ? lc.expiryDate.slice(0, 10) : '',
+      issuingBank: lc.issuingBank || '',
+    });
+    setEditLcDialogOpen(true);
   };
 
   const handleCreatePI = async (e: React.FormEvent) => {
@@ -247,6 +303,64 @@ export default function FinancialsPage() {
         ? error.response.data.message.join(', ')
         : error.response?.data?.message || error.message || 'Failed to create Proforma Invoice';
       
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setPiSubmitting(false);
+    }
+  };
+
+  const handleUpdatePI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPi) {
+      return;
+    }
+    setPiSubmitting(true);
+
+    try {
+      const piData = {
+        orderId: editPiFormData.orderId,
+        amount: parseFloat(editPiFormData.amount),
+        currency: editPiFormData.currency,
+        issueDate: editPiFormData.issueDate || undefined,
+      };
+
+      await api.patch(`/financials/pis/${editingPi.id}`, piData);
+
+      setPis((prev) =>
+        prev.map((pi) =>
+          pi.id === editingPi.id
+            ? {
+                ...pi,
+                orderId: editPiFormData.orderId,
+                amount: parseFloat(editPiFormData.amount),
+                currency: editPiFormData.currency,
+                issueDate: editPiFormData.issueDate || undefined,
+              }
+            : pi
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Proforma Invoice updated successfully',
+      });
+
+      setEditPiDialogOpen(false);
+      setEditingPi(null);
+    } catch (error: any) {
+      console.error('Error updating PI:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+
+      const errorMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to update Proforma Invoice';
+
       toast({
         title: 'Error',
         description: errorMessage,
@@ -310,6 +424,68 @@ export default function FinancialsPage() {
     }
   };
 
+  const handleUpdateLC = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLc) {
+      return;
+    }
+    setLcSubmitting(true);
+
+    try {
+      const lcData = {
+        orderId: editLcFormData.orderId,
+        amount: parseFloat(editLcFormData.amount),
+        currency: editLcFormData.currency,
+        issueDate: editLcFormData.issueDate,
+        expiryDate: editLcFormData.expiryDate,
+        issuingBank: editLcFormData.issuingBank || undefined,
+      };
+
+      await api.patch(`/financials/lcs/${editingLc.id}`, lcData);
+
+      setLcs((prev) =>
+        prev.map((lc) =>
+          lc.id === editingLc.id
+            ? {
+                ...lc,
+                orderId: editLcFormData.orderId,
+                amount: parseFloat(editLcFormData.amount),
+                currency: editLcFormData.currency,
+                issueDate: editLcFormData.issueDate,
+                expiryDate: editLcFormData.expiryDate,
+                issuingBank: editLcFormData.issuingBank || undefined,
+              }
+            : lc
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Letter of Credit updated successfully',
+      });
+
+      setEditLcDialogOpen(false);
+      setEditingLc(null);
+    } catch (error: any) {
+      console.error('Error updating LC:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+
+      const errorMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to update Letter of Credit';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setLcSubmitting(false);
+    }
+  };
+
   const handleStatusChange = async (id: string, newStatus: string, modelType: 'pi' | 'lc') => {
     try {
       const endpoint = modelType === 'pi' ? '/financials/pis' : '/financials/lcs';
@@ -344,6 +520,17 @@ export default function FinancialsPage() {
       });
     }
   };
+
+  const piTotalPages = Math.ceil(pis.length / PAGE_SIZE);
+  const lcTotalPages = Math.ceil(lcs.length / PAGE_SIZE);
+  const paginatedPis =
+    piTotalPages > 0
+      ? pis.slice(piPage * PAGE_SIZE, piPage * PAGE_SIZE + PAGE_SIZE)
+      : [];
+  const paginatedLcs =
+    lcTotalPages > 0
+      ? lcs.slice(lcPage * PAGE_SIZE, lcPage * PAGE_SIZE + PAGE_SIZE)
+      : [];
 
   if (loading) {
     return (
@@ -451,7 +638,7 @@ export default function FinancialsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pis.map((pi) => {
+                  {paginatedPis.map((pi) => {
                     const statusBadge = getPiStatusBadge(pi.status);
 
                     return (
@@ -477,6 +664,9 @@ export default function FinancialsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenEditPI(pi)}>
+                                  Edit
+                                </DropdownMenuItem>
                                 <DropdownMenuSub>
                                   <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
                                   <DropdownMenuSubContent>
@@ -506,6 +696,33 @@ export default function FinancialsPage() {
                       </div>
                     );
                   })}
+                  <div className="flex items-center justify-between pt-3">
+                    <p className="text-sm text-gray-500">
+                      Page {piPage + 1} of {piTotalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPiPage((prev) => Math.max(prev - 1, 0))}
+                        disabled={piPage === 0}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setPiPage((prev) =>
+                            Math.min(prev + 1, piTotalPages - 1)
+                          )
+                        }
+                        disabled={piPage >= piTotalPages - 1}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -617,7 +834,7 @@ export default function FinancialsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {lcs.map((lc) => {
+                  {paginatedLcs.map((lc) => {
                     const statusBadge = getLcStatusBadge(lc.status);
 
                     return (
@@ -645,6 +862,9 @@ export default function FinancialsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenEditLC(lc)}>
+                                  Edit
+                                </DropdownMenuItem>
                                 <DropdownMenuSub>
                                   <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
                                   <DropdownMenuSubContent>
@@ -682,11 +902,277 @@ export default function FinancialsPage() {
                       </div>
                     );
                   })}
+                  <div className="flex items-center justify-between pt-3">
+                    <p className="text-sm text-gray-500">
+                      Page {lcPage + 1} of {lcTotalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLcPage((prev) => Math.max(prev - 1, 0))}
+                        disabled={lcPage === 0}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setLcPage((prev) =>
+                            Math.min(prev + 1, lcTotalPages - 1)
+                          )
+                        }
+                        disabled={lcPage >= lcTotalPages - 1}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
+
+        <Dialog
+          open={editPiDialogOpen}
+          onOpenChange={(open) => {
+            setEditPiDialogOpen(open);
+            if (!open) {
+              setEditingPi(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Proforma Invoice</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdatePI} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_number">PI Number</Label>
+                  <Input id="edit_pi_number" value={editingPi?.piNumber ?? ''} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_order">Customer / Order *</Label>
+                  <Select
+                    value={editPiFormData.orderId}
+                    onValueChange={(value) =>
+                      setEditPiFormData({ ...editPiFormData, orderId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.orderNumber} - {order.customerName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_amount">Amount *</Label>
+                  <Input
+                    id="edit_pi_amount"
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editPiFormData.amount}
+                    onChange={(e) =>
+                      setEditPiFormData({ ...editPiFormData, amount: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_currency">Currency</Label>
+                  <Select
+                    value={editPiFormData.currency}
+                    onValueChange={(value) =>
+                      setEditPiFormData({ ...editPiFormData, currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="BDT">BDT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_issueDate">Issue Date</Label>
+                  <Input
+                    id="edit_pi_issueDate"
+                    type="date"
+                    value={editPiFormData.issueDate}
+                    onChange={(e) =>
+                      setEditPiFormData({ ...editPiFormData, issueDate: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditPiDialogOpen(false);
+                    setEditingPi(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={piSubmitting || !editPiFormData.orderId || !editPiFormData.amount}
+                >
+                  {piSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={editLcDialogOpen}
+          onOpenChange={(open) => {
+            setEditLcDialogOpen(open);
+            if (!open) {
+              setEditingLc(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Letter of Credit</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateLC} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_number">LC Number</Label>
+                  <Input id="edit_lc_number" value={editingLc?.lcNumber ?? ''} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_order">Customer / Order *</Label>
+                  <Select
+                    value={editLcFormData.orderId}
+                    onValueChange={(value) =>
+                      setEditLcFormData({ ...editLcFormData, orderId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.orderNumber} - {order.customerName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_amount">Amount *</Label>
+                  <Input
+                    id="edit_lc_amount"
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editLcFormData.amount}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, amount: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_currency">Currency</Label>
+                  <Select
+                    value={editLcFormData.currency}
+                    onValueChange={(value) =>
+                      setEditLcFormData({ ...editLcFormData, currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="BDT">BDT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_issueDate">Issue Date *</Label>
+                  <Input
+                    id="edit_lc_issueDate"
+                    type="date"
+                    required
+                    value={editLcFormData.issueDate}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, issueDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_expiryDate">Expiry Date *</Label>
+                  <Input
+                    id="edit_lc_expiryDate"
+                    type="date"
+                    required
+                    value={editLcFormData.expiryDate}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, expiryDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_issuingBank">Issuing Bank</Label>
+                  <Input
+                    id="edit_lc_issuingBank"
+                    value={editLcFormData.issuingBank}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, issuingBank: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditLcDialogOpen(false);
+                    setEditingLc(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    lcSubmitting ||
+                    !editLcFormData.orderId ||
+                    !editLcFormData.amount ||
+                    !editLcFormData.issueDate ||
+                    !editLcFormData.expiryDate
+                  }
+                >
+                  {lcSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
