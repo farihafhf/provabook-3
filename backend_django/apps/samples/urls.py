@@ -7,7 +7,8 @@ from .views import SampleViewSet
 
 app_name = 'samples'
 
-router = DefaultRouter()
+# Configure router to work without trailing slashes (consistent with orders app)
+router = DefaultRouter(trailing_slash=False)
 router.register(r'', SampleViewSet, basename='sample')
 
 urlpatterns = [
