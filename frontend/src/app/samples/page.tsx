@@ -78,7 +78,7 @@ export default function SamplesPage() {
 
   const fetchSamples = async () => {
     try {
-      const response = await api.get('/samples');
+      const response = await api.get('/samples/');
       setSamples(response.data);
     } catch (error) {
       console.error('Failed to fetch samples:', error);
@@ -102,7 +102,7 @@ export default function SamplesPage() {
     }
 
     try {
-      await api.delete(`/samples/${id}`);
+      await api.delete(`/samples/${id}/`);
       toast({
         title: 'Success',
         description: 'Sample deleted successfully',
@@ -137,7 +137,7 @@ export default function SamplesPage() {
 
       console.log('Creating sample with FormData');
 
-      await api.post('/samples', formDataToSend, {
+      await api.post('/samples/', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

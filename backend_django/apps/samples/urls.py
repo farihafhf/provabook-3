@@ -12,5 +12,5 @@ router = DefaultRouter(trailing_slash=False)
 router.register(r'', SampleViewSet, basename='sample')
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('/', include(router.urls)),
 ]
