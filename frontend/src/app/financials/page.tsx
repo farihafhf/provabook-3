@@ -187,8 +187,8 @@ export default function FinancialsPage() {
   const fetchFinancials = async () => {
     try {
       const [pisResponse, lcsResponse] = await Promise.all([
-        api.get('/financials/pis'),
-        api.get('/financials/lcs'),
+        api.get('/financials/pis', { params: { _t: Date.now() } }),
+        api.get('/financials/lcs', { params: { _t: Date.now() } }),
       ]);
       setPis(pisResponse.data);
       setLcs(lcsResponse.data);
@@ -315,6 +315,16 @@ export default function FinancialsPage() {
       const endpoint = modelType === 'pi' ? '/financials/pis' : '/financials/lcs';
 
       await api.patch(`${endpoint}/${id}`, { status: newStatus });
+
+      if (modelType === 'pi') {
+        setPis((prev) =>
+          prev.map((pi) => (pi.id === id ? { ...pi, status: newStatus } : pi))
+        );
+      } else {
+        setLcs((prev) =>
+          prev.map((lc) => (lc.id === id ? { ...lc, status: newStatus } : lc))
+        );
+      }
 
       toast({
         title: 'Success',
