@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Plus, Eye, Trash2, Download } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import { formatDate } from '@/lib/utils';
+import { formatDate, downloadBlob } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { OrderFilters } from '@/components/orders/order-filters';
 
@@ -38,6 +38,7 @@ interface OrdersFilterParams {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -47,6 +48,7 @@ export default function OrdersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [formData, setFormData] = useState({
     customerName: '',
@@ -107,6 +109,51 @@ export default function OrdersPage() {
       console.error('Failed to fetch orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true);
+
+      const queryParams: Record<string, string> = {};
+      const search = searchParams.get('search');
+      const status = searchParams.get('status');
+      const orderDateFrom = searchParams.get('order_date_from');
+      const orderDateTo = searchParams.get('order_date_to');
+
+      if (search) queryParams.search = search;
+      if (status) queryParams.status = status;
+      if (orderDateFrom) queryParams.order_date_from = orderDateFrom;
+      if (orderDateTo) queryParams.order_date_to = orderDateTo;
+
+      const response = await api.get('/orders/export-excel', {
+        params: queryParams,
+        responseType: 'blob',
+      });
+
+      const disposition =
+        response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      let filename = 'orders.xlsx';
+
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      downloadBlob(response.data, filename);
+    } catch (error: any) {
+      console.error('Failed to export orders:', error);
+      const message = error.response?.data?.message || 'Failed to export orders';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -295,18 +342,28 @@ export default function OrdersPage() {
             <h1 className="text-3xl font-bold">Orders</h1>
             <p className="text-gray-500 mt-2">Manage textile fabric orders</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Order
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create New Order</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreateOrder} className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={exporting}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? 'Exporting...' : 'Export to Excel'}
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Order
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create New Order</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateOrder} className="space-y-6">
                 {/* Basic Information */}
                 <div>
                   <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
@@ -433,13 +490,14 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={submitting}>{submitting ? 'Creating...' : 'Create Order'}</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={submitting}>{submitting ? 'Creating...' : 'Create Order'}</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <Suspense fallback={null}>
