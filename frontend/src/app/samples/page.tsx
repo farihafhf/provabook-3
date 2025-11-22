@@ -105,11 +105,17 @@ export default function SamplesPage() {
       console.log('Deleting sample:', id);
       await api.delete(`/samples/${id}`);
       console.log('Delete successful, refreshing list...');
+      
+      // Wait a moment for backend to process
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await fetchSamples(); // Refresh the list
+      console.log('List refreshed, new count:', samples.length);
+      
       toast({
         title: 'Success',
         description: 'Sample deleted successfully',
       });
-      await fetchSamples(); // Refresh the list
     } catch (error: any) {
       console.error('Error deleting sample:', error);
       toast({
