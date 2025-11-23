@@ -439,85 +439,129 @@ export default function DashboardPage() {
             <p className="text-gray-500 mt-2">Your assigned orders and recent activity</p>
           </div>
 
-          {/* Dashboard Charts - Merchandiser View */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Orders by Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {chartLoading ? (
-                  <div className="flex items-center justify-center h-[300px]">
-                    <p className="text-gray-500 text-sm">Loading chart...</p>
+          {/* Key Metrics & Charts - Top Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* My Orders by Stage with Visual Breakdown */}
+            {data.byStage && (
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardTitle className="text-lg">My Orders Distribution by Stage</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {chartLoading ? (
+                    <div className="flex items-center justify-center h-[280px]">
+                      <p className="text-gray-500 text-sm">Loading chart...</p>
+                    </div>
+                  ) : (
+                    <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                  )}
+                  <div className="grid grid-cols-3 gap-2 mt-4">
+                    {Object.entries(data.byStage).slice(0, 6).map(([stage, count]) => (
+                      <div key={stage} className="text-center p-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
+                        <div className="text-2xl font-bold text-gray-800">{count}</div>
+                        <p className="text-xs text-gray-600 mt-1">{stage}</p>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <OrdersByStageChart data={chartData?.orders_by_stage || []} />
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>My Monthly Trends (Last 6 Months)</CardTitle>
+            {/* My Monthly Trends */}
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+                <CardTitle className="text-lg">My Monthly Trends (Last 6 Months)</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {chartLoading ? (
-                  <div className="flex items-center justify-center h-[300px]">
+                  <div className="flex items-center justify-center h-[280px]">
                     <p className="text-gray-500 text-sm">Loading chart...</p>
                   </div>
                 ) : (
                   <MonthlyTrendsChart data={chartData?.orders_trend || []} />
                 )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-indigo-600">{data.myTotalCount}</div>
+                    <p className="text-xs text-gray-500">Total Orders</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-emerald-600">{data.myRunningCount}</div>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-600">{data.myArchivedCount}</div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* My Orders Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="border-l-4 border-l-indigo-500">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">My Total Orders</CardTitle>
-                <Package className="h-5 w-5 text-indigo-500" />
+          {/* Timeline Overview - Second Row */}
+          {data.upcoming && (
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
+                <CardTitle className="text-lg">My Upcoming Delivery Timeline</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-indigo-600">{data.myTotalCount}</div>
-                <p className="text-xs text-gray-500 mt-1">All my orders</p>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-blue-600" />
+                      ETD (Estimated Time of Dispatch)
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="text-sm text-gray-600">Next 7 days</span>
+                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next7}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="text-sm text-gray-600">Next 14 days</span>
+                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next14}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="text-sm text-gray-600">Next 30 days</span>
+                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next30}</span>
+                      </div>
+                      {data.upcoming.etd.overdue > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                          <span className="text-sm text-gray-600">Overdue</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.etd.overdue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-green-600" />
+                      ETA (Estimated Time of Arrival)
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">Next 7 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next7}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">Next 14 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next14}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">Next 30 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next30}</span>
+                      </div>
+                      {data.upcoming.eta.overdue > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                          <span className="text-sm text-gray-600">Overdue</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.eta.overdue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-
-            <Card className="border-l-4 border-l-amber-500">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">My Upcoming Orders</CardTitle>
-                <Clock className="h-5 w-5 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-amber-600">{data.myUpcomingCount}</div>
-                <p className="text-xs text-gray-500 mt-1">Orders in design phase</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">My Running Orders</CardTitle>
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-emerald-600">{data.myRunningCount}</div>
-                <p className="text-xs text-gray-500 mt-1">Orders in production</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-slate-500">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">My Archived Orders</CardTitle>
-                <Archive className="h-5 w-5 text-slate-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-slate-700">{data.myArchivedCount}</div>
-                <p className="text-xs text-gray-500 mt-1">Delivered</p>
-              </CardContent>
-            </Card>
-          </div>
+          )}
 
           {/* My Financial Analytics & Pending LCs - Responsive Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
