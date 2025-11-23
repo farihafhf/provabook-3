@@ -585,7 +585,7 @@ export default function OrderEditPage() {
                         <SelectValue placeholder="Select user to assign task" />
                       </SelectTrigger>
                       <SelectContent>
-                        {users.map((user) => (
+                        {users && Array.isArray(users) && users.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.fullName} ({user.role})
                           </SelectItem>

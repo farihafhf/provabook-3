@@ -607,7 +607,7 @@ export default function OrderDetailPage() {
                               <SelectValue placeholder="Select user to assign" />
                             </SelectTrigger>
                             <SelectContent>
-                              {users.map((user) => (
+                              {users && Array.isArray(users) && users.map((user) => (
                                 <SelectItem key={user.id} value={user.id}>
                                   {user.fullName} ({user.role})
                                 </SelectItem>
