@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from apps.orders.models import Order, OrderStatus, OrderCategory
 from apps.samples.models import Sample
 from apps.financials.models import ProformaInvoice, LetterOfCredit
+from apps.shipments.models import Shipment
 from decimal import Decimal
 from datetime import date, timedelta
 from django.utils import timezone
@@ -34,6 +35,9 @@ class Command(BaseCommand):
 
         # Create financial documents
         self.create_financials()
+        
+        # Create shipments
+        self.create_shipments()
         
         self.stdout.write(self.style.SUCCESS('\n=== Database seeded successfully! ==='))
         self.stdout.write(self.style.SUCCESS('\nDemo Credentials:'))
@@ -673,4 +677,134 @@ startxref
         
         self.stdout.write(self.style.SUCCESS(
             f'\n  Created {pi_created} proforma invoices and {lc_created} letters of credit'
+        ))
+
+    def create_shipments(self):
+        """Create shipment records for orders"""
+        self.stdout.write('\nCreating shipments...')
+        
+        orders = Order.objects.all()
+        if not orders.exists():
+            self.stdout.write(self.style.WARNING('  [WARN] No orders found, skipping shipments'))
+            return
+        
+        # Create dummy PDF content for packing lists
+        dummy_pdf_content = b"""%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources <<
+/Font <<
+/F1 <<
+/Type /Font
+/Subtype /Type1
+/BaseFont /Helvetica
+>>
+>>
+>>
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 44
+>>
+stream
+BT
+/F1 12 Tf
+50 700 Td
+(Packing List Document) Tj
+ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000314 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+407
+%%EOF"""
+        
+        shipment_configs = [
+            # (carrier, status, has_document, days_offset_from_order)
+            ('DHL Express', 'delivered', True, -10),
+            ('FedEx International', 'delivered', True, -5),
+            ('Maersk Shipping', 'in_transit', True, 2),
+            ('UPS Worldwide', 'in_transit', True, 3),
+            ('Aramex', 'pending', True, 5),
+            ('SF Express', 'pending', False, 7),
+            ('TNT Express', 'pending', False, 10),
+        ]
+        
+        created_count = 0
+        
+        # Create shipments for the first few orders
+        for idx, order in enumerate(orders[:10]):
+            # Skip archived/completed orders after index 2
+            if idx > 2 and order.status == OrderStatus.COMPLETED:
+                continue
+            
+            # Choose shipment config based on order index
+            config_idx = idx % len(shipment_configs)
+            carrier, status, has_document, days_offset = shipment_configs[config_idx]
+            
+            # Generate unique AWB number
+            awb_number = f"{carrier.split()[0].upper()}-{order.order_number}-{1000 + idx}"
+            
+            # Check if shipment already exists for this order
+            if not Shipment.objects.filter(order=order, awb_number=awb_number).exists():
+                # Calculate shipping date based on order date
+                order_date = order.order_date or date.today()
+                shipping_date = order_date + timedelta(days=abs(days_offset))
+                if days_offset < 0:
+                    shipping_date = order_date - timedelta(days=abs(days_offset))
+                
+                shipment = Shipment.objects.create(
+                    order=order,
+                    carrier_name=carrier,
+                    awb_number=awb_number,
+                    shipping_date=shipping_date,
+                    status=status,
+                    notes=f"Shipment for {order.style_number or order.order_number} via {carrier}",
+                )
+                
+                # Add document for some shipments
+                if has_document:
+                    filename = f"packing_list_{order.order_number}_{awb_number}.pdf"
+                    shipment.documents.save(filename, ContentFile(dummy_pdf_content), save=True)
+                    self.stdout.write(self.style.SUCCESS(
+                        f'  [OK] Created shipment with document: {awb_number} - {status}'
+                    ))
+                else:
+                    self.stdout.write(self.style.SUCCESS(
+                        f'  [OK] Created shipment: {awb_number} - {status}'
+                    ))
+                
+                created_count += 1
+        
+        self.stdout.write(self.style.SUCCESS(
+            f'\n  Created {created_count} shipments (some with documents)'
         ))
