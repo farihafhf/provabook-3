@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
-import { Plus, FileText, DollarSign, MoreHorizontal, Upload, Download, Search, History } from 'lucide-react';
+import { Plus, FileText, DollarSign, MoreHorizontal, Download, Search, History, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -167,9 +167,14 @@ export default function FinancialsPage() {
   const [editingPi, setEditingPi] = useState<ProformaInvoice | null>(null);
   const [editingLc, setEditingLc] = useState<LetterOfCredit | null>(null);
 
-  const [selectedOrderFilter, setSelectedOrderFilter] = useState<string>('');
-  const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  
+  const [deletePiDialogOpen, setDeletePiDialogOpen] = useState(false);
+  const [deleteLcDialogOpen, setDeleteLcDialogOpen] = useState(false);
+  const [piToDelete, setPiToDelete] = useState<ProformaInvoice | null>(null);
+  const [lcToDelete, setLcToDelete] = useState<LetterOfCredit | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [piFormData, setPiFormData] = useState({
     orderId: '',
@@ -221,16 +226,16 @@ export default function FinancialsPage() {
     setLcPage(0);
   }, [lcs.length]);
 
-  const fetchFinancials = async (orderId?: string) => {
+  const fetchFinancials = async (search?: string) => {
     try {
       const params: any = { _t: Date.now() };
-      if (orderId) {
-        params.order = orderId;
+      if (search) {
+        params.search = search;
       }
       
       const [pisResponse, lcsResponse] = await Promise.all([
         api.get('/financials/pis', { params }),
-        api.get('/financials/lcs', { params: { _t: Date.now() } }),
+        api.get('/financials/lcs', { params }),
       ]);
       setPis(pisResponse.data);
       setLcs(lcsResponse.data);
@@ -241,10 +246,14 @@ export default function FinancialsPage() {
     }
   };
 
-  const handleOrderFilterChange = (orderId: string) => {
-    const actualOrderId = orderId === 'all' ? '' : orderId;
-    setSelectedOrderFilter(actualOrderId);
-    fetchFinancials(actualOrderId || undefined);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchFinancials(searchQuery || undefined);
+  };
+
+  const handleResetSearch = () => {
+    setSearchQuery('');
+    fetchFinancials();
   };
 
   const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -581,6 +590,78 @@ export default function FinancialsPage() {
     }
   };
 
+  const handleDeletePI = (pi: ProformaInvoice) => {
+    setPiToDelete(pi);
+    setDeletePiDialogOpen(true);
+  };
+
+  const handleDeleteLC = (lc: LetterOfCredit) => {
+    setLcToDelete(lc);
+    setDeleteLcDialogOpen(true);
+  };
+
+  const handleConfirmDeletePI = async () => {
+    if (!piToDelete) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/financials/pis/${piToDelete.id}`);
+
+      setPis((prev) => prev.filter((pi) => pi.id !== piToDelete.id));
+
+      toast({
+        title: 'Success',
+        description: 'Proforma Invoice deleted successfully',
+      });
+
+      setDeletePiDialogOpen(false);
+      setPiToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting PI:', error);
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete Proforma Invoice';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteLC = async () => {
+    if (!lcToDelete) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/financials/lcs/${lcToDelete.id}`);
+
+      setLcs((prev) => prev.filter((lc) => lc.id !== lcToDelete.id));
+
+      toast({
+        title: 'Success',
+        description: 'Letter of Credit deleted successfully',
+      });
+
+      setDeleteLcDialogOpen(false);
+      setLcToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting LC:', error);
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete Letter of Credit';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const piTotalPages = Math.ceil(pis.length / PAGE_SIZE);
   const lcTotalPages = Math.ceil(lcs.length / PAGE_SIZE);
   const paginatedPis =
@@ -602,11 +683,6 @@ export default function FinancialsPage() {
     );
   }
 
-  const filteredOrders = orders.filter(order => 
-    order.orderNumber.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-    order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase())
-  );
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -615,56 +691,40 @@ export default function FinancialsPage() {
           <p className="text-gray-500 mt-2">Manage Proforma Invoices and Letters of Credit</p>
         </div>
 
-        {/* Order Filter Section */}
+        {/* Search Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="h-5 w-5" />
-              Filter by Order
+              Search Financials
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="order-search">Search Orders</Label>
-                <Input
-                  id="order-search"
-                  placeholder="Search by order number or customer..."
-                  value={orderSearchQuery}
-                  onChange={(e) => setOrderSearchQuery(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="order-filter">Select Order</Label>
-                <Select value={selectedOrderFilter || "all"} onValueChange={handleOrderFilterChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All orders" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All orders</SelectItem>
-                    {filteredOrders.map((order) => (
-                      <SelectItem key={order.id} value={order.id}>
-                        {order.orderNumber} - {order.customerName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {selectedOrderFilter && (
-              <div className="mt-3 flex items-center gap-2">
-                <Badge variant="secondary">
-                  Showing PIs for: {orders.find(o => o.id === selectedOrderFilter)?.orderNumber}
-                </Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => handleOrderFilterChange('all')}
-                >
-                  Clear filter
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    id="search"
+                    placeholder="Search by order number, customer name, PI number, or LC number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Button type="submit">
+                  Search
+                </Button>
+                <Button type="button" variant="outline" onClick={handleResetSearch}>
+                  Reset
                 </Button>
               </div>
-            )}
+              {searchQuery && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    Searching for: {searchQuery}
+                  </Badge>
+                </div>
+              )}
+            </form>
           </CardContent>
         </Card>
 
@@ -837,6 +897,13 @@ export default function FinancialsPage() {
                                     ))}
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeletePI(pi)}
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1035,6 +1102,13 @@ export default function FinancialsPage() {
                                     ))}
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteLC(lc)}
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1327,6 +1401,82 @@ export default function FinancialsPage() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete PI Confirmation Dialog */}
+        <Dialog open={deletePiDialogOpen} onOpenChange={setDeletePiDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Proforma Invoice</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this Proforma Invoice? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {piToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>PI Number:</strong> {piToDelete.piNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {piToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {piToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Amount:</strong> {piToDelete.currency} {piToDelete.amount.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeletePiDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeletePI}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete PI'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete LC Confirmation Dialog */}
+        <Dialog open={deleteLcDialogOpen} onOpenChange={setDeleteLcDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Letter of Credit</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this Letter of Credit? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {lcToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>LC Number:</strong> {lcToDelete.lcNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {lcToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {lcToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Amount:</strong> {lcToDelete.currency} {lcToDelete.amount.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteLcDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeleteLC}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete LC'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

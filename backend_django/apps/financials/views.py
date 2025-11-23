@@ -20,13 +20,22 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):
     pagination_class = None
     
     def get_queryset(self):
-        """Filter by user role and optionally by order"""
+        """Filter by user role, search, and optionally by order"""
         user = self.request.user
         queryset = self.queryset
         
         # Filter by user role
         if user.role == 'merchandiser':
             queryset = queryset.filter(order__merchandiser=user)
+        
+        # Filter by search parameter (search order number, customer name, PI number)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(order__order_number__icontains=search) |
+                Q(order__customer_name__icontains=search) |
+                Q(pi_number__icontains=search)
+            )
         
         # Filter by order if provided
         order_id = self.request.query_params.get('order')
@@ -74,11 +83,29 @@ class LetterOfCreditViewSet(viewsets.ModelViewSet):
     pagination_class = None
     
     def get_queryset(self):
-        """Filter by user role"""
+        """Filter by user role and search"""
         user = self.request.user
+        queryset = self.queryset
+        
+        # Filter by user role
         if user.role == 'merchandiser':
-            return self.queryset.filter(order__merchandiser=user)
-        return self.queryset
+            queryset = queryset.filter(order__merchandiser=user)
+        
+        # Filter by search parameter (search order number, customer name, LC number)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(order__order_number__icontains=search) |
+                Q(order__customer_name__icontains=search) |
+                Q(lc_number__icontains=search)
+            )
+        
+        # Filter by order if provided
+        order_id = self.request.query_params.get('order')
+        if order_id:
+            queryset = queryset.filter(order_id=order_id)
+        
+        return queryset
     
     def perform_create(self, serializer):
         """Auto-generate LC number and set created_by"""
