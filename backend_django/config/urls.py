@@ -56,6 +56,7 @@ urlpatterns = [
     # Dashboard (temporary endpoint in core)
     path('api/v1/dashboard/', lambda request: __import__('apps.core.views', fromlist=['dashboard_view']).dashboard_view(request)),
     path('api/v1/dashboard/stats/', lambda request: __import__('apps.core.views', fromlist=['dashboard_stats_view']).dashboard_stats_view(request)),
+    path('api/v1/dashboard/orders-by-merchandiser/', lambda request: __import__('apps.core.views', fromlist=['orders_by_merchandiser_view']).orders_by_merchandiser_view(request)),
     
     # Samples API
     path('api/v1/samples/', include('apps.samples.urls')),

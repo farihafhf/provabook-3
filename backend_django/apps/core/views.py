@@ -240,3 +240,48 @@ def dashboard_stats_view(request):
         'orders_by_merchandiser': orders_by_merchandiser,
         'orders_trend': orders_trend
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def orders_by_merchandiser_view(request):
+    """
+    GET /api/v1/dashboard/orders-by-merchandiser/
+    Return orders for a specific merchandiser with their styles and buyer names
+    Query params:
+      - merchandiser_name: Full name of the merchandiser
+    """
+    merchandiser_name = request.query_params.get('merchandiser_name')
+    
+    if not merchandiser_name:
+        return Response({
+            'error': 'merchandiser_name parameter is required'
+        }, status=400)
+    
+    # Get orders for this merchandiser
+    # Filter by merchandiser full_name and only get Running orders
+    orders = Order.objects.filter(
+        merchandiser__full_name=merchandiser_name,
+        status='running'
+    ).select_related('merchandiser').order_by('-created_at')
+    
+    # Format the orders data
+    orders_data = []
+    for order in orders:
+        orders_data.append({
+            'id': str(order.id),
+            'order_number': order.order_number,
+            'style': order.style_name or 'N/A',
+            'buyer': order.buyer_name or 'N/A',
+            'customer': order.customer_name or 'N/A',
+            'quantity': float(order.quantity) if order.quantity else 0,
+            'unit': order.unit,
+            'status': order.status,
+            'current_stage': order.current_stage or 'N/A',
+        })
+    
+    return Response({
+        'merchandiser_name': merchandiser_name,
+        'total_orders': len(orders_data),
+        'orders': orders_data
+    })

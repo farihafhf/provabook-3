@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { DollarSign } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface FinancialData {
   potential: number;
@@ -33,6 +34,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function FinancialCharts() {
+  const router = useRouter();
   const [data, setData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,24 +137,33 @@ export function FinancialCharts() {
           </div>
 
           {/* Bar Chart */}
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-                axisLine={{ stroke: '#d1d5db' }}
-              />
-              <YAxis 
-                tick={{ fill: '#6b7280', fontSize: 12 }}
-                axisLine={{ stroke: '#d1d5db' }}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="value" fill="#8884d8" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="relative">
+            <p className="text-xs text-gray-500 mb-2 text-center">Click on a bar to view financials page</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#d1d5db' }}
+                />
+                <YAxis 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  axisLine={{ stroke: '#d1d5db' }}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar 
+                  dataKey="value" 
+                  fill="#8884d8" 
+                  radius={[8, 8, 0, 0]}
+                  onClick={() => router.push('/financials')}
+                  cursor="pointer"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
           {/* Detailed Breakdown */}
           <div className="border-t pt-4">
