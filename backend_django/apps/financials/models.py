@@ -1,10 +1,19 @@
 """
 Financials models
 """
+import os
+import uuid
 from django.db import models
 from apps.core.models import TimestampedModel
 from apps.orders.models import Order
 from apps.authentication.models import User
+
+
+def pi_upload_path(instance, filename):
+    """Generate upload path for PI PDFs"""
+    ext = filename.split('.')[-1]
+    filename = f"PI-{instance.pi_number}-v{instance.version}-{uuid.uuid4()}.{ext}"
+    return os.path.join('financials', 'proforma_invoices', str(instance.order.id), filename)
 
 
 class ProformaInvoice(TimestampedModel):
@@ -24,6 +33,7 @@ class ProformaInvoice(TimestampedModel):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default='USD')
     issue_date = models.DateField(null=True, blank=True)
+    pdf_file = models.FileField(upload_to=pi_upload_path, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_pis')
     
     class Meta:
@@ -32,6 +42,13 @@ class ProformaInvoice(TimestampedModel):
         
     def __str__(self):
         return f"{self.pi_number} v{self.version}"
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to also delete the PDF file from storage"""
+        if self.pdf_file:
+            if os.path.isfile(self.pdf_file.path):
+                os.remove(self.pdf_file.path)
+        super().delete(*args, **kwargs)
 
 
 class LetterOfCredit(TimestampedModel):

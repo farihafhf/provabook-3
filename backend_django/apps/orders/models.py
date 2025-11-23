@@ -9,7 +9,9 @@ from .models_document import Document
 class OrderStatus(models.TextChoices):
     """Order status choices"""
     UPCOMING = 'upcoming', 'Upcoming'
-    RUNNING = 'running', 'Running'
+    IN_DEVELOPMENT = 'in_development', 'In Development'
+    RUNNING = 'running', 'Running Order'
+    BULK = 'bulk', 'Bulk'
     COMPLETED = 'completed', 'Completed'
     ARCHIVED = 'archived', 'Archived'
 

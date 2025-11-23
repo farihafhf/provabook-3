@@ -228,16 +228,31 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Update approval status
         order.update_approval_status(approval_type, approval_status)
 
-        # Auto-progress: if all gates approved and ppSample approved, move to running
+        # Auto-progress logic based on order status
         approvals = order.approval_status or {}
-        required_gates = ['labDip', 'strikeOff', 'qualityTest', 'bulkSwatch']
-        if approvals.get('ppSample') == 'approved' and all(approvals.get(g) == 'approved' for g in required_gates):
-            if order.status != OrderStatus.RUNNING:
+        
+        # If Running Order: check if all running approvals (Lab Dip, AOP/Strike Off, PP Sample) are approved → auto-advance to Bulk
+        if order.status == OrderStatus.RUNNING:
+            running_approvals = ['labDip', 'ppSample']
+            # Check either 'aop' or 'strikeOff' for AOP/Strike Off approval
+            aop_approved = approvals.get('aop') == 'approved' or approvals.get('strikeOff') == 'approved'
+            
+            if aop_approved and all(approvals.get(g) == 'approved' for g in running_approvals):
+                order.status = OrderStatus.BULK
+                order.save(update_fields=['status', 'updated_at'])
+        
+        # If Upcoming/In Development: check if Quality and Price are approved → auto-advance to Running Order
+        elif order.status in [OrderStatus.UPCOMING, OrderStatus.IN_DEVELOPMENT]:
+            early_approvals = []
+            # Check either 'quality' or 'qualityTest' for Quality
+            quality_approved = approvals.get('quality') == 'approved' or approvals.get('qualityTest') == 'approved'
+            # Check either 'price' or 'bulkSwatch' for Price
+            price_approved = approvals.get('price') == 'approved' or approvals.get('bulkSwatch') == 'approved'
+            
+            if quality_approved and price_approved:
                 order.status = OrderStatus.RUNNING
                 order.category = OrderCategory.RUNNING
-                # Optionally update stage to Production when PP sample approved
-                order.current_stage = 'Production'
-                order.save(update_fields=['status', 'category', 'current_stage', 'updated_at'])
+                order.save(update_fields=['status', 'category', 'updated_at'])
         
         # Return updated order
         response_serializer = OrderSerializer(order)

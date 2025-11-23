@@ -257,16 +257,34 @@ function OrdersPageContent() {
     return colors[status] || 'default';
   };
 
-  const getCategoryBadgeClass = (category: string) => {
-    const lowerCategory = category.toLowerCase();
-    if (lowerCategory === 'upcoming') {
-      return 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-100';
-    } else if (lowerCategory === 'running') {
-      return 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-100';
-    } else if (lowerCategory === 'archived') {
-      return 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100';
+  const getStatusBadgeClass = (status: string) => {
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'upcoming') {
+      return 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-100';
+    } else if (lowerStatus === 'in_development') {
+      return 'bg-blue-100 text-blue-700 border border-blue-300 hover:bg-blue-100';
+    } else if (lowerStatus === 'running') {
+      return 'bg-emerald-100 text-emerald-700 border border-emerald-300 hover:bg-emerald-100';
+    } else if (lowerStatus === 'bulk') {
+      return 'bg-purple-100 text-purple-700 border border-purple-300 hover:bg-purple-100';
+    } else if (lowerStatus === 'completed') {
+      return 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-100';
+    } else if (lowerStatus === 'archived') {
+      return 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-100';
     }
     return 'bg-gray-100 text-gray-600 border border-gray-200';
+  };
+
+  const getStatusDisplayName = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'upcoming': 'Upcoming',
+      'in_development': 'In Development',
+      'running': 'Running Order',
+      'bulk': 'Bulk',
+      'completed': 'Completed',
+      'archived': 'Archived'
+    };
+    return statusMap[status.toLowerCase()] || status;
   };
 
   const handleDeleteClick = (order: Order) => {
@@ -530,7 +548,7 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium">Customer</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
-                      <th className="pb-3 font-medium">Category</th>
+                      <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
                       <th className="pb-3 font-medium">Expected Delivery</th>
                       <th className="pb-3 font-medium">Actions</th>
@@ -548,8 +566,8 @@ function OrdersPageContent() {
                         <td className="py-4">{order.fabricType}</td>
                         <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
                         <td className="py-4">
-                          <Badge className={getCategoryBadgeClass(order.category)}>
-                            {order.category}
+                          <Badge className={getStatusBadgeClass(order.status)}>
+                            {getStatusDisplayName(order.status)}
                           </Badge>
                         </td>
                         <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>

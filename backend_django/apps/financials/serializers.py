@@ -13,13 +13,24 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
     pi_number = serializers.CharField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+    pdf_file = serializers.FileField(required=False, allow_null=True)
+    pdf_url = serializers.SerializerMethodField()
     
     class Meta:
         model = ProformaInvoice
         fields = ['id', 'order', 'order_number', 'customer_name', 'pi_number', 'version',
-                  'status', 'amount', 'currency', 'issue_date', 'created_by', 
+                  'status', 'amount', 'currency', 'issue_date', 'pdf_file', 'pdf_url', 'created_by', 
                   'created_by_name', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'pi_number', 'version', 'created_by', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'pi_number', 'version', 'created_by', 'created_at', 'updated_at', 'pdf_url']
+    
+    def get_pdf_url(self, obj):
+        """Return PDF file URL if exists"""
+        if obj.pdf_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.pdf_file.url)
+            return obj.pdf_file.url
+        return None
     
     def to_representation(self, instance):
         """Convert to camelCase"""
@@ -35,6 +46,7 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
             'amount': float(data['amount']),
             'currency': data['currency'],
             'issueDate': data.get('issue_date'),
+            'pdfUrl': data.get('pdf_url'),
             'createdBy': str(data['created_by']) if data.get('created_by') else None,
             'createdByName': data.get('created_by_name'),
             'createdAt': data['created_at'],
@@ -46,6 +58,7 @@ class ProformaInvoiceSerializer(serializers.ModelSerializer):
         mapping = {
             'orderId': 'order',
             'issueDate': 'issue_date',
+            'pdfFile': 'pdf_file',
         }
         converted = {}
         for key, value in data.items():

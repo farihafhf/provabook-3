@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
-import { Plus, FileText, DollarSign, MoreHorizontal } from 'lucide-react';
+import { Plus, FileText, DollarSign, MoreHorizontal, Upload, Download, Search, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -36,6 +36,7 @@ interface ProformaInvoice {
   amount: number;
   currency: string;
   issueDate?: string;
+  pdfUrl?: string;
   createdBy?: string;
   createdByName?: string;
   createdAt?: string;
@@ -166,6 +167,10 @@ export default function FinancialsPage() {
   const [editingPi, setEditingPi] = useState<ProformaInvoice | null>(null);
   const [editingLc, setEditingLc] = useState<LetterOfCredit | null>(null);
 
+  const [selectedOrderFilter, setSelectedOrderFilter] = useState<string>('');
+  const [orderSearchQuery, setOrderSearchQuery] = useState<string>('');
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+
   const [piFormData, setPiFormData] = useState({
     orderId: '',
     amount: '',
@@ -216,10 +221,15 @@ export default function FinancialsPage() {
     setLcPage(0);
   }, [lcs.length]);
 
-  const fetchFinancials = async () => {
+  const fetchFinancials = async (orderId?: string) => {
     try {
+      const params: any = { _t: Date.now() };
+      if (orderId) {
+        params.order = orderId;
+      }
+      
       const [pisResponse, lcsResponse] = await Promise.all([
-        api.get('/financials/pis', { params: { _t: Date.now() } }),
+        api.get('/financials/pis', { params }),
         api.get('/financials/lcs', { params: { _t: Date.now() } }),
       ]);
       setPis(pisResponse.data);
@@ -228,6 +238,24 @@ export default function FinancialsPage() {
       console.error('Failed to fetch financials:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOrderFilterChange = (orderId: string) => {
+    setSelectedOrderFilter(orderId);
+    fetchFinancials(orderId || undefined);
+  };
+
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedPdfFile(file);
+    } else if (file) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please select a PDF file',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -269,17 +297,36 @@ export default function FinancialsPage() {
     setPiSubmitting(true);
 
     try {
-      const piData = {
-        orderId: piFormData.orderId,
-        amount: parseFloat(piFormData.amount),
-        currency: piFormData.currency,
-        issueDate: piFormData.issueDate || undefined,
-      };
+      const formData = new FormData();
+      formData.append('orderId', piFormData.orderId);
+      formData.append('amount', piFormData.amount);
+      formData.append('currency', piFormData.currency);
+      if (piFormData.issueDate) {
+        formData.append('issueDate', piFormData.issueDate);
+      }
+      if (selectedPdfFile) {
+        formData.append('pdfFile', selectedPdfFile);
+      }
 
-      console.log('Creating PI with data:', piData);
+      console.log('Creating PI with data:', piFormData);
 
-      const response = await api.post('/financials/pis', piData);
-      const newPi = response.data;
+      const token = localStorage.getItem('access_token');
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/financials/pis/`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create PI');
+      }
+
+      const newPi = await response.json();
 
       // Immediately add the new PI to the state
       setPis((prevPis) => [newPi, ...prevPis]);
@@ -296,6 +343,7 @@ export default function FinancialsPage() {
         currency: 'USD',
         issueDate: '',
       });
+      setSelectedPdfFile(null);
     } catch (error: any) {
       console.error('Error creating PI:', error);
       console.error('Error response:', error.response);
@@ -553,6 +601,11 @@ export default function FinancialsPage() {
     );
   }
 
+  const filteredOrders = orders.filter(order => 
+    order.orderNumber.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+    order.customerName.toLowerCase().includes(orderSearchQuery.toLowerCase())
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -560,6 +613,59 @@ export default function FinancialsPage() {
           <h1 className="text-3xl font-bold">Financials</h1>
           <p className="text-gray-500 mt-2">Manage Proforma Invoices and Letters of Credit</p>
         </div>
+
+        {/* Order Filter Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Filter by Order
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="order-search">Search Orders</Label>
+                <Input
+                  id="order-search"
+                  placeholder="Search by order number or customer..."
+                  value={orderSearchQuery}
+                  onChange={(e) => setOrderSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="order-filter">Select Order</Label>
+                <Select value={selectedOrderFilter} onValueChange={handleOrderFilterChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All orders" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All orders</SelectItem>
+                    {filteredOrders.map((order) => (
+                      <SelectItem key={order.id} value={order.id}>
+                        {order.orderNumber} - {order.customerName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {selectedOrderFilter && (
+              <div className="mt-3 flex items-center gap-2">
+                <Badge variant="secondary">
+                  Showing PIs for: {orders.find(o => o.id === selectedOrderFilter)?.orderNumber}
+                </Badge>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => handleOrderFilterChange('')}
+                >
+                  Clear filter
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Proforma Invoices Card */}
@@ -629,6 +735,23 @@ export default function FinancialsPage() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pi_pdf">Upload PDF (Optional)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="pi_pdf"
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          onChange={handlePdfFileSelect}
+                        />
+                        {selectedPdfFile && (
+                          <Badge variant="secondary">
+                            {selectedPdfFile.name}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">Upload PI document in PDF format</p>
+                    </div>
                     <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setPiDialogOpen(false)}>
                         Cancel
@@ -656,12 +779,33 @@ export default function FinancialsPage() {
                       <div key={pi.id} className="border rounded-lg p-3">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <p className="font-medium">{pi.piNumber}</p>
-                            <p className="text-sm text-gray-500">Version {pi.version}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{pi.piNumber}</p>
+                              {pi.version > 1 && (
+                                <Badge variant="outline" className="text-xs">
+                                  <History className="h-3 w-3 mr-1" />
+                                  v{pi.version}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {pi.orderNumber} - {pi.customerName}
+                            </p>
                             {pi.createdByName && (
                               <p className="text-xs text-blue-600 mt-1">
                                 Handled by: {pi.createdByName}
                               </p>
+                            )}
+                            {pi.pdfUrl && (
+                              <a 
+                                href={pi.pdfUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-1"
+                              >
+                                <Download className="h-3 w-3" />
+                                Download PDF
+                              </a>
                             )}
                           </div>
                           <div className="flex items-start gap-2">

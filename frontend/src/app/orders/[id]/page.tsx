@@ -53,8 +53,11 @@ interface Order {
   approvalStatus?: {
     labDip?: string;
     strikeOff?: string;
+    aop?: string;
     qualityTest?: string;
+    quality?: string;
     bulkSwatch?: string;
+    price?: string;
     ppSample?: string;
   };
   createdAt: string;
@@ -328,35 +331,76 @@ export default function OrderDetailPage() {
 
   const getApprovedCount = () => {
     if (!order?.approvalStatus) return 0;
-    const statuses = [
-      order.approvalStatus.labDip,
-      order.approvalStatus.strikeOff,
-      order.approvalStatus.qualityTest,
-      order.approvalStatus.bulkSwatch,
-    ];
-    return statuses.filter(s => s === 'approved').length;
+    const isRunning = order.status === 'running';
+    
+    if (isRunning) {
+      // Running Order: Lab Dip, AOP/Strike Off, PP Sample
+      const statuses = [
+        order.approvalStatus.labDip,
+        order.approvalStatus.aop || order.approvalStatus.strikeOff,
+        order.approvalStatus.ppSample,
+      ];
+      return statuses.filter(s => s === 'approved').length;
+    } else {
+      // Upcoming/In Development: Quality, Price
+      const statuses = [
+        order.approvalStatus.quality || order.approvalStatus.qualityTest,
+        order.approvalStatus.price || order.approvalStatus.bulkSwatch,
+      ];
+      return statuses.filter(s => s === 'approved').length;
+    }
   };
 
-  const allParallelApproved = () => {
+  const getTotalApprovals = () => {
+    const isRunning = order?.status === 'running';
+    return isRunning ? 3 : 2; // Running: 3 approvals, Upcoming/In Dev: 2 approvals
+  };
+
+  const allRunningApproved = () => {
     if (!order?.approvalStatus) return false;
+    const aopApproved = order.approvalStatus.aop === 'approved' || order.approvalStatus.strikeOff === 'approved';
     return (
       order.approvalStatus.labDip === 'approved' &&
-      order.approvalStatus.strikeOff === 'approved' &&
-      order.approvalStatus.qualityTest === 'approved' &&
-      order.approvalStatus.bulkSwatch === 'approved'
+      aopApproved &&
+      order.approvalStatus.ppSample === 'approved'
     );
   };
 
-  const getCategoryBadgeClass = (category: string) => {
-    const lowerCategory = category.toLowerCase();
-    if (lowerCategory === 'upcoming') {
-      return 'bg-amber-100 text-amber-700 border border-amber-200 hover:bg-amber-100';
-    } else if (lowerCategory === 'running') {
-      return 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-100';
-    } else if (lowerCategory === 'archived') {
-      return 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-100';
+  const allEarlyApproved = () => {
+    if (!order?.approvalStatus) return false;
+    const qualityApproved = order.approvalStatus.quality === 'approved' || order.approvalStatus.qualityTest === 'approved';
+    const priceApproved = order.approvalStatus.price === 'approved' || order.approvalStatus.bulkSwatch === 'approved';
+    return qualityApproved && priceApproved;
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    const lowerStatus = status.toLowerCase();
+    if (lowerStatus === 'upcoming') {
+      return 'bg-gradient-to-r from-amber-400 to-orange-400 text-white border-2 border-amber-500 shadow-lg';
+    } else if (lowerStatus === 'in_development') {
+      return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-2 border-blue-600 shadow-lg';
+    } else if (lowerStatus === 'running') {
+      return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white border-2 border-emerald-600 shadow-lg';
+    } else if (lowerStatus === 'bulk') {
+      return 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-2 border-purple-600 shadow-lg';
+    } else if (lowerStatus === 'completed') {
+      return 'bg-gradient-to-r from-slate-600 to-gray-700 text-white border-2 border-slate-700 shadow-lg';
+    } else if (lowerStatus === 'archived') {
+      return 'bg-gradient-to-r from-gray-400 to-slate-400 text-white border-2 border-gray-500 shadow-lg';
     }
     return 'bg-gray-100 text-gray-600 border border-gray-200';
+  };
+
+  const getStatusDisplayName = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'upcoming': 'Upcoming',
+      'in_development': 'In Development',
+      'running': 'Running Order',
+      'bulk': 'Bulk',
+      'completed': 'Completed',
+      'archived': 'Archived'
+    };
+    return statusMap[status.toLowerCase()] || status;
   };
 
   if (loading) {
@@ -419,13 +463,10 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Current Stage Badge */}
+        {/* Single Prominent Status Badge */}
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-lg px-4 py-2">
-            Current Stage: {order.currentStage}
-          </Badge>
-          <Badge className={`text-lg px-4 py-2 ${getCategoryBadgeClass(order.category)}`}>
-            {order.category}
+          <Badge className={`text-2xl font-bold px-6 py-3 ${getStatusBadgeClass(order.status)}`}>
+            {getStatusDisplayName(order.status)}
           </Badge>
         </div>
 
@@ -600,73 +641,162 @@ export default function OrderDetailPage() {
             <div className="flex justify-between items-center">
               <CardTitle>Approval Gate</CardTitle>
               <div className="text-sm font-medium">
-                Progress: <span className="text-blue-600 text-lg">{getApprovedCount()} / 4</span> Approved
+                Progress: <span className="text-blue-600 text-lg">{getApprovedCount()} / {getTotalApprovals()}</span> Approved
               </div>
             </div>
+            <p className="text-sm text-gray-500 mt-2">
+              {order.status === 'running' 
+                ? 'Running Order approvals: Lab Dip, Strike Off/AOP, PP Sample' 
+                : 'Early stage approvals: Quality, Price'}
+            </p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Parallel Approvals */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['labDip', 'strikeOff', 'qualityTest', 'bulkSwatch'] as const).map((type) => (
-                  <div key={type} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {getApprovalIcon(order.approvalStatus?.[type] || 'pending')}
-                        <span className="font-medium">{formatApprovalName(type)}</span>
+              {/* Dynamic Approvals based on Order Status */}
+              {order.status === 'running' ? (
+                <>
+                  {/* Running Order Approvals: Lab Dip, AOP/Strike Off, PP Sample */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.labDip || 'pending')}
+                          <span className="font-medium">Lab Dip</span>
+                        </div>
                       </div>
+                      <Select
+                        value={order.approvalStatus?.labDip || 'pending'}
+                        onValueChange={(value) => handleApprovalChange('labDip', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <Select
-                      value={order.approvalStatus?.[type] || 'pending'}
-                      onValueChange={(value) => handleApprovalChange(type, value)}
-                      disabled={updating}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
 
-              {/* PP Sample - Dependency Gate */}
-              <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 bg-blue-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package className="h-6 w-6 text-blue-600" />
-                      <span className="font-bold text-lg">PP Sample (Final Approval)</span>
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.aop || order.approvalStatus?.strikeOff || 'pending')}
+                          <span className="font-medium">Strike Off / AOP</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={order.approvalStatus?.aop || order.approvalStatus?.strikeOff || 'pending'}
+                        onValueChange={(value) => handleApprovalChange('aop', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                    {!allParallelApproved() && (
-                      <p className="text-sm text-gray-600">
-                        ⚠️ All parallel approvals must be approved before PP Sample can be approved
-                      </p>
-                    )}
+
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.ppSample || 'pending')}
+                          <span className="font-medium">PP Sample</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={order.approvalStatus?.ppSample || 'pending'}
+                        onValueChange={(value) => handleApprovalChange('ppSample', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Button
-                    onClick={handleApprovePPSample}
-                    disabled={!allParallelApproved() || updating || order.approvalStatus?.ppSample === 'approved'}
-                    size="lg"
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    {order.approvalStatus?.ppSample === 'approved' ? (
-                      <>
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                        PP Sample Approved
-                      </>
-                    ) : (
-                      <>
-                        {updating ? 'Processing...' : 'Approve PP Sample'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+
+                  {/* Auto-advance to Bulk notice */}
+                  {allRunningApproved() && (
+                    <div className="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-purple-50">
+                      <p className="text-sm text-purple-800 font-medium">
+                        ✨ All running approvals completed! Order will auto-advance to <strong>Bulk</strong> status on next approval update.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Upcoming/In Development Approvals: Quality, Price */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'pending')}
+                          <span className="font-medium">Quality</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'pending'}
+                        onValueChange={(value) => handleApprovalChange('quality', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'pending')}
+                          <span className="font-medium">Price</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'pending'}
+                        onValueChange={(value) => handleApprovalChange('price', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Auto-advance to Running notice */}
+                  {allEarlyApproved() && (
+                    <div className="border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50">
+                      <p className="text-sm text-green-800 font-medium">
+                        ✨ All early approvals completed! Order will auto-advance to <strong>Running Order</strong> status on next approval update.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

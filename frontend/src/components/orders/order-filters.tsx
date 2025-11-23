@@ -17,7 +17,9 @@ import {
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
   { value: 'upcoming', label: 'Upcoming' },
-  { value: 'running', label: 'Running' },
+  { value: 'in_development', label: 'In Development' },
+  { value: 'running', label: 'Running Order' },
+  { value: 'bulk', label: 'Bulk' },
   { value: 'completed', label: 'Completed' },
   { value: 'archived', label: 'Archived' },
 ];

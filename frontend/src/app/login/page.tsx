@@ -64,7 +64,7 @@ export default function LoginPage() {
           description: `Welcome back, ${user.fullName}!`,
         });
 
-        router.push('/dashboard');
+        router.push('/');
       }
     } catch (error: any) {
       toast({

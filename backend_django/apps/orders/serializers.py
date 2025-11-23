@@ -455,7 +455,7 @@ class ApprovalUpdateSerializer(serializers.Serializer):
     Accepts camelCase from frontend
     """
     approval_type = serializers.ChoiceField(
-        choices=['labDip', 'strikeOff', 'qualityTest', 'bulkSwatch', 'ppSample']
+        choices=['labDip', 'strikeOff', 'aop', 'qualityTest', 'quality', 'bulkSwatch', 'price', 'ppSample']
     )
     status = serializers.ChoiceField(
         choices=['pending', 'approved', 'rejected']

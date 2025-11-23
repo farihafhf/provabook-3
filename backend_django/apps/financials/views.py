@@ -20,17 +20,44 @@ class ProformaInvoiceViewSet(viewsets.ModelViewSet):
     pagination_class = None
     
     def get_queryset(self):
-        """Filter by user role"""
+        """Filter by user role and optionally by order"""
         user = self.request.user
+        queryset = self.queryset
+        
+        # Filter by user role
         if user.role == 'merchandiser':
-            return self.queryset.filter(order__merchandiser=user)
-        return self.queryset
+            queryset = queryset.filter(order__merchandiser=user)
+        
+        # Filter by order if provided
+        order_id = self.request.query_params.get('order')
+        if order_id:
+            queryset = queryset.filter(order_id=order_id)
+        
+        return queryset
+    
+    def get_serializer_context(self):
+        """Add request to context for URL building"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
     
     def perform_create(self, serializer):
-        """Auto-generate PI number and set created_by"""
+        """Auto-generate PI number, increment version, and set created_by"""
+        order_id = serializer.validated_data.get('order').id
+        
+        # Get the latest version for this order
+        latest_pi = ProformaInvoice.objects.filter(order_id=order_id).order_by('-version').first()
+        next_version = (latest_pi.version + 1) if latest_pi else 1
+        
+        # Auto-generate PI number
         pi_count = ProformaInvoice.objects.count() + 1
         pi_number = f"PI-{pi_count:05d}"
-        serializer.save(pi_number=pi_number, created_by=self.request.user)
+        
+        serializer.save(
+            pi_number=pi_number,
+            version=next_version,
+            created_by=self.request.user
+        )
     
     def perform_update(self, serializer):
         """Ensure update is saved properly"""
@@ -101,9 +128,9 @@ class FinancialAnalyticsView(APIView):
             )
         )['total']
         
-        # Calculate Secured Value (Running, Completed orders)
+        # Calculate Secured Value (Running, Bulk, Completed orders)
         secured_orders_value = orders_qs.filter(
-            Q(status='running') | Q(status='completed')
+            Q(status='running') | Q(status='bulk') | Q(status='completed')
         ).aggregate(
             total=Coalesce(
                 Sum(F('prova_price') * F('quantity'), output_field=DecimalField()),
