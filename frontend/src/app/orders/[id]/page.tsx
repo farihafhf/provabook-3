@@ -76,7 +76,7 @@ export default function OrderDetailPage() {
   const [activeTab, setActiveTab] = useState('info');
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
   const [dateFormData, setDateFormData] = useState({ etd: '', eta: '' });
-  const [stageSelection, setStageSelection] = useState<string>('Design');
+  const [statusSelection, setStatusSelection] = useState<string>('upcoming');
   const [downloadingPO, setDownloadingPO] = useState(false);
 
   useEffect(() => {
@@ -93,8 +93,8 @@ export default function OrderDetailPage() {
     try {
       const response = await api.get(`/orders/${params.id}/`);
       setOrder(response.data);
-      if (response.data?.currentStage) {
-        setStageSelection(response.data.currentStage);
+      if (response.data?.status) {
+        setStatusSelection(response.data.status);
       }
     } catch (error) {
       console.error('Failed to fetch order:', error);
@@ -289,19 +289,19 @@ export default function OrderDetailPage() {
     }
   };
 
-  const handleConfirmStageChange = async () => {
+  const handleConfirmStatusChange = async () => {
     if (!order) return;
     setUpdating(true);
     try {
-      const resp = await api.post(`/orders/${order.id}/change-stage/`, { stage: stageSelection });
+      const resp = await api.patch(`/orders/${order.id}/`, { status: statusSelection });
       toast({
-        title: 'Stage Updated',
-        description: `Stage changed to ${resp.data.currentStage}`,
+        title: 'Status Updated',
+        description: `Order status changed to ${getStatusDisplayName(resp.data.status)}`,
       });
       await fetchOrder();
     } catch (error: any) {
-      console.error('Failed to change stage:', error);
-      const msg = error.response?.data?.stage?.[0] || error.response?.data?.message || 'Failed to change stage';
+      console.error('Failed to change status:', error);
+      const msg = error.response?.data?.status?.[0] || error.response?.data?.message || 'Failed to change status';
       toast({
         title: 'Error',
         description: msg,
@@ -512,26 +512,24 @@ export default function OrderDetailPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-2 mt-3">Set Stage</p>
+                      <p className="text-sm text-gray-500 mb-2 mt-3">Set Status</p>
                       <div className="flex items-center gap-2">
-                        <Select value={stageSelection} onValueChange={setStageSelection}>
+                        <Select value={statusSelection} onValueChange={setStatusSelection}>
                           <SelectTrigger className="w-[220px]">
-                            <SelectValue placeholder="Select stage" />
+                            <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Design">Design</SelectItem>
-                            <SelectItem value="Greige">Greige</SelectItem>
-                            <SelectItem value="Let Me Know">Let Me Know</SelectItem>
-                            <SelectItem value="In Development">In Development</SelectItem>
-                            <SelectItem value="Production">Production</SelectItem>
-                            <SelectItem value="Delivered">Delivered</SelectItem>
+                            <SelectItem value="upcoming">Upcoming</SelectItem>
+                            <SelectItem value="in_development">In Development</SelectItem>
+                            <SelectItem value="running">Running Order</SelectItem>
+                            <SelectItem value="bulk">Bulk</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button size="sm" onClick={handleConfirmStageChange} disabled={updating}>
+                        <Button size="sm" onClick={handleConfirmStatusChange} disabled={updating}>
                           {updating ? 'Updating...' : 'Confirm'}
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Changing to Delivered will auto-archive and set Actual Delivery Date.</p>
+                      <p className="text-xs text-gray-500 mt-1">Status can be manually set or automatically updated when all approvals are completed.</p>
                     </div>
                   </CardContent>
                 </Card>
