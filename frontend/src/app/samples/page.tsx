@@ -194,11 +194,15 @@ export default function SamplesPage() {
 
       console.log('Creating sample with FormData');
 
-      await api.post('/samples/', formDataToSend, {
+      const response = await api.post('/samples/', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
+      const newSample = response.data;
+
+      // Immediately add the new sample to the state
+      setSamples((prevSamples) => [newSample, ...prevSamples]);
 
       toast({
         title: 'Success',
@@ -216,7 +220,6 @@ export default function SamplesPage() {
         notes: '',
       });
       setFile(null);
-      fetchSamples();
     } catch (error: any) {
       console.error('Error creating sample:', error);
       console.error('Error response:', error.response);

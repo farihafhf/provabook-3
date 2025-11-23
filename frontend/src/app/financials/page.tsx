@@ -278,7 +278,11 @@ export default function FinancialsPage() {
 
       console.log('Creating PI with data:', piData);
 
-      await api.post('/financials/pis', piData);
+      const response = await api.post('/financials/pis', piData);
+      const newPi = response.data;
+
+      // Immediately add the new PI to the state
+      setPis((prevPis) => [newPi, ...prevPis]);
 
       toast({
         title: 'Success',
@@ -292,7 +296,6 @@ export default function FinancialsPage() {
         currency: 'USD',
         issueDate: '',
       });
-      fetchFinancials();
     } catch (error: any) {
       console.error('Error creating PI:', error);
       console.error('Error response:', error.response);
@@ -387,7 +390,11 @@ export default function FinancialsPage() {
 
       console.log('Creating LC with data:', lcData);
 
-      await api.post('/financials/lcs', lcData);
+      const response = await api.post('/financials/lcs', lcData);
+      const newLc = response.data;
+
+      // Immediately add the new LC to the state
+      setLcs((prevLcs) => [newLc, ...prevLcs]);
 
       toast({
         title: 'Success',
@@ -403,7 +410,6 @@ export default function FinancialsPage() {
         expiryDate: '',
         issuingBank: '',
       });
-      fetchFinancials();
     } catch (error: any) {
       console.error('Error creating LC:', error);
       console.error('Error response:', error.response);
