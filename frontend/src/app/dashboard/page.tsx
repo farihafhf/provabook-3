@@ -354,6 +354,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+
           {/* Financial Analytics & Pending LCs - Responsive Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
@@ -562,6 +563,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           )}
+
 
           {/* My Financial Analytics & Pending LCs - Responsive Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
