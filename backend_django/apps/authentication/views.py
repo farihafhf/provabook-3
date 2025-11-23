@@ -181,20 +181,13 @@ class LogoutView(APIView):
 class UserListView(generics.ListAPIView):
     """
     GET /api/v1/auth/users
-    List all users (Admin only)
+    List all users - All authenticated users can see all users for task assignment
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        # Admin can see all users
-        # Manager can see merchandisers
-        # Merchandisers can only see themselves
-        user = self.request.user
-        if user.role == 'admin':
-            return User.objects.all()
-        elif user.role == 'manager':
-            return User.objects.filter(role__in=['manager', 'merchandiser'])
-        else:
-            return User.objects.filter(id=user.id)
+        # All authenticated users can see all users
+        # This is needed for task assignment functionality
+        return User.objects.filter(is_active=True).order_by('full_name')

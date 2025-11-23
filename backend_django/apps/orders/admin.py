@@ -3,6 +3,7 @@ Django admin configuration for Orders
 """
 from django.contrib import admin
 from .models import Order
+from .models_task import Task
 
 
 @admin.register(Order)
@@ -98,3 +99,59 @@ class OrderAdmin(admin.ModelAdmin):
         """Bulk action to mark orders as archived"""
         updated = queryset.update(category='archived')
         self.message_user(request, f'{updated} order(s) marked as Archived.')
+
+
+@admin.register(Task)
+class TaskAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Task model
+    """
+    list_display = [
+        'title', 'order', 'assigned_to', 'assigned_by', 
+        'status', 'priority', 'due_date', 'created_at'
+    ]
+    list_filter = [
+        'status', 'priority', 'due_date', 'created_at'
+    ]
+    search_fields = [
+        'title', 'description', 'order__order_number',
+        'assigned_to__full_name', 'assigned_by__full_name'
+    ]
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+    
+    readonly_fields = ['id', 'created_at', 'updated_at', 'completed_at']
+    
+    fieldsets = (
+        ('Task Information', {
+            'fields': (
+                'id', 'order', 'title', 'description'
+            )
+        }),
+        ('Assignment', {
+            'fields': (
+                'assigned_to', 'assigned_by'
+            )
+        }),
+        ('Status & Priority', {
+            'fields': (
+                'status', 'priority', 'due_date', 'completed_at'
+            )
+        }),
+        ('Additional Information', {
+            'fields': (
+                'metadata',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at', 'updated_at'
+            )
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Optimize query with select_related"""
+        queryset = super().get_queryset(request)
+        return queryset.select_related('order', 'assigned_to', 'assigned_by')

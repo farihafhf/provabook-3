@@ -20,6 +20,7 @@ import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
+import { TaskAssignment } from '@/components/orders/task-assignment';
 
 interface Order {
   id: string;
@@ -444,6 +445,13 @@ export default function OrderDetailPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
+              onClick={() => router.push(`/orders/${order.id}/edit`)}
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit Order
+            </Button>
+            <Button
+              variant="outline"
               onClick={handleDownloadPO}
               disabled={downloadingPO}
             >
@@ -472,11 +480,12 @@ export default function OrderDetailPage() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             <TabsTrigger value="info">Order Info</TabsTrigger>
             {order.status !== 'bulk' && (
               <TabsTrigger value="approval">Approval Gate</TabsTrigger>
             )}
+            <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
               Documents ({documents.length})
@@ -803,6 +812,11 @@ export default function OrderDetailPage() {
         </Card>
           </TabsContent>
           )}
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks" className="space-y-6">
+            <TaskAssignment orderId={order.id} />
+          </TabsContent>
 
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">

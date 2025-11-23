@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -584,6 +584,18 @@ function OrdersPageContent() {
                               title="View Details"
                             >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                router.push(`/orders/${order.id}/edit`);
+                              }}
+                              title="Edit Order"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
