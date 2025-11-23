@@ -271,7 +271,7 @@ def orders_by_merchandiser_view(request):
         orders_data.append({
             'id': str(order.id),
             'order_number': order.order_number,
-            'style': order.style_name or 'N/A',
+            'style': order.style_number or 'N/A',
             'buyer': order.buyer_name or 'N/A',
             'customer': order.customer_name or 'N/A',
             'quantity': float(order.quantity) if order.quantity else 0,

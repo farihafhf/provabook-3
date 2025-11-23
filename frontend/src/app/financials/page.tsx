@@ -242,8 +242,9 @@ export default function FinancialsPage() {
   };
 
   const handleOrderFilterChange = (orderId: string) => {
-    setSelectedOrderFilter(orderId);
-    fetchFinancials(orderId || undefined);
+    const actualOrderId = orderId === 'all' ? '' : orderId;
+    setSelectedOrderFilter(actualOrderId);
+    fetchFinancials(actualOrderId || undefined);
   };
 
   const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -635,12 +636,12 @@ export default function FinancialsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="order-filter">Select Order</Label>
-                <Select value={selectedOrderFilter} onValueChange={handleOrderFilterChange}>
+                <Select value={selectedOrderFilter || "all"} onValueChange={handleOrderFilterChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="All orders" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All orders</SelectItem>
+                    <SelectItem value="all">All orders</SelectItem>
                     {filteredOrders.map((order) => (
                       <SelectItem key={order.id} value={order.id}>
                         {order.orderNumber} - {order.customerName}
@@ -658,7 +659,7 @@ export default function FinancialsPage() {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => handleOrderFilterChange('')}
+                  onClick={() => handleOrderFilterChange('all')}
                 >
                   Clear filter
                 </Button>
