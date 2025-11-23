@@ -42,7 +42,7 @@ export function PendingLCs() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/financials/analytics/pipeline/', {
+      const response = await api.get('/financials/analytics/pipeline', {
         params: { _t: Date.now() }
       });
       const data: FinancialData = response.data;

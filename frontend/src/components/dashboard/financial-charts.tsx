@@ -47,7 +47,7 @@ export function FinancialCharts() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/financials/analytics/pipeline/', {
+      const response = await api.get('/financials/analytics/pipeline', {
         params: { _t: Date.now() }
       });
       setData(response.data);

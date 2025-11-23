@@ -105,7 +105,7 @@ export default function ProductionPage() {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true);
-      const response = await api.get('/orders/', {
+      const response = await api.get('/orders', {
         params: { _t: Date.now() },
       });
       const data = Array.isArray(response.data) ? (response.data as Order[]) : [];
@@ -131,7 +131,7 @@ export default function ProductionPage() {
     if (!orderId) return;
     try {
       setMetricsLoading(true);
-      const response = await api.get('/production/', {
+      const response = await api.get('/production', {
         params: { order: orderId, _t: Date.now() },
       });
       const data = Array.isArray(response.data) ? (response.data as ProductionMetric[]) : [];
@@ -148,7 +148,7 @@ export default function ProductionPage() {
     if (!orderId) return;
     try {
       setSummaryLoading(true);
-      const response = await api.get(`/production/summary/${orderId}/`, {
+      const response = await api.get(`/production/summary/${orderId}`, {
         params: { _t: Date.now() },
       });
       setSummary(response.data as ProductionSummary);

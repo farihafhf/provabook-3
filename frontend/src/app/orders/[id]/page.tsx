@@ -96,7 +96,7 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}/`);
+      const response = await api.get(`/orders/${params.id}`);
       setOrder(response.data);
       if (response.data?.status) {
         setStatusSelection(response.data.status);
@@ -110,7 +110,7 @@ export default function OrderDetailPage() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}/documents/`);
+      const response = await api.get(`/orders/${params.id}/documents`);
       setDocuments(response.data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
@@ -119,7 +119,7 @@ export default function OrderDetailPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/auth/users/');
+      const response = await api.get('/auth/users');
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -138,7 +138,7 @@ export default function OrderDetailPage() {
 
     setAssigningTask(true);
     try {
-      await api.post('/orders/tasks/', {
+      await api.post('/orders/tasks', {
         order: order?.id,
         title: taskTitle,
         assignedTo: selectedUser,
@@ -271,7 +271,7 @@ export default function OrderDetailPage() {
 
     setDownloadingPO(true);
     try {
-      const response = await api.get(`/orders/${order.id}/download-po/`, {
+      const response = await api.get(`/orders/${order.id}/download-po`, {
         responseType: 'blob',
       });
 

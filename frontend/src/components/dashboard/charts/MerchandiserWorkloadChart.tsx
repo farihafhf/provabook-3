@@ -59,7 +59,7 @@ export default function MerchandiserWorkloadChart({ data }: MerchandiserWorkload
     setLoading(true);
     
     try {
-      const response = await api.get('/dashboard/orders-by-merchandiser/', {
+      const response = await api.get('/dashboard/orders-by-merchandiser', {
         params: { 
           merchandiser_name: data.name,
           _t: Date.now() 

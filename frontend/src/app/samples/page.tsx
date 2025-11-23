@@ -108,7 +108,7 @@ export default function SamplesPage() {
 
   const fetchSamples = async () => {
     try {
-      const response = await api.get('/samples/', {
+      const response = await api.get('/samples', {
         params: { _t: Date.now() } // Prevent caching
       });
       const deletedIds = getDeletedSampleIds();
@@ -129,7 +129,7 @@ export default function SamplesPage() {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get('/orders/');
+      const response = await api.get('/orders');
       setOrders(response.data);
     } catch (error) {
       console.error('Failed to fetch orders:', error);

@@ -62,7 +62,7 @@ export function TaskAssignment({ orderId }: TaskAssignmentProps) {
 
   const fetchTasks = async () => {
     try {
-      const response = await api.get(`/orders/tasks/`, {
+      const response = await api.get(`/orders/tasks`, {
         params: { order_id: orderId }
       });
       setTasks(response.data);
@@ -75,7 +75,7 @@ export function TaskAssignment({ orderId }: TaskAssignmentProps) {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/auth/users/');
+      const response = await api.get('/auth/users');
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);

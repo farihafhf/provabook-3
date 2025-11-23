@@ -88,7 +88,7 @@ export default function OrderEditPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/auth/users/');
+      const response = await api.get('/auth/users');
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -97,7 +97,7 @@ export default function OrderEditPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}/`);
+      const response = await api.get(`/orders/${params.id}`);
       const order = response.data;
       
       setFormData({

@@ -109,8 +109,8 @@ export default function ShipmentsPage() {
       try {
         setLoading(true);
         const [shipRes, orderRes] = await Promise.all([
-          api.get('/shipments/', { params: { _t: Date.now() } }),
-          api.get('/orders/'),
+          api.get('/shipments', { params: { _t: Date.now() } }),
+          api.get('/orders'),
         ]);
 
         setShipments(Array.isArray(shipRes.data) ? (shipRes.data as Shipment[]) : []);
