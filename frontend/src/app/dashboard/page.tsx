@@ -95,6 +95,19 @@ export default function DashboardPage() {
     fetchChartData();
   }, [isAuthenticated, router]);
 
+  // Refetch data when window gains focus to ensure fresh counts
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAuthenticated()) {
+        fetchDashboard();
+        fetchChartData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isAuthenticated]);
+
   const fetchDashboard = async () => {
     try {
       const response = await api.get('/dashboard');

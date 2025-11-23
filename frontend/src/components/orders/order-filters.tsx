@@ -132,6 +132,30 @@ export function OrderFilters({
     });
   };
 
+  // Auto-apply filters when URL params change or on initial mount
+  React.useEffect(() => {
+    const urlSearch = searchParams.get('search') ?? '';
+    const urlStatus = searchParams.get('status') ?? 'all';
+    const urlDateFrom = searchParams.get('order_date_from') ?? '';
+    const urlDateTo = searchParams.get('order_date_to') ?? '';
+
+    // Update local state if URL params differ
+    if (search !== urlSearch) setSearch(urlSearch);
+    if (status !== urlStatus) setStatus(urlStatus);
+    if (orderDateFrom !== urlDateFrom) setOrderDateFrom(urlDateFrom);
+    if (orderDateTo !== urlDateTo) setOrderDateTo(urlDateTo);
+
+    // Auto-emit filter change if any URL params are present
+    if (urlSearch || (urlStatus && urlStatus !== 'all') || urlDateFrom || urlDateTo) {
+      emitFilterChange({
+        search: urlSearch,
+        status: urlStatus,
+        orderDateFrom: urlDateFrom,
+        orderDateTo: urlDateTo,
+      });
+    }
+  }, [searchParams]);
+
   return (
     <form onSubmit={handleSubmit} className={cn('w-full', className)}>
       <section className="w-full rounded-lg bg-white border border-gray-200 p-4 md:p-5 shadow-sm">
