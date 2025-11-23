@@ -83,6 +83,22 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         task = serializer.save(assigned_by=request.user)
         
+        # Create notification for assigned user
+        if task.assigned_to:
+            try:
+                from apps.core.models import Notification
+                Notification.objects.create(
+                    user=task.assigned_to,
+                    title='New Task Assigned',
+                    message=f'You have been assigned a new task: "{task.title}" by {request.user.full_name}',
+                    notification_type='task_assigned',
+                    related_id=str(task.id),
+                    related_type='task'
+                )
+            except Exception as e:
+                # Log error but don't fail the request
+                print(f'Failed to create notification: {e}')
+        
         # Return full task data
         response_serializer = TaskSerializer(task)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)

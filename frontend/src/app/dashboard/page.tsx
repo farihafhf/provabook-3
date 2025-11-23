@@ -17,6 +17,7 @@ import MerchandiserWorkloadChart from '@/components/dashboard/charts/Merchandise
 import MonthlyTrendsChart from '@/components/dashboard/charts/MonthlyTrendsChart';
 import { FinancialCharts } from '@/components/dashboard/financial-charts';
 import { PendingLCs } from '@/components/dashboard/pending-lcs';
+import { MyTasksWidget } from '@/components/dashboard/my-tasks-widget';
 
 interface DashboardActivity {
   id: string;
@@ -389,9 +390,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <AlertsWidget orders={upcomingEtdAlerts} />
             <ApprovalQueue orders={stuckApprovalAlerts} />
+            <MyTasksWidget />
           </div>
 
           {/* Recent Activity Feed */}
@@ -552,6 +554,9 @@ export default function DashboardPage() {
               <PendingLCs />
             </div>
           </div>
+
+          {/* My Tasks */}
+          <MyTasksWidget />
 
           {/* My Recent Activity */}
           <Card>

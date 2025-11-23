@@ -20,7 +20,6 @@ import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
-import { TaskAssignment } from '@/components/orders/task-assignment';
 
 interface Order {
   id: string;
@@ -79,6 +78,10 @@ export default function OrderDetailPage() {
   const [dateFormData, setDateFormData] = useState({ etd: '', eta: '' });
   const [statusSelection, setStatusSelection] = useState<string>('upcoming');
   const [downloadingPO, setDownloadingPO] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [taskTitle, setTaskTitle] = useState<string>('');
+  const [assigningTask, setAssigningTask] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -88,6 +91,7 @@ export default function OrderDetailPage() {
 
     fetchOrder();
     fetchDocuments();
+    fetchUsers();
   }, [isAuthenticated, router, params.id]);
 
   const fetchOrder = async () => {
@@ -110,6 +114,53 @@ export default function OrderDetailPage() {
       setDocuments(response.data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/auth/users/');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const handleAssignTask = async () => {
+    if (!taskTitle.trim() || !selectedUser) {
+      toast({
+        title: 'Error',
+        description: 'Please enter task title and select a user',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAssigningTask(true);
+    try {
+      await api.post('/orders/tasks/', {
+        order: order?.id,
+        title: taskTitle,
+        assignedTo: selectedUser,
+        priority: 'medium',
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Task assigned successfully',
+      });
+
+      setTaskTitle('');
+      setSelectedUser('');
+    } catch (error: any) {
+      console.error('Error assigning task:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to assign task',
+        variant: 'destructive',
+      });
+    } finally {
+      setAssigningTask(false);
     }
   };
 
@@ -480,12 +531,11 @@ export default function OrderDetailPage() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-3' : 'grid-cols-4'}`}>
+          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <TabsTrigger value="info">Order Info</TabsTrigger>
             {order.status !== 'bulk' && (
               <TabsTrigger value="approval">Approval Gate</TabsTrigger>
             )}
-            <TabsTrigger value="tasks">Tasks</TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
               Documents ({documents.length})
@@ -541,6 +591,35 @@ export default function OrderDetailPage() {
                         </Button>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">Status can be manually set or automatically updated when all approvals are completed.</p>
+                    </div>
+
+                    <div className="border-t pt-4 mt-4">
+                      <p className="text-sm text-gray-500 mb-2">Assign Task</p>
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Task title..."
+                          value={taskTitle}
+                          onChange={(e) => setTaskTitle(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <Select value={selectedUser} onValueChange={setSelectedUser}>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Select user to assign" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {users.map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.fullName} ({user.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" onClick={handleAssignTask} disabled={assigningTask}>
+                            {assigningTask ? 'Assigning...' : 'Assign'}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500">Assign a task to any team member. They will be notified.</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -812,11 +891,6 @@ export default function OrderDetailPage() {
         </Card>
           </TabsContent>
           )}
-
-          {/* Tasks Tab */}
-          <TabsContent value="tasks" className="space-y-6">
-            <TaskAssignment orderId={order.id} />
-          </TabsContent>
 
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">

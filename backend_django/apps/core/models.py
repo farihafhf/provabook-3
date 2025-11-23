@@ -17,3 +17,27 @@ class TimestampedModel(models.Model):
     class Meta:
         abstract = True
         ordering = ['-created_at']
+
+
+class Notification(TimestampedModel):
+    """
+    Notification model for user notifications
+    """
+    user = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50)
+    related_id = models.CharField(max_length=255, blank=True, null=True)
+    related_type = models.CharField(max_length=50, blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    
+    class Meta:
+        db_table = 'notifications'
+        ordering = ['-created_at']
+        
+    def __str__(self):
+        return f'{self.title} - {self.user.full_name}'

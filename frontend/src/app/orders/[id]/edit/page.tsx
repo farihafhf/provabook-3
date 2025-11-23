@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
@@ -45,6 +46,11 @@ export default function OrderEditPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [taskAssignment, setTaskAssignment] = useState({
+    title: '',
+    assignedTo: '',
+  });
   const [formData, setFormData] = useState<OrderFormData>({
     customerName: '',
     buyerName: '',
@@ -77,7 +83,17 @@ export default function OrderEditPage() {
     }
 
     fetchOrder();
+    fetchUsers();
   }, [isAuthenticated, router, params.id]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/auth/users/');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
 
   const fetchOrder = async () => {
     try {
@@ -162,9 +178,25 @@ export default function OrderEditPage() {
 
       await api.patch(`/orders/${params.id}/`, orderData);
 
+      // Assign task if provided
+      if (taskAssignment.title && taskAssignment.assignedTo) {
+        try {
+          await api.post('/orders/tasks/', {
+            order: params.id,
+            title: taskAssignment.title,
+            assignedTo: taskAssignment.assignedTo,
+            priority: 'medium',
+          });
+          console.log('Task assigned successfully');
+        } catch (taskError) {
+          console.error('Error assigning task:', taskError);
+          // Don't fail the entire operation if task assignment fails
+        }
+      }
+
       toast({
         title: 'Success',
-        description: 'Order updated successfully',
+        description: taskAssignment.title ? 'Order updated and task assigned successfully' : 'Order updated successfully',
       });
 
       router.push(`/orders/${params.id}`);
@@ -523,6 +555,45 @@ export default function OrderEditPage() {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={4}
                   />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Task Assignment */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Task Assignment (Optional)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="taskTitle">Task Title</Label>
+                    <Input 
+                      id="taskTitle" 
+                      placeholder="e.g., Review fabric specifications" 
+                      value={taskAssignment.title} 
+                      onChange={(e) => setTaskAssignment({ ...taskAssignment, title: e.target.value })} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="assignTo">Assign To</Label>
+                    <Select 
+                      value={taskAssignment.assignedTo} 
+                      onValueChange={(value) => setTaskAssignment({ ...taskAssignment, assignedTo: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select user to assign task" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.fullName} ({user.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">Assign a task to any team member. They will be notified.</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

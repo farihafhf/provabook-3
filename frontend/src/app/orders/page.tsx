@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { Plus, Eye, Trash2, Download, Edit } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -50,6 +51,11 @@ function OrdersPageContent() {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
+  const [users, setUsers] = useState<any[]>([]);
+  const [taskAssignment, setTaskAssignment] = useState({
+    title: '',
+    assignedTo: '',
+  });
   const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
@@ -72,6 +78,15 @@ function OrdersPageContent() {
     colorBreakdown: [{ color: '', quantity: '' }],
   });
 
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/auth/users/');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  };
+
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
       if (
@@ -93,6 +108,7 @@ function OrdersPageContent() {
     }
 
     fetchOrders(filters);
+    fetchUsers();
   }, [isAuthenticated, router, filters]);
 
   const fetchOrders = async (filtersToUse?: OrdersFilterParams) => {
@@ -197,9 +213,25 @@ function OrdersPageContent() {
 
       console.log('Order created successfully:', response.data);
 
+      // Assign task if provided
+      if (taskAssignment.title && taskAssignment.assignedTo) {
+        try {
+          await api.post('/orders/tasks/', {
+            order: response.data.id,
+            title: taskAssignment.title,
+            assignedTo: taskAssignment.assignedTo,
+            priority: 'medium',
+          });
+          console.log('Task assigned successfully');
+        } catch (taskError) {
+          console.error('Error assigning task:', taskError);
+          // Don't fail the entire operation if task assignment fails
+        }
+      }
+
       toast({
         title: 'Success',
-        description: 'Order created successfully',
+        description: taskAssignment.title ? 'Order created and task assigned successfully' : 'Order created successfully',
       });
 
       setDialogOpen(false);
@@ -224,6 +256,7 @@ function OrdersPageContent() {
         eta: '',
         colorBreakdown: [{ color: '', quantity: '' }],
       });
+      setTaskAssignment({ title: '', assignedTo: '' });
       
       // Refresh orders list with current filters
       await fetchOrders(filters);
@@ -504,6 +537,41 @@ function OrdersPageContent() {
                     <div className="space-y-2">
                       <Label htmlFor="eta">ETA (Est. Time of Arrival)</Label>
                       <Input id="eta" type="date" value={formData.eta} onChange={(e) => setFormData({ ...formData, eta: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Task Assignment */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Task Assignment (Optional)</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="taskTitle">Task Title</Label>
+                      <Input 
+                        id="taskTitle" 
+                        placeholder="e.g., Review fabric specifications" 
+                        value={taskAssignment.title} 
+                        onChange={(e) => setTaskAssignment({ ...taskAssignment, title: e.target.value })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="assignTo">Assign To</Label>
+                      <Select 
+                        value={taskAssignment.assignedTo} 
+                        onValueChange={(value) => setTaskAssignment({ ...taskAssignment, assignedTo: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select user to assign task" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.fullName} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-gray-500">Assign a task to any team member. They will be notified.</p>
                     </div>
                   </div>
                 </div>
