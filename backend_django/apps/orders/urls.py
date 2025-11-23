@@ -8,8 +8,8 @@ from .views_task import TaskViewSet
 
 app_name = 'orders'
 
-# Configure router to work without trailing slashes for frontend compatibility
-router = DefaultRouter(trailing_slash=False)
+# Configure router with trailing slashes (DRF default) to match frontend API client behavior
+router = DefaultRouter()
 router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'', OrderViewSet, basename='order')
 

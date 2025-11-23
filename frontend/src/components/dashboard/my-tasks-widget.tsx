@@ -35,7 +35,7 @@ export function MyTasksWidget() {
 
   const fetchMyTasks = async () => {
     try {
-      const response = await api.get('/orders/tasks');
+      const response = await api.get('/orders/tasks/');
       // Filter to get only tasks assigned to current user
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const myTasks = response.data.filter(
