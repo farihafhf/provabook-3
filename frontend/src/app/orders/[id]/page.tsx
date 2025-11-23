@@ -472,9 +472,11 @@ export default function OrderDetailPage() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <TabsTrigger value="info">Order Info</TabsTrigger>
-            <TabsTrigger value="approval">Approval Gate</TabsTrigger>
+            {order.status !== 'bulk' && (
+              <TabsTrigger value="approval">Approval Gate</TabsTrigger>
+            )}
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
               Documents ({documents.length})
@@ -632,7 +634,8 @@ export default function OrderDetailPage() {
             </div>
           </TabsContent>
 
-          {/* Approval Gate Tab */}
+          {/* Approval Gate Tab - Hidden for Bulk status */}
+          {order.status !== 'bulk' && (
           <TabsContent value="approval">
             <Card className="border-2 border-blue-200">
           <CardHeader>
@@ -799,6 +802,7 @@ export default function OrderDetailPage() {
           </CardContent>
         </Card>
           </TabsContent>
+          )}
 
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">
