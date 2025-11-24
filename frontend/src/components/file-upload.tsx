@@ -125,7 +125,7 @@ export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
       if (description) formData.append('description', description);
 
       const token = localStorage.getItem('access_token');
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
       
       console.log('=== UPLOAD DEBUG ===');
       console.log('API URL:', apiUrl);
