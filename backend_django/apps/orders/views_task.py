@@ -87,13 +87,15 @@ class TaskViewSet(viewsets.ModelViewSet):
         if task.assigned_to:
             try:
                 from apps.core.models import Notification
+                # Point notification directly to the related order so the assignee
+                # can navigate to that order from the notification.
                 Notification.objects.create(
                     user=task.assigned_to,
                     title='New Task Assigned',
                     message=f'You have been assigned a new task: "{task.title}" by {request.user.full_name}',
                     notification_type='task_assigned',
-                    related_id=str(task.id),
-                    related_type='task'
+                    related_id=str(task.order_id),
+                    related_type='order',
                 )
             except Exception as e:
                 # Log error but don't fail the request

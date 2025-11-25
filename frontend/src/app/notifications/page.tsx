@@ -39,7 +39,12 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     try {
       const response = await api.get('/notifications');
-      setNotifications(response.data);
+      const data = response.data as any;
+      // Support both plain list and paginated { results: [...] } shapes
+      const list: Notification[] = Array.isArray(data)
+        ? data
+        : (data?.results || []);
+      setNotifications(list);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -86,9 +91,10 @@ export default function NotificationsPage() {
     }
     
     // Navigate to related content if available
-    if (notification.relatedType === 'task' && notification.relatedId) {
-      // Navigate to order or task page
-      // For now, just mark as read
+    if (notification.notificationType === 'task_assigned' && notification.relatedType === 'order' && notification.relatedId) {
+      // Go directly to the related order details page
+      router.push(`/orders/${notification.relatedId}`);
+      return;
     }
   };
 

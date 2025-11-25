@@ -292,11 +292,10 @@ def orders_by_merchandiser_view(request):
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for user notifications
-    """
+    """ViewSet for user notifications"""
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # Return simple list (no pagination)
     
     def get_queryset(self):
         """Return notifications for current user only"""
@@ -304,27 +303,27 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             user=self.request.user
         ).order_by('-created_at')
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='unread-count')
     def unread_count(self, request):
-        """Get count of unread notifications"""
+        """GET /notifications/unread-count/ - count of unread notifications"""
         count = Notification.objects.filter(
             user=request.user,
             is_read=False
         ).count()
         return Response({'unreadCount': count})
     
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='mark-read')
     def mark_read(self, request, pk=None):
-        """Mark a specific notification as read"""
+        """POST /notifications/{id}/mark-read/ - mark a specific notification as read"""
         notification = self.get_object()
         notification.is_read = True
         notification.save()
         serializer = self.get_serializer(notification)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
     def mark_all_read(self, request):
-        """Mark all notifications as read"""
+        """POST /notifications/mark-all-read/ - mark all notifications as read"""
         Notification.objects.filter(
             user=request.user,
             is_read=False

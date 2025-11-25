@@ -27,7 +27,9 @@ schema_view = get_schema_view(
 )
 
 # Router for notifications
-notifications_router = DefaultRouter(trailing_slash=False)
+# Use default trailing_slash so /notifications and /notifications/ both work,
+# and play nicely with the frontend interceptor that appends a trailing slash.
+notifications_router = DefaultRouter()
 notifications_router.register(r'', NotificationViewSet, basename='notification')
 
 urlpatterns = [
