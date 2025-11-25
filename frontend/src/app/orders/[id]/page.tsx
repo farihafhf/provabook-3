@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
@@ -111,14 +110,14 @@ export default function OrderDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [documents, setDocuments] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('info');
-  const [dateDialogOpen, setDateDialogOpen] = useState(false);
-  const [dateFormData, setDateFormData] = useState({ etd: '', eta: '' });
   const [statusSelection, setStatusSelection] = useState<string>('upcoming');
   const [downloadingPO, setDownloadingPO] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [taskTitle, setTaskTitle] = useState<string>('');
   const [assigningTask, setAssigningTask] = useState(false);
+  const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
+  const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -343,33 +342,35 @@ export default function OrderDetailPage() {
     }
   };
 
-  const handleOpenDateDialog = () => {
-    setDateFormData({
-      etd: order?.etd || '',
-      eta: order?.eta || '',
-    });
-    setDateDialogOpen(true);
+  const handleEditStyleDates = (styleId: string, etd: string, eta: string, submissionDate: string) => {
+    setEditingStyleId(styleId);
+    setStyleDates(prev => ({
+      ...prev,
+      [styleId]: { etd, eta, submissionDate }
+    }));
   };
 
-  const handleUpdateDates = async () => {
+  const handleSaveStyleDates = async (styleId: string) => {
     if (!order) return;
     
     setUpdating(true);
     try {
-      await api.patch(`/orders/${order.id}/`, {
-        etd: dateFormData.etd || null,
-        eta: dateFormData.eta || null,
+      const dates = styleDates[styleId];
+      await api.patch(`/orders/styles/${styleId}/`, {
+        etd: dates.etd || null,
+        eta: dates.eta || null,
+        submissionDate: dates.submissionDate || null,
       });
 
       toast({
         title: 'Success',
-        description: 'Delivery dates updated successfully',
+        description: 'Style dates updated successfully',
       });
 
-      setDateDialogOpen(false);
+      setEditingStyleId(null);
       await fetchOrder();
     } catch (error: any) {
-      console.error('Failed to update dates:', error);
+      console.error('Failed to update style dates:', error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to update dates',
@@ -378,6 +379,11 @@ export default function OrderDetailPage() {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleCancelEditDates = () => {
+    setEditingStyleId(null);
+    setStyleDates({});
   };
 
   const handleConfirmStatusChange = async () => {
@@ -584,31 +590,38 @@ export default function OrderDetailPage() {
           {/* Info Tab */}
           <TabsContent value="info" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="space-y-6 lg:col-span-2">
+              <div className="space-y-4 lg:col-span-2">
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Order Information</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Order Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Order Number</p>
-                      <p className="font-medium">{order.orderNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Customer Name</p>
-                      <p className="font-medium">{order.customerName}</p>
-                    </div>
-                    {order.buyerName && (
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-sm text-gray-500">Buyer Name</p>
-                        <p className="font-medium">{order.buyerName}</p>
+                        <p className="text-xs text-gray-500">Order Number</p>
+                        <p className="font-medium">{order.orderNumber}</p>
                       </div>
-                    )}
-                    {/* Status and Category are omitted per UX: show Stage only */}
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Stage</p>
-                      <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                        {getStatusDisplayName(order.status)}
+                      <div>
+                        <p className="text-xs text-gray-500">Customer Name</p>
+                        <p className="font-medium">{order.customerName}</p>
+                      </div>
+                      {order.buyerName && (
+                        <div>
+                          <p className="text-xs text-gray-500">Buyer Name</p>
+                          <p className="font-medium">{order.buyerName}</p>
+                        </div>
+                      )}
+                      {order.orderDate && (
+                        <div>
+                          <p className="text-xs text-gray-500">Order Date</p>
+                          <p className="font-medium">{formatDate(order.orderDate)}</p>
+                        </div>
+                      )}
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 mb-1">Stage</p>
+                        <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          {getStatusDisplayName(order.status)}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -704,23 +717,25 @@ export default function OrderDetailPage() {
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Fabric Details</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">Fabric Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Fabric Type</p>
-                      <p className="font-medium">{order.fabricType}</p>
-                    </div>
-                    {order.fabricSpecifications && (
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-sm text-gray-500">Specifications</p>
-                        <p className="font-medium">{order.fabricSpecifications}</p>
+                        <p className="text-xs text-gray-500">Fabric Type</p>
+                        <p className="font-medium">{order.fabricType}</p>
                       </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-gray-500">Quantity</p>
-                      <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
+                      {order.fabricSpecifications && (
+                        <div>
+                          <p className="text-xs text-gray-500">Specifications</p>
+                          <p className="font-medium">{order.fabricSpecifications}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs text-gray-500">Total Quantity</p>
+                        <p className="font-medium">{order.quantity.toLocaleString()} {order.unit}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -728,16 +743,16 @@ export default function OrderDetailPage() {
                 {/* Styles and Colors Section */}
                 {order.styles && order.styles.length > 0 && (
                   <Card className="border-l-4 border-l-indigo-500">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
                         <Package className="h-5 w-5 text-indigo-600" />
                         Styles & Color Variants
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         {order.styles.map((style, styleIndex) => (
-                          <div key={style.id} className="border rounded-lg p-4 bg-gradient-to-br from-white to-gray-50">
+                          <div key={style.id} className="border rounded-lg p-3 bg-gradient-to-br from-white to-gray-50">
                             <div className="flex items-start justify-between mb-4">
                               <div>
                                 <h3 className="font-semibold text-lg text-indigo-900">
@@ -752,8 +767,8 @@ export default function OrderDetailPage() {
                               </Badge>
                             </div>
 
-                            {/* Style Details Grid */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3 bg-white rounded border">
+                            {/* Style Details Grid - More Compact */}
+                            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-3 p-2 bg-white rounded border text-sm">
                               {style.fabricType && (
                                 <div>
                                   <p className="text-xs text-gray-500">Fabric Type</p>
@@ -784,22 +799,89 @@ export default function OrderDetailPage() {
                                   <p className="text-sm font-medium">{style.construction}</p>
                                 </div>
                               )}
-                              {style.etd && (
-                                <div>
-                                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    ETD
-                                  </p>
-                                  <p className="text-sm font-medium text-blue-600">{formatDate(style.etd)}</p>
+                            </div>
+
+                            {/* Editable Style Dates */}
+                            <div className="border-t pt-2 mb-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <Label className="text-xs font-semibold flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  Delivery Dates
+                                </Label>
+                                {editingStyleId !== style.id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditStyleDates(style.id, style.etd || '', style.eta || '', style.submissionDate || '')}
+                                  >
+                                    <Edit2 className="h-3 w-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                )}
+                              </div>
+                              {editingStyleId === style.id ? (
+                                <div className="space-y-2">
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <Label className="text-xs">ETD</Label>
+                                      <Input
+                                        type="date"
+                                        className="h-8 text-xs"
+                                        value={styleDates[style.id]?.etd || ''}
+                                        onChange={(e) => setStyleDates(prev => ({
+                                          ...prev,
+                                          [style.id]: { ...prev[style.id], etd: e.target.value }
+                                        }))}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">ETA</Label>
+                                      <Input
+                                        type="date"
+                                        className="h-8 text-xs"
+                                        value={styleDates[style.id]?.eta || ''}
+                                        onChange={(e) => setStyleDates(prev => ({
+                                          ...prev,
+                                          [style.id]: { ...prev[style.id], eta: e.target.value }
+                                        }))}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Submission</Label>
+                                      <Input
+                                        type="date"
+                                        className="h-8 text-xs"
+                                        value={styleDates[style.id]?.submissionDate || ''}
+                                        onChange={(e) => setStyleDates(prev => ({
+                                          ...prev,
+                                          [style.id]: { ...prev[style.id], submissionDate: e.target.value }
+                                        }))}
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <Button size="sm" variant="outline" onClick={handleCancelEditDates}>
+                                      Cancel
+                                    </Button>
+                                    <Button size="sm" onClick={() => handleSaveStyleDates(style.id)} disabled={updating}>
+                                      {updating ? 'Saving...' : 'Save'}
+                                    </Button>
+                                  </div>
                                 </div>
-                              )}
-                              {style.eta && (
-                                <div>
-                                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    ETA
-                                  </p>
-                                  <p className="text-sm font-medium text-green-600">{formatDate(style.eta)}</p>
+                              ) : (
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                  <div>
+                                    <p className="text-gray-500">ETD</p>
+                                    <p className="font-medium text-blue-600">{style.etd ? formatDate(style.etd) : '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">ETA</p>
+                                    <p className="font-medium text-green-600">{style.eta ? formatDate(style.eta) : '-'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Submission</p>
+                                    <p className="font-medium text-gray-700">{style.submissionDate ? formatDate(style.submissionDate) : '-'}</p>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -871,56 +953,6 @@ export default function OrderDetailPage() {
                   </Card>
                 )}
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Dates & Delivery</CardTitle>
-                    <Button variant="outline" size="sm" onClick={handleOpenDateDialog}>
-                      <Edit2 className="mr-2 h-3 w-3" />
-                      Edit Dates
-                    </Button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {order.orderDate && (
-                      <div>
-                        <p className="text-sm text-gray-500">Order Date</p>
-                        <p className="font-medium">{formatDate(order.orderDate)}</p>
-                      </div>
-                    )}
-                    {order.etd && (
-                      <div>
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          ETD (Estimated Time of Dispatch)
-                        </p>
-                        <p className="font-medium text-blue-600">{formatDate(order.etd)}</p>
-                      </div>
-                    )}
-                    {order.eta && (
-                      <div>
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          ETA (Estimated Time of Arrival)
-                        </p>
-                        <p className="font-medium text-green-600">{formatDate(order.eta)}</p>
-                      </div>
-                    )}
-                    {order.expectedDeliveryDate && (
-                      <div>
-                        <p className="text-sm text-gray-500">Expected Delivery</p>
-                        <p className="font-medium">{formatDate(order.expectedDeliveryDate)}</p>
-                      </div>
-                    )}
-                    {order.actualDeliveryDate && (
-                      <div>
-                        <p className="text-sm text-gray-500">Actual Delivery</p>
-                        <p className="font-medium">{formatDate(order.actualDeliveryDate)}</p>
-                      </div>
-                    )}
-                    {!order.etd && !order.eta && !order.orderDate && !order.expectedDeliveryDate && !order.actualDeliveryDate && (
-                      <p className="text-sm text-gray-400 text-center py-4">No dates recorded yet</p>
-                    )}
-                  </CardContent>
-                </Card>
 
                 {order.notes && (
                   <Card>
@@ -1144,45 +1176,6 @@ export default function OrderDetailPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* ETD/ETA Edit Dialog */}
-        <Dialog open={dateDialogOpen} onOpenChange={setDateDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Delivery Dates</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="etd">ETD (Estimated Time of Dispatch)</Label>
-                <Input
-                  id="etd"
-                  type="date"
-                  value={dateFormData.etd}
-                  onChange={(e) => setDateFormData({ ...dateFormData, etd: e.target.value })}
-                />
-                <p className="text-xs text-gray-500">When the order is expected to leave the mill</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="eta">ETA (Estimated Time of Arrival)</Label>
-                <Input
-                  id="eta"
-                  type="date"
-                  value={dateFormData.eta}
-                  onChange={(e) => setDateFormData({ ...dateFormData, eta: e.target.value })}
-                />
-                <p className="text-xs text-gray-500">When the order is expected to arrive at destination</p>
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdateDates} disabled={updating}>
-                  {updating ? 'Saving...' : 'Save Dates'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Hidden Printable Order (only visible when printing) */}
         <PrintableOrder 
