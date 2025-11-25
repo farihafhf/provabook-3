@@ -10,7 +10,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from apps.orders.views import OrderViewSet
 from rest_framework.routers import DefaultRouter
-from apps.core.views import NotificationViewSet
+from apps.core.views import NotificationViewSet, document_delete_view
 
 # Swagger/OpenAPI Schema
 schema_view = get_schema_view(
@@ -72,8 +72,8 @@ urlpatterns = [
     # Financials
     path('api/v1/financials/', include('apps.financials.urls')),
     
-    # Placeholder endpoints
-    path('api/v1/orders/documents/<str:document_id>/', lambda request, document_id: __import__('apps.core.views', fromlist=['document_delete_view']).document_delete_view(request, document_id)),
+    # Document delete endpoint
+    path('api/v1/orders/documents/<str:document_id>/', document_delete_view, name='order-document-delete'),
     
     # TODO: Uncomment as you create these apps
     path('api/v1/production/', include('apps.production.urls')),
