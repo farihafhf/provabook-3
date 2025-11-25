@@ -64,7 +64,6 @@ export function CreateOrderDialog({
   const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
-    baseStyleNumber: '',
     fabricType: '',
     orderDate: '',
     notes: '',
@@ -188,15 +187,6 @@ export function CreateOrderDialog({
       return false;
     }
 
-    if (!formData.baseStyleNumber.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Base style number is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
     // Validate styles
     if (styles.length === 0) {
       toast({
@@ -273,7 +263,6 @@ export function CreateOrderDialog({
       const orderData = {
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
-        baseStyleNumber: formData.baseStyleNumber,
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         notes: formData.notes || undefined,
@@ -332,7 +321,6 @@ export function CreateOrderDialog({
       setFormData({
         customerName: '',
         buyerName: '',
-        baseStyleNumber: '',
         fabricType: '',
         orderDate: '',
         notes: '',
@@ -410,23 +398,6 @@ export function CreateOrderDialog({
                     setFormData({ ...formData, buyerName: e.target.value })
                   }
                 />
-              </div>
-              <div>
-                <Label htmlFor="baseStyleNumber">
-                  Base Style Number <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="baseStyleNumber"
-                  value={formData.baseStyleNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, baseStyleNumber: e.target.value })
-                  }
-                  placeholder="e.g., ST2024"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Styles will be auto-numbered as ST2024-01, ST2024-02, etc.
-                </p>
               </div>
               <div>
                 <Label htmlFor="fabricType">
