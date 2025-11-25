@@ -10,33 +10,39 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
 
-interface OrderFormData {
-  customerName: string;
-  buyerName: string;
-  styleNumber: string;
-  fabricType: string;
-  fabricSpecifications: string;
-  fabricComposition: string;
-  gsm: string;
-  finishType: string;
-  construction: string;
-  millName: string;
-  millPrice: string;
-  provaPrice: string;
-  currency: string;
+interface ColorFormData {
+  id?: string;
+  colorCode: string;
   quantity: string;
   unit: string;
-  orderDate: string;
-  expectedDeliveryDate: string;
-  etd: string;
-  eta: string;
-  notes: string;
-  merchandiser: string;
-  colorBreakdown: Array<{ color: string; quantity: string }>;
+  millName?: string;
+  millPrice?: string;
+  provaPrice?: string;
+  currency: string;
+  etd?: string;
+  eta?: string;
+  submissionDate?: string;
+  notes?: string;
+}
+
+interface StyleFormData {
+  id?: string;
+  description?: string;
+  fabricType?: string;
+  fabricComposition?: string;
+  gsm?: string;
+  finishType?: string;
+  construction?: string;
+  cuttableWidth?: string;
+  etd?: string;
+  eta?: string;
+  submissionDate?: string;
+  notes?: string;
+  colors: ColorFormData[];
 }
 
 export default function OrderEditPage() {
@@ -46,91 +52,93 @@ export default function OrderEditPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
-  const [taskAssignment, setTaskAssignment] = useState({
-    title: '',
-    assignedTo: '',
-  });
-  const [formData, setFormData] = useState<OrderFormData>({
+  
+  const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
-    styleNumber: '',
+    baseStyleNumber: '',
     fabricType: '',
-    fabricSpecifications: '',
-    fabricComposition: '',
-    gsm: '',
-    finishType: '',
-    construction: '',
-    millName: '',
-    millPrice: '',
-    provaPrice: '',
-    currency: 'USD',
-    quantity: '',
-    unit: 'meters',
     orderDate: '',
-    expectedDeliveryDate: '',
-    etd: '',
-    eta: '',
     notes: '',
-    merchandiser: '',
-    colorBreakdown: [{ color: '', quantity: '' }],
   });
+  
+  const [styles, setStyles] = useState<StyleFormData[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
-
     fetchOrder();
-    fetchUsers();
   }, [isAuthenticated, router, params.id]);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await api.get('/auth/users');
-      const data = response.data as any;
-      const usersArray = Array.isArray(data) ? data : data?.results || [];
-      setUsers(usersArray);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  };
 
   const fetchOrder = async () => {
     try {
       const response = await api.get(`/orders/${params.id}`);
       const order = response.data;
       
+      // Set basic order data
       setFormData({
         customerName: order.customerName || '',
         buyerName: order.buyerName || '',
-        styleNumber: order.styleNumber || '',
+        baseStyleNumber: order.baseStyleNumber || order.styleNumber || '',
         fabricType: order.fabricType || '',
-        fabricSpecifications: order.fabricSpecifications || '',
-        fabricComposition: order.fabricComposition || '',
-        gsm: order.gsm ? order.gsm.toString() : '',
-        finishType: order.finishType || '',
-        construction: order.construction || '',
-        millName: order.millName || '',
-        millPrice: order.millPrice ? order.millPrice.toString() : '',
-        provaPrice: order.provaPrice ? order.provaPrice.toString() : '',
-        currency: order.currency || 'USD',
-        quantity: order.quantity ? order.quantity.toString() : '',
-        unit: order.unit || 'meters',
         orderDate: order.orderDate || '',
-        expectedDeliveryDate: order.expectedDeliveryDate || '',
-        etd: order.etd || '',
-        eta: order.eta || '',
         notes: order.notes || '',
-        merchandiser: order.merchandiser || '',
-        colorBreakdown: order.colorQuantityBreakdown && order.colorQuantityBreakdown.length > 0
-          ? order.colorQuantityBreakdown.map((item: any) => ({
-              color: item.color || '',
-              quantity: item.quantity ? item.quantity.toString() : '',
-            }))
-          : [{ color: '', quantity: '' }],
       });
+
+      // Set styles data if available
+      if (order.styles && order.styles.length > 0) {
+        setStyles(
+          order.styles.map((style: any) => ({
+            id: style.id,
+            description: style.description || '',
+            fabricType: style.fabricType || '',
+            fabricComposition: style.fabricComposition || '',
+            gsm: style.gsm ? style.gsm.toString() : '',
+            finishType: style.finishType || '',
+            construction: style.construction || '',
+            cuttableWidth: style.cuttableWidth || '',
+            etd: style.etd || '',
+            eta: style.eta || '',
+            submissionDate: style.submissionDate || '',
+            notes: style.notes || '',
+            colors: style.colors?.map((color: any) => ({
+              id: color.id,
+              colorCode: color.colorCode || '',
+              quantity: color.quantity ? color.quantity.toString() : '',
+              unit: color.unit || 'meters',
+              millName: color.millName || '',
+              millPrice: color.millPrice ? color.millPrice.toString() : '',
+              provaPrice: color.provaPrice ? color.provaPrice.toString() : '',
+              currency: color.currency || 'USD',
+              etd: color.etd || '',
+              eta: color.eta || '',
+              submissionDate: color.submissionDate || '',
+              notes: color.notes || '',
+            })) || [{ colorCode: '', quantity: '', unit: 'meters', currency: 'USD' }],
+          }))
+        );
+      } else {
+        // Fallback to single style with basic data
+        setStyles([
+          {
+            fabricType: order.fabricType || '',
+            fabricComposition: order.fabricComposition || '',
+            gsm: order.gsm ? order.gsm.toString() : '',
+            finishType: order.finishType || '',
+            construction: order.construction || '',
+            colors: [
+              {
+                colorCode: '',
+                quantity: order.quantity ? order.quantity.toString() : '',
+                unit: order.unit || 'meters',
+                currency: order.currency || 'USD',
+              },
+            ],
+          },
+        ]);
+      }
     } catch (error) {
       console.error('Failed to fetch order:', error);
       toast({
@@ -148,70 +156,66 @@ export default function OrderEditPage() {
     setSubmitting(true);
 
     try {
-      const orderData: any = {
+      const orderData = {
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
-        styleNumber: formData.styleNumber || undefined,
+        baseStyleNumber: formData.baseStyleNumber,
         fabricType: formData.fabricType,
-        fabricSpecifications: formData.fabricSpecifications || undefined,
-        fabricComposition: formData.fabricComposition || undefined,
-        gsm: formData.gsm ? parseFloat(formData.gsm) : undefined,
-        finishType: formData.finishType || undefined,
-        construction: formData.construction || undefined,
-        millName: formData.millName || undefined,
-        millPrice: formData.millPrice ? parseFloat(formData.millPrice) : undefined,
-        provaPrice: formData.provaPrice ? parseFloat(formData.provaPrice) : undefined,
-        currency: formData.currency,
-        quantity: parseFloat(formData.quantity),
-        unit: formData.unit,
-        colorQuantityBreakdown: formData.colorBreakdown
-          .filter(item => item.color && item.quantity)
-          .map(item => ({
-            color: item.color,
-            quantity: parseFloat(item.quantity),
-          })) || undefined,
-        etd: formData.etd || undefined,
-        eta: formData.eta || undefined,
         orderDate: formData.orderDate || undefined,
-        expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
         notes: formData.notes || undefined,
-        merchandiser: formData.merchandiser || undefined,
+        quantity: styles.reduce(
+          (total, style) =>
+            total +
+            style.colors.reduce(
+              (styleTotal, color) => styleTotal + (parseFloat(color.quantity) || 0),
+              0
+            ),
+          0
+        ),
+        unit: 'meters',
+        styles: styles.map((style) => ({
+          id: style.id,
+          description: style.description || undefined,
+          fabricType: style.fabricType || formData.fabricType,
+          fabricComposition: style.fabricComposition || undefined,
+          gsm: style.gsm ? parseFloat(style.gsm) : undefined,
+          finishType: style.finishType || undefined,
+          construction: style.construction || undefined,
+          cuttableWidth: style.cuttableWidth || undefined,
+          etd: style.etd || undefined,
+          eta: style.eta || undefined,
+          submissionDate: style.submissionDate || undefined,
+          notes: style.notes || undefined,
+          colors: style.colors.map((color) => ({
+            id: color.id,
+            colorCode: color.colorCode,
+            quantity: parseFloat(color.quantity),
+            unit: color.unit,
+            millName: color.millName || undefined,
+            millPrice: color.millPrice ? parseFloat(color.millPrice) : undefined,
+            provaPrice: color.provaPrice ? parseFloat(color.provaPrice) : undefined,
+            currency: color.currency,
+            etd: color.etd || undefined,
+            eta: color.eta || undefined,
+            submissionDate: color.submissionDate || undefined,
+            notes: color.notes || undefined,
+          })),
+        })),
       };
 
       await api.patch(`/orders/${params.id}/`, orderData);
 
-      // Assign task if provided
-      if (taskAssignment.title && taskAssignment.assignedTo) {
-        try {
-          await api.post('/orders/tasks/', {
-            order: params.id,
-            title: taskAssignment.title,
-            assignedTo: taskAssignment.assignedTo,
-            priority: 'medium',
-          });
-          console.log('Task assigned successfully');
-        } catch (taskError) {
-          console.error('Error assigning task:', taskError);
-          // Don't fail the entire operation if task assignment fails
-        }
-      }
-
       toast({
         title: 'Success',
-        description: taskAssignment.title ? 'Order updated and task assigned successfully' : 'Order updated successfully',
+        description: 'Order updated successfully',
       });
 
       router.push(`/orders/${params.id}`);
     } catch (error: any) {
       console.error('Error updating order:', error);
-      
-      const errorMessage = Array.isArray(error.response?.data?.message) 
-        ? error.response.data.message.join(', ')
-        : error.response?.data?.message || error.message || 'Failed to update order';
-      
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: error.response?.data?.message || 'Failed to update order',
         variant: 'destructive',
       });
     } finally {
@@ -219,25 +223,54 @@ export default function OrderEditPage() {
     }
   };
 
-  const addColorRow = () => {
-    setFormData({
-      ...formData,
-      colorBreakdown: [...formData.colorBreakdown, { color: '', quantity: '' }],
-    });
+  const updateStyle = (index: number, field: keyof StyleFormData, value: any) => {
+    const newStyles = [...styles];
+    (newStyles[index] as any)[field] = value;
+    setStyles(newStyles);
   };
 
-  const removeColorRow = (index: number) => {
-    const newBreakdown = formData.colorBreakdown.filter((_, i) => i !== index);
-    setFormData({ 
-      ...formData, 
-      colorBreakdown: newBreakdown.length > 0 ? newBreakdown : [{ color: '', quantity: '' }] 
-    });
+  const updateColor = (styleIndex: number, colorIndex: number, field: keyof ColorFormData, value: any) => {
+    const newStyles = [...styles];
+    newStyles[styleIndex].colors[colorIndex] = {
+      ...newStyles[styleIndex].colors[colorIndex],
+      [field]: value,
+    };
+    setStyles(newStyles);
   };
 
-  const updateColorRow = (index: number, field: 'color' | 'quantity', value: string) => {
-    const newBreakdown = [...formData.colorBreakdown];
-    newBreakdown[index][field] = value;
-    setFormData({ ...formData, colorBreakdown: newBreakdown });
+  const addColor = (styleIndex: number) => {
+    const newStyles = [...styles];
+    newStyles[styleIndex].colors.push({
+      colorCode: '',
+      quantity: '',
+      unit: 'meters',
+      currency: 'USD',
+    });
+    setStyles(newStyles);
+  };
+
+  const removeColor = (styleIndex: number, colorIndex: number) => {
+    const newStyles = [...styles];
+    if (newStyles[styleIndex].colors.length > 1) {
+      newStyles[styleIndex].colors.splice(colorIndex, 1);
+      setStyles(newStyles);
+    }
+  };
+
+  const addStyle = () => {
+    setStyles([
+      ...styles,
+      {
+        colors: [{ colorCode: '', quantity: '', unit: 'meters', currency: 'USD' }],
+      },
+    ]);
+  };
+
+  const removeStyle = (index: number) => {
+    if (styles.length > 1) {
+      const newStyles = styles.filter((_, i) => i !== index);
+      setStyles(newStyles);
+    }
   };
 
   if (loading) {
@@ -252,368 +285,314 @@ export default function OrderEditPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <Button variant="ghost" onClick={() => router.push(`/orders/${params.id}`)} className="mb-2">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Order Details
-            </Button>
-            <h1 className="text-3xl font-bold">Edit Order</h1>
-            <p className="text-gray-500 mt-2">Update order information</p>
-          </div>
+      <div className="max-w-6xl mx-auto space-y-6 pb-8">
+        <div>
+          <Button variant="ghost" onClick={() => router.push(`/orders/${params.id}`)} className="mb-2">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Order Details
+          </Button>
+          <h1 className="text-3xl font-bold">Edit Order</h1>
+          <p className="text-gray-500 mt-1">Update order information and styles</p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            {/* Basic Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerName">Customer Name *</Label>
-                    <Input 
-                      id="customerName" 
-                      required 
-                      value={formData.customerName} 
-                      onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="buyerName">Buyer Name</Label>
-                    <Input 
-                      id="buyerName" 
-                      value={formData.buyerName} 
-                      onChange={(e) => setFormData({ ...formData, buyerName: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="styleNumber">Style / Article Number</Label>
-                    <Input 
-                      id="styleNumber" 
-                      placeholder="e.g., ST-2025-001" 
-                      value={formData.styleNumber} 
-                      onChange={(e) => setFormData({ ...formData, styleNumber: e.target.value })} 
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Fabric Specifications */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Fabric Specifications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fabricType">Fabric Type *</Label>
-                    <Input 
-                      id="fabricType" 
-                      required 
-                      placeholder="e.g., Single Jersey" 
-                      value={formData.fabricType} 
-                      onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="fabricComposition">Composition</Label>
-                    <Input 
-                      id="fabricComposition" 
-                      placeholder="e.g., 100% Cotton" 
-                      value={formData.fabricComposition} 
-                      onChange={(e) => setFormData({ ...formData, fabricComposition: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gsm">GSM</Label>
-                    <Input 
-                      id="gsm" 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="e.g., 180" 
-                      value={formData.gsm} 
-                      onChange={(e) => setFormData({ ...formData, gsm: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="finishType">Finish Type</Label>
-                    <Input 
-                      id="finishType" 
-                      placeholder="e.g., Peach Finish" 
-                      value={formData.finishType} 
-                      onChange={(e) => setFormData({ ...formData, finishType: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="construction">Construction</Label>
-                    <Input 
-                      id="construction" 
-                      placeholder="e.g., 30/1 Combed Ring Spun" 
-                      value={formData.construction} 
-                      onChange={(e) => setFormData({ ...formData, construction: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="fabricSpecifications">Fabric Specifications</Label>
-                    <Textarea 
-                      id="fabricSpecifications" 
-                      placeholder="Additional fabric specifications" 
-                      value={formData.fabricSpecifications} 
-                      onChange={(e) => setFormData({ ...formData, fabricSpecifications: e.target.value })} 
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Mill & Pricing */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Mill & Pricing</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="millName">Mill Name</Label>
-                    <Input 
-                      id="millName" 
-                      placeholder="e.g., ABC Textile Mills" 
-                      value={formData.millName} 
-                      onChange={(e) => setFormData({ ...formData, millName: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="millPrice">Mill Price</Label>
-                    <Input 
-                      id="millPrice" 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0.00" 
-                      value={formData.millPrice} 
-                      onChange={(e) => setFormData({ ...formData, millPrice: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="provaPrice">Prova Price (PI)</Label>
-                    <Input 
-                      id="provaPrice" 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0.00" 
-                      value={formData.provaPrice} 
-                      onChange={(e) => setFormData({ ...formData, provaPrice: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <select 
-                      id="currency" 
-                      className="w-full h-10 px-3 border rounded-md" 
-                      value={formData.currency} 
-                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                    >
-                      <option value="USD">USD</option>
-                      <option value="BDT">BDT</option>
-                      <option value="EUR">EUR</option>
-                      <option value="GBP">GBP</option>
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quantity & Colors */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quantity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Total Quantity *</Label>
-                    <Input 
-                      id="quantity" 
-                      type="number" 
-                      step="0.01" 
-                      required 
-                      value={formData.quantity} 
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">Unit *</Label>
-                    <select 
-                      id="unit" 
-                      className="w-full h-10 px-3 border rounded-md" 
-                      value={formData.unit} 
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    >
-                      <option value="meters">Meters</option>
-                      <option value="yards">Yards</option>
-                      <option value="kilograms">Kilograms</option>
-                      <option value="pieces">Pieces</option>
-                    </select>
-                  </div>
-                </div>
-                <Label className="mb-2 block">Color-wise Breakdown (Optional)</Label>
-                {formData.colorBreakdown.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 mb-2">
-                    <Input 
-                      className="col-span-5" 
-                      placeholder="Color name" 
-                      value={item.color} 
-                      onChange={(e) => updateColorRow(index, 'color', e.target.value)} 
-                    />
-                    <Input 
-                      className="col-span-5" 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="Quantity" 
-                      value={item.quantity} 
-                      onChange={(e) => updateColorRow(index, 'quantity', e.target.value)} 
-                    />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      className="col-span-2" 
-                      onClick={() => removeColorRow(index)} 
-                      disabled={formData.colorBreakdown.length === 1}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={addColorRow} className="mt-2">
-                  + Add Color
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Dates */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Important Dates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="orderDate">Order Date</Label>
-                    <Input 
-                      id="orderDate" 
-                      type="date" 
-                      value={formData.orderDate} 
-                      onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="expectedDeliveryDate">Expected Delivery Date</Label>
-                    <Input 
-                      id="expectedDeliveryDate" 
-                      type="date" 
-                      value={formData.expectedDeliveryDate} 
-                      onChange={(e) => setFormData({ ...formData, expectedDeliveryDate: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="etd">ETD (Est. Time of Departure)</Label>
-                    <Input 
-                      id="etd" 
-                      type="date" 
-                      value={formData.etd} 
-                      onChange={(e) => setFormData({ ...formData, etd: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="eta">ETA (Est. Time of Arrival)</Label>
-                    <Input 
-                      id="eta" 
-                      type="date" 
-                      value={formData.eta} 
-                      onChange={(e) => setFormData({ ...formData, eta: e.target.value })} 
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Notes */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Additional Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea 
-                    id="notes" 
-                    placeholder="Any additional notes or comments..." 
-                    value={formData.notes} 
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={4}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Order Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Order Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="customerName">Customer Name *</Label>
+                  <Input
+                    id="customerName"
+                    required
+                    value={formData.customerName}
+                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                   />
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Task Assignment */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Task Assignment (Optional)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="taskTitle">Task Title</Label>
-                    <Input 
-                      id="taskTitle" 
-                      placeholder="e.g., Review fabric specifications" 
-                      value={taskAssignment.title} 
-                      onChange={(e) => setTaskAssignment({ ...taskAssignment, title: e.target.value })} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assignTo">Assign To</Label>
-                    <Select 
-                      value={taskAssignment.assignedTo} 
-                      onValueChange={(value) => setTaskAssignment({ ...taskAssignment, assignedTo: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select user to assign task" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users && Array.isArray(users) && users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.fullName} ({user.role})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500">Assign a task to any team member. They will be notified.</p>
-                  </div>
+                <div>
+                  <Label htmlFor="buyerName">Buyer Name</Label>
+                  <Input
+                    id="buyerName"
+                    value={formData.buyerName}
+                    onChange={(e) => setFormData({ ...formData, buyerName: e.target.value })}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <Label htmlFor="baseStyleNumber">Base Style Number *</Label>
+                  <Input
+                    id="baseStyleNumber"
+                    required
+                    placeholder="e.g., ST2024"
+                    value={formData.baseStyleNumber}
+                    onChange={(e) => setFormData({ ...formData, baseStyleNumber: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="fabricType">Fabric Type *</Label>
+                  <Input
+                    id="fabricType"
+                    required
+                    placeholder="e.g., Single Jersey"
+                    value={formData.fabricType}
+                    onChange={(e) => setFormData({ ...formData, fabricType: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="orderDate">Order Date</Label>
+                  <Input
+                    id="orderDate"
+                    type="date"
+                    value={formData.orderDate}
+                    onChange={(e) => setFormData({ ...formData, orderDate: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Input
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => router.push(`/orders/${params.id}`)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                <Save className="mr-2 h-4 w-4" />
-                {submitting ? 'Saving...' : 'Save Changes'}
+          {/* Styles */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Styles</h2>
+              <Button type="button" variant="outline" onClick={addStyle}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Style
               </Button>
             </div>
+
+            {styles.map((style, styleIndex) => (
+              <Card key={styleIndex} className="border-l-4 border-l-blue-500">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-lg">
+                      Style {styleIndex + 1}
+                      {formData.baseStyleNumber && ` (${formData.baseStyleNumber}-${String(styleIndex + 1).padStart(2, '0')})`}
+                    </CardTitle>
+                    {styles.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removeStyle(styleIndex)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Style Details */}
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="col-span-4">
+                      <Label className="text-sm">Description</Label>
+                      <Textarea
+                        value={style.description || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'description', e.target.value)}
+                        placeholder="Style description"
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Fabric Composition</Label>
+                      <Input
+                        value={style.fabricComposition || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'fabricComposition', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">GSM</Label>
+                      <Input
+                        type="number"
+                        value={style.gsm || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Finish Type</Label>
+                      <Input
+                        value={style.finishType || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'finishType', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm">Cuttable Width</Label>
+                      <Input
+                        value={style.cuttableWidth || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'cuttableWidth', e.target.value)}
+                        placeholder="e.g., 60 inches"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="col-span-4">
+                      <Label className="text-sm">Construction</Label>
+                      <Textarea
+                        value={style.construction || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'construction', e.target.value)}
+                        placeholder="Construction details"
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Style Dates */}
+                  <div className="border-t pt-3">
+                    <Label className="text-sm font-semibold flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4" />
+                      Delivery Dates
+                    </Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">ETD</Label>
+                        <Input
+                          type="date"
+                          value={style.etd || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">ETA</Label>
+                        <Input
+                          type="date"
+                          value={style.eta || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Submission Date</Label>
+                        <Input
+                          type="date"
+                          value={style.submissionDate || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Colors */}
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center mb-3">
+                      <Label className="text-sm font-semibold">Color Variants</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={() => addColor(styleIndex)}>
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Color
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {style.colors.map((color, colorIndex) => (
+                        <div key={colorIndex} className="border rounded p-3 bg-gray-50 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-medium text-gray-600">Color {colorIndex + 1}</span>
+                            {style.colors.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeColor(styleIndex, colorIndex)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-6 gap-2">
+                            <div>
+                              <Label className="text-xs">Color Code *</Label>
+                              <Input
+                                value={color.colorCode}
+                                onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
+                                required
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Quantity *</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={color.quantity}
+                                onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
+                                required
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Unit</Label>
+                              <Select
+                                value={color.unit}
+                                onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
+                              >
+                                <SelectTrigger className="text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="meters">Meters</SelectItem>
+                                  <SelectItem value="yards">Yards</SelectItem>
+                                  <SelectItem value="kg">Kilograms</SelectItem>
+                                  <SelectItem value="lbs">Pounds</SelectItem>
+                                  <SelectItem value="pieces">Pieces</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Mill Price</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={color.millPrice || ''}
+                                onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Prova Price</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={color.provaPrice || ''}
+                                onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Currency</Label>
+                              <Input
+                                value={color.currency}
+                                onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={() => router.push(`/orders/${params.id}`)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              <Save className="mr-2 h-4 w-4" />
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </Button>
           </div>
         </form>
       </div>
