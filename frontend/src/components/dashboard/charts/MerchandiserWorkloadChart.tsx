@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -11,23 +11,9 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { OrdersModal } from "../OrdersModal";
-import { api } from "@/lib/api";
 
 interface MerchandiserWorkloadChartProps {
   data: { name: string; value: number }[];
-}
-
-interface Order {
-  id: string;
-  order_number: string;
-  style: string;
-  buyer: string;
-  customer: string;
-  quantity: number;
-  unit: string;
-  status: string;
-  current_stage: string;
 }
 
 // Custom tooltip component with Shadcn/Tailwind styling
@@ -46,32 +32,16 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function MerchandiserWorkloadChart({ data }: MerchandiserWorkloadChartProps) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedMerchandiser, setSelectedMerchandiser] = useState<string>("");
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleBarClick = async (data: any) => {
-    if (!data || !data.name) return;
-    
-    setSelectedMerchandiser(data.name);
-    setModalOpen(true);
-    setLoading(true);
-    
-    try {
-      const response = await api.get('/dashboard/orders-by-merchandiser', {
-        params: { 
-          merchandiser_name: data.name,
-          _t: Date.now() 
-        }
-      });
-      setOrders(response.data.orders || []);
-    } catch (error) {
-      console.error('Failed to fetch merchandiser orders:', error);
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleBarClick = (barData: any) => {
+    if (!barData || !barData.name) return;
+
+    const params = new URLSearchParams();
+    params.set("status", "running");
+    params.set("search", barData.name);
+
+    router.push(`/orders?${params.toString()}`);
   };
 
   if (!data || data.length === 0) {
@@ -83,41 +53,31 @@ export default function MerchandiserWorkloadChart({ data }: MerchandiserWorkload
   }
 
   return (
-    <>
-      <div className="relative">
-        <p className="text-xs text-gray-500 mb-2 text-center">Click on a bar to view orders</p>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="name" 
-              tick={{ fontSize: 12 }}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
-            <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar 
-              dataKey="value" 
-              fill="#8884d8" 
-              name="Orders" 
-              radius={[8, 8, 0, 0]}
-              onClick={handleBarClick}
-              cursor="pointer"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <OrdersModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        merchandiserName={selectedMerchandiser}
-        orders={orders}
-        loading={loading}
-      />
-    </>
+    <div className="relative">
+      <p className="text-xs text-gray-500 mb-2 text-center">Click on a bar to view orders</p>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis 
+            dataKey="name" 
+            tick={{ fontSize: 12 }}
+            angle={-45}
+            textAnchor="end"
+            height={80}
+          />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend />
+          <Bar 
+            dataKey="value" 
+            fill="#8884d8" 
+            name="Orders" 
+            radius={[8, 8, 0, 0]}
+            onClick={handleBarClick}
+            cursor="pointer"
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
