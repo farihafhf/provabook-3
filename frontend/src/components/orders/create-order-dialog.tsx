@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Copy, Calendar } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -66,7 +66,6 @@ export function CreateOrderDialog({
     baseStyleNumber: '',
     fabricType: '',
     orderDate: '',
-    expectedDeliveryDate: '',
     notes: '',
   });
   
@@ -144,6 +143,27 @@ export function CreateOrderDialog({
       [field]: value,
     };
     setStyles(newStyles);
+  };
+
+  const copyFirstStyleDatesToAll = () => {
+    if (styles.length === 0) return;
+    
+    const firstStyle = styles[0];
+    const newStyles = styles.map((style, index) => {
+      if (index === 0) return style;
+      return {
+        ...style,
+        etd: firstStyle.etd,
+        eta: firstStyle.eta,
+        submissionDate: firstStyle.submissionDate,
+      };
+    });
+    
+    setStyles(newStyles);
+    toast({
+      title: 'Dates Copied',
+      description: `Dates from Style 1 copied to all ${styles.length - 1} other style(s)`,
+    });
   };
 
   const validateForm = () => {
@@ -254,7 +274,6 @@ export function CreateOrderDialog({
         baseStyleNumber: formData.baseStyleNumber,
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
-        expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
         notes: formData.notes || undefined,
         status: 'upcoming',
         category: 'upcoming',
@@ -312,7 +331,6 @@ export function CreateOrderDialog({
         baseStyleNumber: '',
         fabricType: '',
         orderDate: '',
-        expectedDeliveryDate: '',
         notes: '',
       });
       setStyles([
@@ -428,17 +446,9 @@ export function CreateOrderDialog({
                     setFormData({ ...formData, orderDate: e.target.value })
                   }
                 />
-              </div>
-              <div>
-                <Label htmlFor="expectedDeliveryDate">Expected Delivery Date</Label>
-                <Input
-                  id="expectedDeliveryDate"
-                  type="date"
-                  value={formData.expectedDeliveryDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, expectedDeliveryDate: e.target.value })
-                  }
-                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Date when the order was placed
+                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="notes">Notes</Label>
@@ -524,6 +534,59 @@ export function CreateOrderDialog({
                       rows={2}
                     />
                   </div>
+                </div>
+
+                {/* Style Dates */}
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-base font-semibold flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Delivery Dates for This Style
+                    </Label>
+                    {styleIndex === 0 && styles.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={copyFirstStyleDatesToAll}
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy to All Styles
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor={`style-${styleIndex}-etd`}>ETD (Est. Dispatch)</Label>
+                      <Input
+                        id={`style-${styleIndex}-etd`}
+                        type="date"
+                        value={style.etd || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`style-${styleIndex}-eta`}>ETA (Est. Arrival)</Label>
+                      <Input
+                        id={`style-${styleIndex}-eta`}
+                        type="date"
+                        value={style.eta || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`style-${styleIndex}-submission`}>Submission Date</Label>
+                      <Input
+                        id={`style-${styleIndex}-submission`}
+                        type="date"
+                        value={style.submissionDate || ''}
+                        onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Different styles can have different delivery schedules based on supplier availability
+                  </p>
                 </div>
 
                 {/* Colors for this style */}
