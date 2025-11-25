@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
@@ -599,17 +600,28 @@ export function CreateOrderDialog({
                           </div>
                           <div>
                             <Label className="text-xs">Unit</Label>
-                            <Input
+                            <Select
                               value={color.unit}
-                              onChange={(e) =>
+                              onValueChange={(value) =>
                                 updateColor(
                                   styleIndex,
                                   colorIndex,
                                   'unit',
-                                  e.target.value
+                                  value
                                 )
                               }
-                            />
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="meters">Meters</SelectItem>
+                                <SelectItem value="yards">Yards</SelectItem>
+                                <SelectItem value="kg">Kilograms</SelectItem>
+                                <SelectItem value="lbs">Pounds</SelectItem>
+                                <SelectItem value="pieces">Pieces</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div>
                             <Label className="text-xs">Currency</Label>

@@ -21,11 +21,47 @@ import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
 
+interface OrderColor {
+  id: string;
+  colorCode: string;
+  quantity: number;
+  unit: string;
+  millName?: string;
+  millPrice?: number;
+  provaPrice?: number;
+  currency?: string;
+  etd?: string;
+  eta?: string;
+  submissionDate?: string;
+  approvalDate?: string;
+  notes?: string;
+}
+
+interface OrderStyle {
+  id: string;
+  styleNumber: string;
+  description?: string;
+  fabricType?: string;
+  fabricComposition?: string;
+  gsm?: number;
+  finishType?: string;
+  construction?: string;
+  cuttableWidth?: string;
+  etd?: string;
+  eta?: string;
+  submissionDate?: string;
+  notes?: string;
+  colors: OrderColor[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Order {
   id: string;
   orderNumber: string;
   customerName: string;
   buyerName?: string;
+  baseStyleNumber?: string;
   styleNumber?: string;
   fabricType: string;
   fabricSpecifications?: string;
@@ -60,6 +96,7 @@ interface Order {
     price?: string;
     ppSample?: string;
   };
+  styles?: OrderStyle[];
   createdAt: string;
   updatedAt: string;
 }
@@ -687,6 +724,152 @@ export default function OrderDetailPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Styles and Colors Section */}
+                {order.styles && order.styles.length > 0 && (
+                  <Card className="border-l-4 border-l-indigo-500">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-indigo-600" />
+                        Styles & Color Variants
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-6">
+                        {order.styles.map((style, styleIndex) => (
+                          <div key={style.id} className="border rounded-lg p-4 bg-gradient-to-br from-white to-gray-50">
+                            <div className="flex items-start justify-between mb-4">
+                              <div>
+                                <h3 className="font-semibold text-lg text-indigo-900">
+                                  {style.styleNumber}
+                                </h3>
+                                {style.description && (
+                                  <p className="text-sm text-gray-600 mt-1">{style.description}</p>
+                                )}
+                              </div>
+                              <Badge variant="outline" className="bg-indigo-50">
+                                Style {styleIndex + 1}
+                              </Badge>
+                            </div>
+
+                            {/* Style Details Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4 p-3 bg-white rounded border">
+                              {style.fabricType && (
+                                <div>
+                                  <p className="text-xs text-gray-500">Fabric Type</p>
+                                  <p className="text-sm font-medium">{style.fabricType}</p>
+                                </div>
+                              )}
+                              {style.fabricComposition && (
+                                <div>
+                                  <p className="text-xs text-gray-500">Composition</p>
+                                  <p className="text-sm font-medium">{style.fabricComposition}</p>
+                                </div>
+                              )}
+                              {style.gsm && (
+                                <div>
+                                  <p className="text-xs text-gray-500">GSM</p>
+                                  <p className="text-sm font-medium">{style.gsm}</p>
+                                </div>
+                              )}
+                              {style.cuttableWidth && (
+                                <div>
+                                  <p className="text-xs text-gray-500">Cuttable Width</p>
+                                  <p className="text-sm font-medium">{style.cuttableWidth}</p>
+                                </div>
+                              )}
+                              {style.construction && (
+                                <div className="col-span-2">
+                                  <p className="text-xs text-gray-500">Construction</p>
+                                  <p className="text-sm font-medium">{style.construction}</p>
+                                </div>
+                              )}
+                              {style.etd && (
+                                <div>
+                                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    ETD
+                                  </p>
+                                  <p className="text-sm font-medium text-blue-600">{formatDate(style.etd)}</p>
+                                </div>
+                              )}
+                              {style.eta && (
+                                <div>
+                                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    ETA
+                                  </p>
+                                  <p className="text-sm font-medium text-green-600">{formatDate(style.eta)}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Colors Table */}
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Color Variants ({style.colors.length})</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-gray-100 text-gray-700">
+                                    <tr>
+                                      <th className="text-left p-2 font-medium">Color Code</th>
+                                      <th className="text-right p-2 font-medium">Quantity</th>
+                                      <th className="text-right p-2 font-medium">Mill Price</th>
+                                      <th className="text-right p-2 font-medium">Prova Price</th>
+                                      <th className="text-center p-2 font-medium">ETD</th>
+                                      <th className="text-center p-2 font-medium">ETA</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y">
+                                    {style.colors.map((color) => (
+                                      <tr key={color.id} className="hover:bg-gray-50">
+                                        <td className="p-2">
+                                          <Badge variant="secondary" className="font-mono">
+                                            {color.colorCode}
+                                          </Badge>
+                                        </td>
+                                        <td className="p-2 text-right font-medium">
+                                          {color.quantity.toLocaleString()} {color.unit}
+                                        </td>
+                                        <td className="p-2 text-right">
+                                          {color.millPrice ? `${color.currency || 'USD'} ${color.millPrice.toFixed(2)}` : '-'}
+                                        </td>
+                                        <td className="p-2 text-right text-green-700 font-medium">
+                                          {color.provaPrice ? `${color.currency || 'USD'} ${color.provaPrice.toFixed(2)}` : '-'}
+                                        </td>
+                                        <td className="p-2 text-center text-xs">
+                                          {color.etd ? formatDate(color.etd) : '-'}
+                                        </td>
+                                        <td className="p-2 text-center text-xs">
+                                          {color.eta ? formatDate(color.eta) : '-'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot className="bg-indigo-50 font-semibold">
+                                    <tr>
+                                      <td className="p-2">Total</td>
+                                      <td className="p-2 text-right">
+                                        {style.colors.reduce((sum, c) => sum + c.quantity, 0).toLocaleString()} {style.colors[0]?.unit || ''}
+                                      </td>
+                                      <td colSpan={4}></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+
+                            {style.notes && (
+                              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
+                                <p className="text-xs text-yellow-700 font-medium mb-1">Notes:</p>
+                                <p className="text-yellow-900">{style.notes}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
