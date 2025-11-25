@@ -173,12 +173,11 @@ class OrderColorInline(admin.TabularInline):
 class OrderStyleAdmin(admin.ModelAdmin):
     """Admin interface for OrderStyle model"""
     list_display = [
-        'style_number', 'order', 'base_style_number', 
-        'fabric_type', 'etd', 'created_at'
+        'style_number', 'order', 'fabric_type', 'etd', 'created_at'
     ]
     list_filter = ['etd', 'created_at']
     search_fields = [
-        'style_number', 'base_style_number', 'order__order_number'
+        'style_number', 'order__order_number', 'description'
     ]
     ordering = ['-created_at']
     
@@ -189,13 +188,13 @@ class OrderStyleAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Style Information', {
             'fields': (
-                'id', 'order', 'base_style_number', 'style_number'
+                'id', 'order', 'style_number', 'description'
             )
         }),
         ('Fabric Details', {
             'fields': (
                 'fabric_type', 'fabric_specifications', 'fabric_composition',
-                'gsm', 'finish_type', 'construction'
+                'gsm', 'finish_type', 'construction', 'cuttable_width'
             )
         }),
         ('Dates', {

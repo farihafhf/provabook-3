@@ -20,7 +20,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'customer_name', 'buyer_name', 'style_number',
+            'id', 'order_number', 'customer_name', 'buyer_name', 'base_style_number', 'style_number',
             'fabric_type', 'fabric_specifications', 'fabric_composition', 
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -53,6 +53,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'orderNumber': data['order_number'],
             'customerName': data['customer_name'],
             'buyerName': data.get('buyer_name'),
+            'baseStyleNumber': data.get('base_style_number'),
             'styleNumber': data.get('style_number'),
             'fabricType': data['fabric_type'],
             'fabricSpecifications': data.get('fabric_specifications'),
@@ -256,7 +257,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'style_number',
+            'customer_name', 'buyer_name', 'base_style_number', 'style_number',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -271,6 +272,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         field_mapping = {
             'customerName': 'customer_name',
             'buyerName': 'buyer_name',
+            'baseStyleNumber': 'base_style_number',
             'styleNumber': 'style_number',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',
@@ -329,7 +331,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'style_number',
+            'customer_name', 'buyer_name', 'base_style_number', 'style_number',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -344,6 +346,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         field_mapping = {
             'customerName': 'customer_name',
             'buyerName': 'buyer_name',
+            'baseStyleNumber': 'base_style_number',
             'styleNumber': 'style_number',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',

@@ -78,9 +78,9 @@ class OrderStyleSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderStyle
         fields = [
-            'id', 'base_style_number', 'style_number',
+            'id', 'style_number', 'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
-            'gsm', 'finish_type', 'construction',
+            'gsm', 'finish_type', 'construction', 'cuttable_width',
             'etd', 'eta', 'submission_date', 'notes',
             'colors', 'created_at', 'updated_at'
         ]
@@ -91,14 +91,15 @@ class OrderStyleSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         return {
             'id': str(data['id']),
-            'baseStyleNumber': data['base_style_number'],
             'styleNumber': data['style_number'],
+            'description': data.get('description'),
             'fabricType': data.get('fabric_type'),
             'fabricSpecifications': data.get('fabric_specifications'),
             'fabricComposition': data.get('fabric_composition'),
             'gsm': float(data['gsm']) if data.get('gsm') else None,
             'finishType': data.get('finish_type'),
             'construction': data.get('construction'),
+            'cuttableWidth': data.get('cuttable_width'),
             'etd': data.get('etd'),
             'eta': data.get('eta'),
             'submissionDate': data.get('submission_date'),
@@ -111,8 +112,8 @@ class OrderStyleSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""
         field_mapping = {
-            'baseStyleNumber': 'base_style_number',
             'styleNumber': 'style_number',
+            'cuttableWidth': 'cuttable_width',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',
             'fabricComposition': 'fabric_composition',
@@ -196,9 +197,9 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderStyle
         fields = [
-            'base_style_number',
+            'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
-            'gsm', 'finish_type', 'construction',
+            'gsm', 'finish_type', 'construction', 'cuttable_width',
             'etd', 'eta', 'submission_date', 'notes',
             'colors'
         ]
@@ -206,7 +207,7 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""
         field_mapping = {
-            'baseStyleNumber': 'base_style_number',
+            'cuttableWidth': 'cuttable_width',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',
             'fabricComposition': 'fabric_composition',

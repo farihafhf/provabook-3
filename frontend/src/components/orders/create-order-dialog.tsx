@@ -12,18 +12,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
 interface StyleFormData {
-  baseStyleNumber: string;
+  description?: string;
   fabricType?: string;
   fabricComposition?: string;
   gsm?: string;
   finishType?: string;
   construction?: string;
+  cuttableWidth?: string;
   etd?: string;
   eta?: string;
   submissionDate?: string;
@@ -32,13 +34,11 @@ interface StyleFormData {
 
 interface ColorFormData {
   colorCode: string;
-  colorName: string;
   quantity: string;
   unit: string;
   millName?: string;
   millPrice?: string;
   provaPrice?: string;
-  commission?: string;
   currency: string;
   etd?: string;
   eta?: string;
@@ -62,6 +62,7 @@ export function CreateOrderDialog({
   const [formData, setFormData] = useState({
     customerName: '',
     buyerName: '',
+    baseStyleNumber: '',
     fabricType: '',
     orderDate: '',
     expectedDeliveryDate: '',
@@ -70,11 +71,9 @@ export function CreateOrderDialog({
   
   const [styles, setStyles] = useState<StyleFormData[]>([
     {
-      baseStyleNumber: '',
       colors: [
         {
           colorCode: '',
-          colorName: '',
           quantity: '',
           unit: 'meters',
           currency: 'USD',
@@ -87,11 +86,9 @@ export function CreateOrderDialog({
     setStyles([
       ...styles,
       {
-        baseStyleNumber: '',
         colors: [
           {
             colorCode: '',
-            colorName: '',
             quantity: '',
             unit: 'meters',
             currency: 'USD',
@@ -111,7 +108,6 @@ export function CreateOrderDialog({
     const newStyles = [...styles];
     newStyles[styleIndex].colors.push({
       colorCode: '',
-      colorName: '',
       quantity: '',
       unit: 'meters',
       currency: 'USD',
@@ -169,6 +165,15 @@ export function CreateOrderDialog({
       return false;
     }
 
+    if (!formData.baseStyleNumber.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Base style number is required',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     // Validate styles
     if (styles.length === 0) {
       toast({
@@ -181,15 +186,6 @@ export function CreateOrderDialog({
 
     for (let i = 0; i < styles.length; i++) {
       const style = styles[i];
-      
-      if (!style.baseStyleNumber.trim()) {
-        toast({
-          title: 'Validation Error',
-          description: `Style ${i + 1}: Base style number is required`,
-          variant: 'destructive',
-        });
-        return false;
-      }
 
       if (style.colors.length === 0) {
         toast({
@@ -207,15 +203,6 @@ export function CreateOrderDialog({
           toast({
             title: 'Validation Error',
             description: `Style ${i + 1}, Color ${j + 1}: Color code is required`,
-            variant: 'destructive',
-          });
-          return false;
-        }
-
-        if (!color.colorName.trim()) {
-          toast({
-            title: 'Validation Error',
-            description: `Style ${i + 1}, Color ${j + 1}: Color name is required`,
             variant: 'destructive',
           });
           return false;
@@ -263,6 +250,7 @@ export function CreateOrderDialog({
       const orderData = {
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
+        baseStyleNumber: formData.baseStyleNumber,
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
@@ -281,24 +269,23 @@ export function CreateOrderDialog({
         ),
         unit: 'meters',
         styles: styles.map((style) => ({
-          baseStyleNumber: style.baseStyleNumber,
+          description: style.description || undefined,
           fabricType: style.fabricType || formData.fabricType,
           fabricComposition: style.fabricComposition || undefined,
           gsm: style.gsm ? parseFloat(style.gsm) : undefined,
           finishType: style.finishType || undefined,
           construction: style.construction || undefined,
+          cuttableWidth: style.cuttableWidth || undefined,
           etd: style.etd || undefined,
           eta: style.eta || undefined,
           submissionDate: style.submissionDate || undefined,
           colors: style.colors.map((color) => ({
             colorCode: color.colorCode,
-            colorName: color.colorName,
             quantity: parseFloat(color.quantity),
             unit: color.unit,
             millName: color.millName || undefined,
             millPrice: color.millPrice ? parseFloat(color.millPrice) : undefined,
             provaPrice: color.provaPrice ? parseFloat(color.provaPrice) : undefined,
-            commission: color.commission ? parseFloat(color.commission) : undefined,
             currency: color.currency,
             etd: color.etd || undefined,
             eta: color.eta || undefined,
@@ -321,6 +308,7 @@ export function CreateOrderDialog({
       setFormData({
         customerName: '',
         buyerName: '',
+        baseStyleNumber: '',
         fabricType: '',
         orderDate: '',
         expectedDeliveryDate: '',
@@ -328,11 +316,9 @@ export function CreateOrderDialog({
       });
       setStyles([
         {
-          baseStyleNumber: '',
           colors: [
             {
               colorCode: '',
-              colorName: '',
               quantity: '',
               unit: 'meters',
               currency: 'USD',
@@ -402,6 +388,23 @@ export function CreateOrderDialog({
                 />
               </div>
               <div>
+                <Label htmlFor="baseStyleNumber">
+                  Base Style Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="baseStyleNumber"
+                  value={formData.baseStyleNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, baseStyleNumber: e.target.value })
+                  }
+                  placeholder="e.g., ST2024"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Styles will be auto-numbered as ST2024-01, ST2024-02, etc.
+                </p>
+              </div>
+              <div>
                 <Label htmlFor="fabricType">
                   Fabric Type <span className="text-red-500">*</span>
                 </Label>
@@ -455,7 +458,7 @@ export function CreateOrderDialog({
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">
                   Style {styleIndex + 1}
-                  {style.baseStyleNumber && ` (${style.baseStyleNumber}-01)`}
+                  {formData.baseStyleNumber && ` (${formData.baseStyleNumber}-${String(styleIndex + 1).padStart(2, '0')})`}
                 </CardTitle>
                 {styles.length > 1 && (
                   <Button
@@ -471,17 +474,15 @@ export function CreateOrderDialog({
               <CardContent className="space-y-4">
                 {/* Style Fields */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label>
-                      Base Style Number <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      value={style.baseStyleNumber}
+                  <div className="col-span-3">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={style.description || ''}
                       onChange={(e) =>
-                        updateStyle(styleIndex, 'baseStyleNumber', e.target.value)
+                        updateStyle(styleIndex, 'description', e.target.value)
                       }
-                      placeholder="e.g., ST2024"
-                      required
+                      placeholder="Style description"
+                      rows={2}
                     />
                   </div>
                   <div>
@@ -499,6 +500,27 @@ export function CreateOrderDialog({
                       type="number"
                       value={style.gsm || ''}
                       onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Cuttable Width</Label>
+                    <Input
+                      value={style.cuttableWidth || ''}
+                      onChange={(e) =>
+                        updateStyle(styleIndex, 'cuttableWidth', e.target.value)
+                      }
+                      placeholder="e.g., 60 inches"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Label>Construction</Label>
+                    <Textarea
+                      value={style.construction || ''}
+                      onChange={(e) =>
+                        updateStyle(styleIndex, 'construction', e.target.value)
+                      }
+                      placeholder="Construction details including width and other info"
+                      rows={2}
                     />
                   </div>
                 </div>
@@ -558,24 +580,6 @@ export function CreateOrderDialog({
                           </div>
                           <div>
                             <Label className="text-xs">
-                              Color Name <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              value={color.colorName}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'colorName',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="e.g., Red"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">
                               Quantity <span className="text-red-500">*</span>
                             </Label>
                             <Input
@@ -608,6 +612,20 @@ export function CreateOrderDialog({
                             />
                           </div>
                           <div>
+                            <Label className="text-xs">Currency</Label>
+                            <Input
+                              value={color.currency}
+                              onChange={(e) =>
+                                updateColor(
+                                  styleIndex,
+                                  colorIndex,
+                                  'currency',
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+                          <div>
                             <Label className="text-xs">Mill Price</Label>
                             <Input
                               type="number"
@@ -634,36 +652,6 @@ export function CreateOrderDialog({
                                   styleIndex,
                                   colorIndex,
                                   'provaPrice',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Commission</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.commission || ''}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'commission',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Currency</Label>
-                            <Input
-                              value={color.currency}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'currency',
                                   e.target.value
                                 )
                               }

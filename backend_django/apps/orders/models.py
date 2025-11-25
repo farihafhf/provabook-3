@@ -32,6 +32,7 @@ class Order(TimestampedModel):
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
     customer_name = models.CharField(max_length=255)
     buyer_name = models.CharField(max_length=255, blank=True, null=True)
+    base_style_number = models.CharField(max_length=100, blank=True, null=True, help_text='Base style number for auto-generating style variants')
     style_number = models.CharField(max_length=100, blank=True, null=True)
     
     # Fabric Details

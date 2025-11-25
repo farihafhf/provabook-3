@@ -18,19 +18,19 @@ class OrderStyle(TimestampedModel):
         db_index=True
     )
     
-    # Base style number (compulsory) - provided by user
-    base_style_number = models.CharField(max_length=100)
-    
     # Auto-generated style number with increment (e.g., STYLE-01, STYLE-02)
+    # Uses order.base_style_number as the base
     style_number = models.CharField(max_length=150, db_index=True)
     
     # Style-specific details
+    description = models.TextField(blank=True, null=True, help_text='Style description')
     fabric_type = models.CharField(max_length=255, blank=True, null=True)
     fabric_specifications = models.TextField(blank=True, null=True)
     fabric_composition = models.CharField(max_length=255, blank=True, null=True)
     gsm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     finish_type = models.CharField(max_length=100, blank=True, null=True)
-    construction = models.CharField(max_length=100, blank=True, null=True)
+    construction = models.TextField(blank=True, null=True, help_text='Construction details including width and other info')
+    cuttable_width = models.CharField(max_length=100, blank=True, null=True, help_text='Cuttable width specification')
     
     # Style-level dates
     etd = models.DateField(blank=True, null=True, help_text='Estimated Time of Departure')
@@ -62,10 +62,12 @@ class OrderStyle(TimestampedModel):
     def save(self, *args, **kwargs):
         """Auto-generate style_number if not provided"""
         if not self.style_number and self.order_id:
+            # Get base style number from order
+            base_style = self.order.base_style_number or 'STYLE'
             # Count existing styles for this order
             existing_count = OrderStyle.objects.filter(order=self.order).count()
             # Generate style number: base_style_number-01, base_style_number-02, etc.
-            self.style_number = f"{self.base_style_number}-{str(existing_count + 1).zfill(2)}"
+            self.style_number = f"{base_style}-{str(existing_count + 1).zfill(2)}"
         super().save(*args, **kwargs)
 
 
@@ -84,8 +86,8 @@ class OrderColor(TimestampedModel):
     # Color code (compulsory, unique within order)
     color_code = models.CharField(max_length=100, db_index=True)
     
-    # Color name
-    color_name = models.CharField(max_length=255)
+    # Color name (optional)
+    color_name = models.CharField(max_length=255, blank=True, null=True)
     
     # Quantity
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
