@@ -4,6 +4,7 @@ Orders serializers
 from rest_framework import serializers
 from .models import Order, OrderStatus, OrderCategory, Document
 from apps.authentication.serializers import UserSerializer
+from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -14,6 +15,7 @@ class OrderSerializer(serializers.ModelSerializer):
     merchandiser_details = UserSerializer(source='merchandiser', read_only=True)
     total_value = serializers.ReadOnlyField()
     timeline_events = serializers.SerializerMethodField()
+    styles = OrderStyleSerializer(many=True, read_only=True)
     
     class Meta:
         model = Order
@@ -26,7 +28,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
-            'total_value', 'created_at', 'updated_at', 'timeline_events'
+            'total_value', 'created_at', 'updated_at', 'timeline_events', 'styles'
         ]
         read_only_fields = ['id', 'order_number', 'created_at', 'updated_at', 'total_value']
     
@@ -83,6 +85,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
             'timelineEvents': data.get('timeline_events', []),
+            'styles': data.get('styles', []),
         }
     
     def get_timeline_events(self, obj):
@@ -246,7 +249,10 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for creating orders
     Accepts both camelCase (from frontend) and snake_case
+    Now supports nested styles with colors
     """
+    styles = OrderStyleCreateUpdateSerializer(many=True, required=True)
+    
     class Meta:
         model = Order
         fields = [
@@ -256,7 +262,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'mill_name', 'mill_price', 'prova_price', 'currency',
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date',
-            'status', 'category', 'notes', 'metadata'
+            'status', 'category', 'notes', 'metadata', 'styles'
         ]
     
     def to_internal_value(self, data):
@@ -287,10 +293,32 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         return super().to_internal_value(converted_data)
     
+    def validate(self, data):
+        """Validate that at least one style is provided"""
+        styles = data.get('styles', [])
+        if not styles:
+            raise serializers.ValidationError({
+                'styles': 'At least one style must be provided for each order'
+            })
+        return data
+    
     def create(self, validated_data):
-        """Create order with auto-assigned merchandiser"""
-        # Merchandiser will be set in the view
-        return super().create(validated_data)
+        """Create order with nested styles and colors"""
+        styles_data = validated_data.pop('styles')
+        
+        # Create order (merchandiser will be set in the view)
+        order = Order.objects.create(**validated_data)
+        
+        # Create nested styles and colors
+        from .models_style_color import OrderStyle, OrderColor
+        for style_data in styles_data:
+            colors_data = style_data.pop('colors')
+            style = OrderStyle.objects.create(order=order, **style_data)
+            
+            for color_data in colors_data:
+                OrderColor.objects.create(style=style, **color_data)
+        
+        return order
 
 
 class OrderUpdateSerializer(serializers.ModelSerializer):

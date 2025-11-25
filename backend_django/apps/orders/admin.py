@@ -4,6 +4,7 @@ Django admin configuration for Orders
 from django.contrib import admin
 from .models import Order
 from .models_task import Task
+from .models_style_color import OrderStyle, OrderColor
 
 
 @admin.register(Order)
@@ -155,3 +156,129 @@ class TaskAdmin(admin.ModelAdmin):
         """Optimize query with select_related"""
         queryset = super().get_queryset(request)
         return queryset.select_related('order', 'assigned_to', 'assigned_by')
+
+
+class OrderColorInline(admin.TabularInline):
+    """Inline admin for OrderColor"""
+    model = OrderColor
+    extra = 1
+    fields = [
+        'color_code', 'color_name', 'quantity', 'unit',
+        'mill_price', 'prova_price', 'commission', 'currency',
+        'etd', 'eta', 'submission_date', 'approval_date'
+    ]
+
+
+@admin.register(OrderStyle)
+class OrderStyleAdmin(admin.ModelAdmin):
+    """Admin interface for OrderStyle model"""
+    list_display = [
+        'style_number', 'order', 'base_style_number', 
+        'fabric_type', 'etd', 'created_at'
+    ]
+    list_filter = ['etd', 'created_at']
+    search_fields = [
+        'style_number', 'base_style_number', 'order__order_number'
+    ]
+    ordering = ['-created_at']
+    
+    readonly_fields = ['id', 'style_number', 'created_at', 'updated_at']
+    
+    inlines = [OrderColorInline]
+    
+    fieldsets = (
+        ('Style Information', {
+            'fields': (
+                'id', 'order', 'base_style_number', 'style_number'
+            )
+        }),
+        ('Fabric Details', {
+            'fields': (
+                'fabric_type', 'fabric_specifications', 'fabric_composition',
+                'gsm', 'finish_type', 'construction'
+            )
+        }),
+        ('Dates', {
+            'fields': (
+                'etd', 'eta', 'submission_date'
+            )
+        }),
+        ('Additional Information', {
+            'fields': (
+                'notes',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at', 'updated_at'
+            )
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Optimize query with select_related"""
+        queryset = super().get_queryset(request)
+        return queryset.select_related('order')
+
+
+@admin.register(OrderColor)
+class OrderColorAdmin(admin.ModelAdmin):
+    """Admin interface for OrderColor model"""
+    list_display = [
+        'color_code', 'color_name', 'style', 'quantity', 
+        'prova_price', 'commission', 'etd', 'created_at'
+    ]
+    list_filter = ['etd', 'created_at', 'currency']
+    search_fields = [
+        'color_code', 'color_name', 'style__style_number',
+        'style__order__order_number'
+    ]
+    ordering = ['-created_at']
+    
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Color Information', {
+            'fields': (
+                'id', 'style', 'color_code', 'color_name'
+            )
+        }),
+        ('Quantity', {
+            'fields': (
+                'quantity', 'unit'
+            )
+        }),
+        ('Pricing', {
+            'fields': (
+                'mill_name', 'mill_price', 'prova_price', 
+                'commission', 'currency'
+            )
+        }),
+        ('Dates', {
+            'fields': (
+                'etd', 'eta', 'submission_date', 'approval_date'
+            )
+        }),
+        ('Approval Status', {
+            'fields': (
+                'approval_status',
+            )
+        }),
+        ('Additional Information', {
+            'fields': (
+                'notes',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at', 'updated_at'
+            )
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Optimize query with select_related"""
+        queryset = super().get_queryset(request)
+        return queryset.select_related('style', 'style__order')
