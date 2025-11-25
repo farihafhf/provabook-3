@@ -10,6 +10,7 @@ from .models import ProformaInvoice, LetterOfCredit
 from .serializers import ProformaInvoiceSerializer, LetterOfCreditSerializer
 from apps.core.permissions import IsMerchandiser
 from apps.orders.models import Order
+from apps.orders.serializers import OrderSerializer
 
 
 class ProformaInvoiceViewSet(viewsets.ModelViewSet):
@@ -201,3 +202,67 @@ class FinancialAnalyticsView(APIView):
                 'confirmed_lcs_value': float(confirmed_lcs_value),
             }
         })
+
+
+class OrderProfitsView(APIView):
+    """
+    Order Profits endpoint for financials page
+    Returns all orders with profit/commission data
+    Supports filtering by merchandiser, buyer, PO number, style number
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Get all orders with profit information
+        Query params:
+        - search: Search by PO number, customer name, buyer name, style number
+        - merchandiser: Filter by merchandiser ID
+        - buyer: Filter by buyer name
+        - po_number: Filter by PO number
+        - style_number: Filter by style number
+        """
+        user = request.user
+        
+        # Base queryset filtered by user role
+        if user.role == 'merchandiser':
+            queryset = Order.objects.filter(merchandiser=user)
+        else:
+            queryset = Order.objects.all()
+        
+        # Apply filters
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(order_number__icontains=search) |
+                Q(customer_name__icontains=search) |
+                Q(buyer_name__icontains=search) |
+                Q(style_number__icontains=search)
+            )
+        
+        merchandiser_id = request.query_params.get('merchandiser')
+        if merchandiser_id:
+            queryset = queryset.filter(merchandiser_id=merchandiser_id)
+        
+        buyer = request.query_params.get('buyer')
+        if buyer:
+            queryset = queryset.filter(buyer_name__icontains=buyer)
+        
+        po_number = request.query_params.get('po_number')
+        if po_number:
+            queryset = queryset.filter(order_number__icontains=po_number)
+        
+        style_number = request.query_params.get('style_number')
+        if style_number:
+            queryset = queryset.filter(style_number__icontains=style_number)
+        
+        # Select related to optimize queries
+        queryset = queryset.select_related('merchandiser').prefetch_related('supplier_deliveries')
+        
+        # Order by creation date (newest first)
+        queryset = queryset.order_by('-created_at')
+        
+        # Serialize the orders
+        serializer = OrderSerializer(queryset, many=True)
+        
+        return Response(serializer.data)

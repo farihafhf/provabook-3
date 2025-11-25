@@ -14,6 +14,11 @@ class OrderSerializer(serializers.ModelSerializer):
     """
     merchandiser_details = UserSerializer(source='merchandiser', read_only=True)
     total_value = serializers.ReadOnlyField()
+    total_delivered_quantity = serializers.ReadOnlyField()
+    shortage_excess_quantity = serializers.ReadOnlyField()
+    potential_profit = serializers.ReadOnlyField()
+    realized_profit = serializers.ReadOnlyField()
+    realized_value = serializers.ReadOnlyField()
     timeline_events = serializers.SerializerMethodField()
     styles = OrderStyleSerializer(many=True, read_only=True)
     
@@ -28,9 +33,13 @@ class OrderSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
-            'total_value', 'created_at', 'updated_at', 'timeline_events', 'styles'
+            'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
+            'potential_profit', 'realized_profit', 'realized_value',
+            'created_at', 'updated_at', 'timeline_events', 'styles'
         ]
-        read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value']
+        read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value', 
+                           'total_delivered_quantity', 'shortage_excess_quantity', 
+                           'potential_profit', 'realized_profit', 'realized_value']
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -85,6 +94,11 @@ class OrderSerializer(serializers.ModelSerializer):
             'merchandiser': str(data['merchandiser']) if data.get('merchandiser') else None,
             'merchandiserDetails': merchandiser_details,
             'totalValue': data.get('total_value'),
+            'totalDeliveredQuantity': data.get('total_delivered_quantity'),
+            'shortageExcessQuantity': data.get('shortage_excess_quantity'),
+            'potentialProfit': data.get('potential_profit'),
+            'realizedProfit': data.get('realized_profit'),
+            'realizedValue': data.get('realized_value'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
             'timelineEvents': data.get('timeline_events', []),

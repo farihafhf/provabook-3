@@ -26,6 +26,11 @@ interface Order {
   category: string;
   orderDate: string;
   expectedDeliveryDate: string;
+  millPrice?: number;
+  provaPrice?: number;
+  currency?: string;
+  potentialProfit?: number;
+  realizedProfit?: number;
 }
 
 interface OrdersFilterParams {
@@ -284,9 +289,10 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium">Customer</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
+                      <th className="pb-3 font-medium">Potential Profit</th>
+                      <th className="pb-3 font-medium">Realized Profit</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
-                      <th className="pb-3 font-medium">Expected Delivery</th>
                       <th className="pb-3 font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -302,12 +308,29 @@ function OrdersPageContent() {
                         <td className="py-4">{order.fabricType}</td>
                         <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
                         <td className="py-4">
+                          {order.potentialProfit !== undefined ? (
+                            <span className="font-medium text-blue-700">
+                              {order.currency} {order.potentialProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4">
+                          {order.realizedProfit !== undefined ? (
+                            <span className="font-medium text-green-700">
+                              {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4">
                           <Badge className={getStatusBadgeClass(order.status)}>
                             {getStatusDisplayName(order.status)}
                           </Badge>
                         </td>
                         <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
-                        <td className="py-4">{order.expectedDeliveryDate ? formatDate(order.expectedDeliveryDate) : '-'}</td>
                         <td className="py-4">
                           <div className="flex items-center gap-2">
                             <Button

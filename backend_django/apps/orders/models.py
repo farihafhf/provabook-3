@@ -130,10 +130,62 @@ class Order(TimestampedModel):
     
     @property
     def total_value(self):
-        """Calculate total order value"""
+        """Calculate total order value (revenue)"""
         if self.prova_price and self.quantity:
             return float(self.prova_price) * float(self.quantity)
         return 0
+    
+    @property
+    def total_delivered_quantity(self):
+        """Calculate total delivered quantity from all supplier deliveries"""
+        from django.db.models import Sum
+        result = self.supplier_deliveries.aggregate(total=Sum('delivered_quantity'))
+        return float(result['total']) if result['total'] else 0.0
+    
+    @property
+    def shortage_excess_quantity(self):
+        """Calculate shortage (negative) or excess (positive) quantity
+        Formula: delivered - ordered
+        """
+        return self.total_delivered_quantity - float(self.quantity)
+    
+    @property
+    def potential_profit(self):
+        """Calculate potential profit based on ordered quantity
+        Formula: (prova_price - mill_price) * ordered_quantity
+        """
+        if self.prova_price and self.mill_price and self.quantity:
+            unit_profit = float(self.prova_price) - float(self.mill_price)
+            return unit_profit * float(self.quantity)
+        return 0.0
+    
+    @property
+    def realized_profit(self):
+        """Calculate realized profit based on delivered quantity with auto-adjustment
+        If delivered < ordered: profit based on delivered quantity
+        If delivered >= ordered: profit based on ordered quantity (no extra profit)
+        Formula: (prova_price - mill_price) * min(ordered_quantity, delivered_quantity)
+        """
+        if self.prova_price and self.mill_price:
+            unit_profit = float(self.prova_price) - float(self.mill_price)
+            delivered = self.total_delivered_quantity
+            ordered = float(self.quantity)
+            # Apply the auto-adjustment rule
+            effective_quantity = min(ordered, delivered)
+            return unit_profit * effective_quantity
+        return 0.0
+    
+    @property
+    def realized_value(self):
+        """Calculate realized value (revenue) based on delivered quantity with auto-adjustment
+        Formula: prova_price * min(ordered_quantity, delivered_quantity)
+        """
+        if self.prova_price:
+            delivered = self.total_delivered_quantity
+            ordered = float(self.quantity)
+            effective_quantity = min(ordered, delivered)
+            return float(self.prova_price) * effective_quantity
+        return 0.0
     
     def update_approval_status(self, approval_type, status_value):
         """Update a specific approval status"""

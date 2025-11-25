@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth-store';
@@ -113,6 +113,13 @@ interface Order {
     ppSample?: string;
   };
   styles?: OrderStyle[];
+  // Delivery and profit metrics
+  totalDeliveredQuantity?: number;
+  shortageExcessQuantity?: number;
+  potentialProfit?: number;
+  realizedProfit?: number;
+  totalValue?: number;
+  realizedValue?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -894,6 +901,74 @@ export default function OrderDetailPage() {
                   </CardContent>
                 </Card>
 
+                {/* Profit Summary Card */}
+                {order.millPrice && order.provaPrice && (
+                  <Card className="border-l-4 border-l-green-500">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <DollarSign className="h-5 w-5 text-green-600" />
+                        Profit Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {/* Pricing Row */}
+                        <div className="grid grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs text-gray-500">Mill Price</p>
+                            <p className="font-medium">{order.currency} {order.millPrice.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Prova Price</p>
+                            <p className="font-medium text-green-700">{order.currency} {order.provaPrice.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Unit Profit</p>
+                            <p className="font-medium text-blue-700">
+                              {order.currency} {(order.provaPrice - order.millPrice).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="border-t pt-3">
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Potential Profit */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <p className="text-xs text-blue-600 font-medium mb-1">Potential Profit</p>
+                              <p className="text-xs text-gray-600 mb-2">
+                                (Based on ordered: {order.quantity.toLocaleString()} {order.unit})
+                              </p>
+                              <p className="text-2xl font-bold text-blue-700">
+                                {order.currency} {(order.potentialProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                              </p>
+                            </div>
+
+                            {/* Realized Profit */}
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <p className="text-xs text-green-600 font-medium mb-1">Realized Profit</p>
+                              <p className="text-xs text-gray-600 mb-2">
+                                (Based on delivered: {(order.totalDeliveredQuantity || 0).toLocaleString()} {order.unit})
+                              </p>
+                              <p className="text-2xl font-bold text-green-700">
+                                {order.currency} {(order.realizedProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Profit Status Indicator */}
+                        {order.shortageExcessQuantity !== undefined && order.shortageExcessQuantity < 0 && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p className="text-sm text-amber-800">
+                              ⚠️ Profit shortfall of {order.currency} {((order.potentialProfit || 0) - (order.realizedProfit || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} due to delivery shortage
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Styles and Colors Section */}
                 {order.styles && order.styles.length > 0 && (
                   <Card className="border-l-4 border-l-indigo-500">
@@ -1337,11 +1412,29 @@ export default function OrderDetailPage() {
                       </div>
                     </CardContent>
                   </Card>
-                  <Card className="bg-orange-50 border-orange-200">
+                  <Card className={
+                    order.shortageExcessQuantity === undefined ? 'bg-gray-50 border-gray-200' :
+                    order.shortageExcessQuantity < 0 ? 'bg-red-50 border-red-200' :
+                    order.shortageExcessQuantity > 0 ? 'bg-green-50 border-green-200' :
+                    'bg-gray-50 border-gray-200'
+                  }>
                     <CardContent className="pt-4">
-                      <div className="text-sm text-gray-600 mb-1">Remaining</div>
-                      <div className="text-2xl font-bold text-orange-700">
-                        {getRemainingQuantity().toLocaleString()} {order.unit}
+                      <div className="text-sm text-gray-600 mb-1">
+                        {order.shortageExcessQuantity === undefined ? 'Status' :
+                         order.shortageExcessQuantity < 0 ? 'Shortage' :
+                         order.shortageExcessQuantity > 0 ? 'Excess' :
+                         'Status'}
+                      </div>
+                      <div className={`text-2xl font-bold ${
+                        order.shortageExcessQuantity === undefined ? 'text-gray-700' :
+                        order.shortageExcessQuantity < 0 ? 'text-red-700' :
+                        order.shortageExcessQuantity > 0 ? 'text-green-700' :
+                        'text-gray-700'
+                      }`}>
+                        {order.shortageExcessQuantity === undefined ? 'No deliveries yet' :
+                         order.shortageExcessQuantity < 0 ? `${Math.abs(order.shortageExcessQuantity).toLocaleString()} ${order.unit}` :
+                         order.shortageExcessQuantity > 0 ? `+${order.shortageExcessQuantity.toLocaleString()} ${order.unit}` :
+                         `On target`}
                       </div>
                     </CardContent>
                   </Card>

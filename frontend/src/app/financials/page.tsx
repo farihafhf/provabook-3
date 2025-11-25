@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { api } from '@/lib/api';
-import { Plus, FileText, DollarSign, MoreHorizontal, Download, Search, History, Trash2 } from 'lucide-react';
+import { Plus, FileText, DollarSign, MoreHorizontal, Download, Search, History, Trash2, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
@@ -65,6 +66,21 @@ interface Order {
   id: string;
   poNumber: string;
   customerName: string;
+  buyerName?: string;
+  styleNumber?: string;
+  quantity?: number;
+  unit?: string;
+  currency?: string;
+  millPrice?: number;
+  provaPrice?: number;
+  potentialProfit?: number;
+  realizedProfit?: number;
+  totalDeliveredQuantity?: number;
+  shortageExcessQuantity?: number;
+  merchandiserDetails?: {
+    id: string;
+    fullName: string;
+  };
 }
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
@@ -176,6 +192,11 @@ export default function FinancialsPage() {
   const [lcToDelete, setLcToDelete] = useState<LetterOfCredit | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Order Profits state
+  const [orderProfits, setOrderProfits] = useState<Order[]>([]);
+  const [profitsLoading, setProfitsLoading] = useState(false);
+  const [profitsSearchQuery, setProfitsSearchQuery] = useState<string>('');
+
   const [piFormData, setPiFormData] = useState({
     orderId: '',
     amount: '',
@@ -216,6 +237,7 @@ export default function FinancialsPage() {
 
     fetchFinancials();
     fetchOrders();
+    fetchOrderProfits();
   }, [isAuthenticated, router]);
 
   useEffect(() => {
@@ -276,6 +298,37 @@ export default function FinancialsPage() {
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
+  };
+
+  const fetchOrderProfits = async (search?: string) => {
+    setProfitsLoading(true);
+    try {
+      const params: any = { _t: Date.now() };
+      if (search) {
+        params.search = search;
+      }
+      const response = await api.get('/financials/order-profits/', { params });
+      setOrderProfits(response.data);
+    } catch (error) {
+      console.error('Failed to fetch order profits:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load order profits',
+        variant: 'destructive',
+      });
+    } finally {
+      setProfitsLoading(false);
+    }
+  };
+
+  const handleProfitsSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchOrderProfits(profitsSearchQuery || undefined);
+  };
+
+  const handleResetProfitsSearch = () => {
+    setProfitsSearchQuery('');
+    fetchOrderProfits();
   };
 
   const handleOpenEditPI = (pi: ProformaInvoice) => {
@@ -1164,6 +1217,123 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Order Profits Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Order Profits & Commissions
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOrderProfits()}
+              >
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search Bar */}
+            <form onSubmit={handleProfitsSearch} className="mb-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search by PO #, customer, buyer, style number..."
+                  value={profitsSearchQuery}
+                  onChange={(e) => setProfitsSearchQuery(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit">Search</Button>
+                <Button type="button" variant="outline" onClick={handleResetProfitsSearch}>
+                  Reset
+                </Button>
+              </div>
+            </form>
+
+            {/* Profits Table */}
+            {profitsLoading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Loading order profits...</p>
+              </div>
+            ) : orderProfits.length === 0 ? (
+              <div className="text-center py-12">
+                <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">No orders found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr className="text-left">
+                      <th className="p-3 font-semibold">PO #</th>
+                      <th className="p-3 font-semibold">Customer</th>
+                      <th className="p-3 font-semibold">Buyer</th>
+                      <th className="p-3 font-semibold">Style</th>
+                      <th className="p-3 font-semibold text-right">Quantity</th>
+                      <th className="p-3 font-semibold text-right">Delivered</th>
+                      <th className="p-3 font-semibold text-right">Potential Profit</th>
+                      <th className="p-3 font-semibold text-right">Realized Profit</th>
+                      <th className="p-3 font-semibold">Merchandiser</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orderProfits.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                      >
+                        <td className="p-3 font-medium">{order.poNumber}</td>
+                        <td className="p-3">{order.customerName}</td>
+                        <td className="p-3 text-gray-600">{order.buyerName || '-'}</td>
+                        <td className="p-3 text-gray-600">{order.styleNumber || '-'}</td>
+                        <td className="p-3 text-right">
+                          {order.quantity?.toLocaleString()} {order.unit}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.totalDeliveredQuantity !== undefined ? (
+                            <span className={
+                              order.shortageExcessQuantity !== undefined && order.shortageExcessQuantity < 0
+                                ? 'text-red-600 font-medium'
+                                : 'text-gray-900'
+                            }>
+                              {order.totalDeliveredQuantity.toLocaleString()} {order.unit}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.potentialProfit !== undefined ? (
+                            <span className="font-semibold text-blue-700">
+                              {order.currency} {order.potentialProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.realizedProfit !== undefined ? (
+                            <span className="font-semibold text-green-700">
+                              {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-gray-600">
+                          {order.merchandiserDetails?.fullName || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Dialog
           open={editPiDialogOpen}
