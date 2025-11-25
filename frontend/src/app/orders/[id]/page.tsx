@@ -902,7 +902,7 @@ export default function OrderDetailPage() {
                 </Card>
 
                 {/* Profit Summary Card */}
-                {order.millPrice && order.provaPrice && (
+                {(order.potentialProfit !== undefined && order.potentialProfit !== null) && (
                   <Card className="border-l-4 border-l-green-500">
                     <CardHeader className="pb-3">
                       <CardTitle className="flex items-center gap-2 text-lg">
@@ -912,25 +912,35 @@ export default function OrderDetailPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-4">
-                        {/* Pricing Row */}
-                        <div className="grid grid-cols-3 gap-3 text-sm">
-                          <div>
-                            <p className="text-xs text-gray-500">Mill Price</p>
-                            <p className="font-medium">{order.currency} {order.millPrice.toFixed(2)}</p>
+                        {/* Pricing Row - Only show if order-level prices exist */}
+                        {order.millPrice && order.provaPrice && (
+                          <div className="grid grid-cols-3 gap-3 text-sm pb-3 border-b">
+                            <div>
+                              <p className="text-xs text-gray-500">Mill Price</p>
+                              <p className="font-medium">{order.currency} {order.millPrice.toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Prova Price</p>
+                              <p className="font-medium text-green-700">{order.currency} {order.provaPrice.toFixed(2)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Unit Profit</p>
+                              <p className="font-medium text-blue-700">
+                                {order.currency} {(order.provaPrice - order.millPrice).toFixed(2)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Prova Price</p>
-                            <p className="font-medium text-green-700">{order.currency} {order.provaPrice.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500">Unit Profit</p>
-                            <p className="font-medium text-blue-700">
-                              {order.currency} {(order.provaPrice - order.millPrice).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
+                        )}
 
-                        <div className="border-t pt-3">
+                        {/* For multi-style orders, show note about aggregated pricing */}
+                        {order.styles && order.styles.length > 0 && !order.millPrice && (
+                          <div className="text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded p-2 mb-3">
+                            <p className="font-medium text-blue-800 mb-1">Multi-Style Order</p>
+                            <p>Profits calculated from {order.styles.reduce((sum, style) => sum + (style.colors?.length || 0), 0)} color variants across {order.styles.length} style(s)</p>
+                          </div>
+                        )}
+
+                        <div className="pt-3">
                           <div className="grid grid-cols-2 gap-4">
                             {/* Potential Profit */}
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

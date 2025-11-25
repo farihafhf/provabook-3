@@ -130,10 +130,29 @@ class Order(TimestampedModel):
     
     @property
     def total_value(self):
-        """Calculate total order value (revenue)"""
+        """Calculate total order value (revenue)
+        Aggregates value from all color variants across all styles
+        Formula: sum(color.prova_price * color.quantity) for all colors
+        Falls back to order-level pricing if no styles/colors exist
+        """
+        # Try to calculate from color variants first
+        total_value = 0.0
+        has_colors = False
+        
+        for style in self.styles.all():
+            for color in style.colors.all():
+                if color.prova_price and color.quantity:
+                    has_colors = True
+                    total_value += float(color.prova_price) * float(color.quantity)
+        
+        if has_colors:
+            return total_value
+        
+        # Fallback to order-level pricing
         if self.prova_price and self.quantity:
             return float(self.prova_price) * float(self.quantity)
-        return 0
+        
+        return 0.0
     
     @property
     def total_delivered_quantity(self):
@@ -152,11 +171,29 @@ class Order(TimestampedModel):
     @property
     def potential_profit(self):
         """Calculate potential profit based on ordered quantity
-        Formula: (prova_price - mill_price) * ordered_quantity
+        Aggregates profit from all color variants across all styles
+        Formula: sum((color.prova_price - color.mill_price) * color.quantity) for all colors
+        Falls back to order-level pricing if no styles/colors exist
         """
+        # Try to calculate from color variants first
+        total_profit = 0.0
+        has_colors = False
+        
+        for style in self.styles.all():
+            for color in style.colors.all():
+                if color.prova_price and color.mill_price and color.quantity:
+                    has_colors = True
+                    unit_profit = float(color.prova_price) - float(color.mill_price)
+                    total_profit += unit_profit * float(color.quantity)
+        
+        if has_colors:
+            return total_profit
+        
+        # Fallback to order-level pricing
         if self.prova_price and self.mill_price and self.quantity:
             unit_profit = float(self.prova_price) - float(self.mill_price)
             return unit_profit * float(self.quantity)
+        
         return 0.0
     
     @property
@@ -164,27 +201,78 @@ class Order(TimestampedModel):
         """Calculate realized profit based on delivered quantity with auto-adjustment
         If delivered < ordered: profit based on delivered quantity
         If delivered >= ordered: profit based on ordered quantity (no extra profit)
-        Formula: (prova_price - mill_price) * min(ordered_quantity, delivered_quantity)
+        
+        For orders with color variants: applies delivery ratio to each color's profit
+        For simple orders: uses order-level pricing
         """
+        delivered = self.total_delivered_quantity
+        ordered = float(self.quantity)
+        
+        # Calculate delivery ratio
+        if ordered > 0:
+            delivery_ratio = min(1.0, delivered / ordered)  # Cap at 100%
+        else:
+            delivery_ratio = 0.0
+        
+        # Try to calculate from color variants first
+        total_profit = 0.0
+        has_colors = False
+        
+        for style in self.styles.all():
+            for color in style.colors.all():
+                if color.prova_price and color.mill_price and color.quantity:
+                    has_colors = True
+                    unit_profit = float(color.prova_price) - float(color.mill_price)
+                    color_potential_profit = unit_profit * float(color.quantity)
+                    # Apply delivery ratio to this color's profit
+                    total_profit += color_potential_profit * delivery_ratio
+        
+        if has_colors:
+            return total_profit
+        
+        # Fallback to order-level pricing
         if self.prova_price and self.mill_price:
             unit_profit = float(self.prova_price) - float(self.mill_price)
-            delivered = self.total_delivered_quantity
-            ordered = float(self.quantity)
-            # Apply the auto-adjustment rule
             effective_quantity = min(ordered, delivered)
             return unit_profit * effective_quantity
+        
         return 0.0
     
     @property
     def realized_value(self):
         """Calculate realized value (revenue) based on delivered quantity with auto-adjustment
-        Formula: prova_price * min(ordered_quantity, delivered_quantity)
+        Formula: sum(color.prova_price * color.quantity) * delivery_ratio for all colors
+        Falls back to order-level pricing if no styles/colors exist
         """
+        delivered = self.total_delivered_quantity
+        ordered = float(self.quantity)
+        
+        # Calculate delivery ratio
+        if ordered > 0:
+            delivery_ratio = min(1.0, delivered / ordered)  # Cap at 100%
+        else:
+            delivery_ratio = 0.0
+        
+        # Try to calculate from color variants first
+        total_value = 0.0
+        has_colors = False
+        
+        for style in self.styles.all():
+            for color in style.colors.all():
+                if color.prova_price and color.quantity:
+                    has_colors = True
+                    color_potential_value = float(color.prova_price) * float(color.quantity)
+                    # Apply delivery ratio to this color's value
+                    total_value += color_potential_value * delivery_ratio
+        
+        if has_colors:
+            return total_value
+        
+        # Fallback to order-level pricing
         if self.prova_price:
-            delivered = self.total_delivered_quantity
-            ordered = float(self.quantity)
             effective_quantity = min(ordered, delivered)
             return float(self.prova_price) * effective_quantity
+        
         return 0.0
     
     def update_approval_status(self, approval_type, status_value):
