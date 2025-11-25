@@ -41,7 +41,15 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsMerchandiser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderFilter
-    search_fields = ['order_number', 'customer_name', 'buyer_name', 'fabric_type', 'style_number']
+    search_fields = [
+        'order_number',
+        'customer_name',
+        'buyer_name',
+        'fabric_type',
+        'style_number',
+        'merchandiser__full_name',
+        'merchandiser__email',
+    ]
     ordering_fields = ['created_at', 'order_date', 'expected_delivery_date', 'order_number']
     ordering = ['-created_at']
     pagination_class = None  # Disable pagination - frontend expects array directly

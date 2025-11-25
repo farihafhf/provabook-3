@@ -166,7 +166,7 @@ export function OrderFilters({
           <Input
             id="order-search"
             type="text"
-            placeholder="Search customer, order #, or style"
+            placeholder="Search customer, order #, style, or merchandiser"
             value={search}
             onChange={(event) => {
               const value = event.target.value;
