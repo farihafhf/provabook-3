@@ -47,8 +47,12 @@ def document_delete_view(request, document_id):
     # Get the document
     document = get_object_or_404(Document, id=document_id)
     
-    # Check permissions - user must be the uploader or admin
-    if request.user.role not in ['admin', 'manager'] and document.uploaded_by != request.user:
+    # Check permissions - allow admins/managers, the uploader, or the order's merchandiser
+    has_privileged_role = request.user.role in ['admin', 'manager']
+    is_uploader = document.uploaded_by == request.user
+    is_order_merchandiser = getattr(document.order, 'merchandiser', None) == request.user
+
+    if not (has_privileged_role or is_uploader or is_order_merchandiser):
         return Response({
             'error': 'You do not have permission to delete this document'
         }, status=403)
