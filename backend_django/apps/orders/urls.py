@@ -5,12 +5,14 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import OrderViewSet
 from .views_task import TaskViewSet
+from .views_supplier_delivery import SupplierDeliveryViewSet
 
 app_name = 'orders'
 
 # Configure router with trailing slashes (DRF default) to match frontend API client behavior
 router = DefaultRouter()
 router.register(r'tasks', TaskViewSet, basename='task')
+router.register(r'supplier-deliveries', SupplierDeliveryViewSet, basename='supplier-delivery')
 router.register(r'', OrderViewSet, basename='order')
 
 urlpatterns = [

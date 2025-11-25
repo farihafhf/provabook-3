@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -51,6 +53,21 @@ interface OrderStyle {
   submissionDate?: string;
   notes?: string;
   colors: OrderColor[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SupplierDelivery {
+  id: string;
+  order: string;
+  orderNumber?: string;
+  deliveryDate: string;
+  deliveredQuantity: number;
+  unit: string;
+  notes?: string;
+  createdBy?: string;
+  createdByDetails?: any;
+  createdByName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -118,6 +135,17 @@ export default function OrderDetailPage() {
   const [assigningTask, setAssigningTask] = useState(false);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
+  
+  // Supplier Deliveries state
+  const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
+  const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
+  const [editingDelivery, setEditingDelivery] = useState<SupplierDelivery | null>(null);
+  const [deliveryFormData, setDeliveryFormData] = useState({
+    deliveryDate: '',
+    deliveredQuantity: '',
+    notes: ''
+  });
+  const [savingDelivery, setSavingDelivery] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -128,6 +156,7 @@ export default function OrderDetailPage() {
     fetchOrder();
     fetchDocuments();
     fetchUsers();
+    fetchDeliveries();
   }, [isAuthenticated, router, params.id]);
 
   const fetchOrder = async () => {
@@ -162,6 +191,114 @@ export default function OrderDetailPage() {
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
+  };
+
+  const fetchDeliveries = async () => {
+    try {
+      const response = await api.get(`/orders/supplier-deliveries/?order=${params.id}`);
+      setDeliveries(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch deliveries:', error);
+    }
+  };
+
+  const handleAddDelivery = () => {
+    setEditingDelivery(null);
+    setDeliveryFormData({
+      deliveryDate: order?.etd || new Date().toISOString().split('T')[0],
+      deliveredQuantity: '',
+      notes: ''
+    });
+    setShowDeliveryDialog(true);
+  };
+
+  const handleEditDelivery = (delivery: SupplierDelivery) => {
+    setEditingDelivery(delivery);
+    setDeliveryFormData({
+      deliveryDate: delivery.deliveryDate,
+      deliveredQuantity: delivery.deliveredQuantity.toString(),
+      notes: delivery.notes || ''
+    });
+    setShowDeliveryDialog(true);
+  };
+
+  const handleSaveDelivery = async () => {
+    if (!deliveryFormData.deliveryDate || !deliveryFormData.deliveredQuantity) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in delivery date and quantity',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingDelivery(true);
+    try {
+      const payload = {
+        order: order?.id,
+        deliveryDate: deliveryFormData.deliveryDate,
+        deliveredQuantity: parseFloat(deliveryFormData.deliveredQuantity),
+        unit: order?.unit || 'meters',
+        notes: deliveryFormData.notes || undefined
+      };
+
+      if (editingDelivery) {
+        await api.patch(`/orders/supplier-deliveries/${editingDelivery.id}/`, payload);
+        toast({
+          title: 'Success',
+          description: 'Delivery updated successfully',
+        });
+      } else {
+        await api.post('/orders/supplier-deliveries/', payload);
+        toast({
+          title: 'Success',
+          description: 'Delivery recorded successfully',
+        });
+      }
+
+      setShowDeliveryDialog(false);
+      await fetchDeliveries();
+    } catch (error: any) {
+      console.error('Failed to save delivery:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to save delivery',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDelivery(false);
+    }
+  };
+
+  const handleDeleteDelivery = async (deliveryId: string) => {
+    if (!confirm('Are you sure you want to delete this delivery record?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/orders/supplier-deliveries/${deliveryId}/`);
+      toast({
+        title: 'Success',
+        description: 'Delivery deleted successfully',
+      });
+      await fetchDeliveries();
+    } catch (error: any) {
+      console.error('Failed to delete delivery:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete delivery',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getTotalDeliveredQuantity = () => {
+    return deliveries.reduce((sum, d) => sum + d.deliveredQuantity, 0);
+  };
+
+  const getRemainingQuantity = () => {
+    if (!order) return 0;
+    return order.quantity - getTotalDeliveredQuantity();
   };
 
   const handleAssignTask = async () => {
@@ -576,11 +713,15 @@ export default function OrderDetailPage() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             <TabsTrigger value="info">Order Info</TabsTrigger>
             {order.status !== 'bulk' && (
               <TabsTrigger value="approval">Approval Gate</TabsTrigger>
             )}
+            <TabsTrigger value="deliveries">
+              <Truck className="h-4 w-4 mr-2" />
+              ETD & Deliveries ({deliveries.length})
+            </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
               Documents ({documents.length})
@@ -1149,6 +1290,120 @@ export default function OrderDetailPage() {
           </TabsContent>
           )}
 
+          {/* ETD & Deliveries Tab */}
+          <TabsContent value="deliveries" className="space-y-6">
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-green-600" />
+                    Supplier Delivery Records
+                  </CardTitle>
+                  <Button onClick={handleAddDelivery} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Record Delivery
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-gray-600 mb-1">Total Ordered</div>
+                      <div className="text-2xl font-bold text-blue-700">
+                        {order.quantity.toLocaleString()} {order.unit}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-gray-600 mb-1">Total Delivered</div>
+                      <div className="text-2xl font-bold text-green-700">
+                        {getTotalDeliveredQuantity().toLocaleString()} {order.unit}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-orange-50 border-orange-200">
+                    <CardContent className="pt-4">
+                      <div className="text-sm text-gray-600 mb-1">Remaining</div>
+                      <div className="text-2xl font-bold text-orange-700">
+                        {getRemainingQuantity().toLocaleString()} {order.unit}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Deliveries Table */}
+                {deliveries.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed">
+                    <Truck className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500 mb-2">No delivery records yet</p>
+                    <p className="text-sm text-gray-400 mb-4">Click "Record Delivery" to add your first delivery entry</p>
+                    <Button onClick={handleAddDelivery} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Delivery
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Date</th>
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Quantity</th>
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Notes</th>
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Created By</th>
+                          <th className="text-right p-3 text-sm font-semibold text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deliveries.map((delivery) => (
+                          <tr key={delivery.id} className="border-b hover:bg-gray-50">
+                            <td className="p-3 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                {formatDate(delivery.deliveryDate)}
+                              </div>
+                            </td>
+                            <td className="p-3 text-sm font-medium">
+                              {delivery.deliveredQuantity.toLocaleString()} {delivery.unit}
+                            </td>
+                            <td className="p-3 text-sm text-gray-600">
+                              {delivery.notes || <span className="text-gray-400 italic">No notes</span>}
+                            </td>
+                            <td className="p-3 text-sm text-gray-600">
+                              {delivery.createdByName || 'Unknown'}
+                            </td>
+                            <td className="p-3 text-sm text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditDelivery(delivery)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteDelivery(delivery.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">
             <Card>
@@ -1210,6 +1465,70 @@ export default function OrderDetailPage() {
             merchandiser: undefined,
           }}
         />
+
+        {/* Delivery Dialog */}
+        <Dialog open={showDeliveryDialog} onOpenChange={setShowDeliveryDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingDelivery ? 'Edit Delivery Record' : 'Record Supplier Delivery'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="delivery-date">Delivery Date *</Label>
+                <Input
+                  id="delivery-date"
+                  type="date"
+                  value={deliveryFormData.deliveryDate}
+                  onChange={(e) => setDeliveryFormData({ ...deliveryFormData, deliveryDate: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="delivered-quantity">Delivered Quantity *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="delivered-quantity"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={deliveryFormData.deliveredQuantity}
+                    onChange={(e) => setDeliveryFormData({ ...deliveryFormData, deliveredQuantity: e.target.value })}
+                    placeholder="Enter quantity"
+                    className="flex-1"
+                    required
+                  />
+                  <div className="flex items-center px-3 bg-gray-100 border rounded-md text-sm text-gray-600">
+                    {order?.unit || 'meters'}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="delivery-notes">Notes (Optional)</Label>
+                <Textarea
+                  id="delivery-notes"
+                  value={deliveryFormData.notes}
+                  onChange={(e) => setDeliveryFormData({ ...deliveryFormData, notes: e.target.value })}
+                  placeholder="Add any additional notes about this delivery..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeliveryDialog(false)}
+                disabled={savingDelivery}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveDelivery} disabled={savingDelivery}>
+                {savingDelivery ? 'Saving...' : editingDelivery ? 'Update Delivery' : 'Save Delivery'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
