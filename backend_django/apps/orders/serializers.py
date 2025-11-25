@@ -425,13 +425,16 @@ class OrderListSerializer(serializers.ModelSerializer):
     Returns camelCase for frontend
     """
     merchandiser_name = serializers.CharField(source='merchandiser.full_name', read_only=True)
+    potential_profit = serializers.ReadOnlyField()
+    realized_profit = serializers.ReadOnlyField()
     
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'customer_name', 'fabric_type',
-            'quantity', 'unit', 'status', 'category',
+            'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date',
+            'potential_profit', 'realized_profit',
             'merchandiser', 'merchandiser_name', 'created_at'
         ]
     
@@ -445,6 +448,9 @@ class OrderListSerializer(serializers.ModelSerializer):
             'fabricType': data['fabric_type'],
             'quantity': float(data['quantity']) if data['quantity'] else 0,
             'unit': data['unit'],
+            'currency': data.get('currency'),
+            'potentialProfit': data.get('potential_profit'),
+            'realizedProfit': data.get('realized_profit'),
             'status': data['status'],
             'category': data['category'],
             'orderDate': data['order_date'],
