@@ -8,11 +8,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
 from .serializers import (
-    UserSerializer, 
-    RegisterSerializer, 
+    UserSerializer,
+    UserListSerializer,
+    RegisterSerializer,
     LoginSerializer,
     ProfileUpdateSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
 )
 
 User = get_user_model()
@@ -184,7 +185,7 @@ class UserListView(generics.ListAPIView):
     List all users - All authenticated users can see all users for task assignment
     """
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = UserListSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):

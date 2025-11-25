@@ -81,7 +81,9 @@ function OrdersPageContent() {
   const fetchUsers = async () => {
     try {
       const response = await api.get('/auth/users');
-      setUsers(response.data);
+      const data = response.data as any;
+      const usersArray = Array.isArray(data) ? data : data?.results || [];
+      setUsers(usersArray);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }

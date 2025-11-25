@@ -119,8 +119,10 @@ export default function OrderDetailPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/auth/users/');
-      setUsers(response.data);
+      const response = await api.get('/auth/users');
+      const data = response.data as any;
+      const usersArray = Array.isArray(data) ? data : data?.results || [];
+      setUsers(usersArray);
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
@@ -569,7 +571,7 @@ export default function OrderDetailPage() {
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Stage</p>
                       <div className="inline-block rounded-full px-3 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                        {order.currentStage || '—'}
+                        {getStatusDisplayName(order.status)}
                       </div>
                     </div>
                   </CardContent>

@@ -17,6 +17,30 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+class UserListSerializer(serializers.ModelSerializer):
+    """Lightweight user serializer that returns camelCase for frontend lists"""
+
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'full_name', 'role', 'phone', 'department', 'is_active', 'metadata', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'email': data['email'],
+            'fullName': data['full_name'],
+            'role': data['role'],
+            'phone': data.get('phone'),
+            'department': data.get('department'),
+            'isActive': data['is_active'],
+            'metadata': data.get('metadata'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     """
     Serializer for user registration
