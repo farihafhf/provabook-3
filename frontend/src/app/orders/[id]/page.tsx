@@ -195,7 +195,10 @@ export default function OrderDetailPage() {
 
   const fetchDeliveries = async () => {
     try {
-      const response = await api.get(`/orders/supplier-deliveries/?order=${params.id}`);
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await api.get(`/orders/supplier-deliveries/?order=${params.id}&_t=${timestamp}`);
+      console.log('Fetched deliveries:', response.data);
       setDeliveries(response.data || []);
     } catch (error) {
       console.error('Failed to fetch deliveries:', error);
@@ -243,13 +246,15 @@ export default function OrderDetailPage() {
       };
 
       if (editingDelivery) {
-        await api.patch(`/orders/supplier-deliveries/${editingDelivery.id}/`, payload);
+        const response = await api.patch(`/orders/supplier-deliveries/${editingDelivery.id}/`, payload);
+        console.log('Delivery updated response:', response.data);
         toast({
           title: 'Success',
           description: 'Delivery updated successfully',
         });
       } else {
-        await api.post('/orders/supplier-deliveries/', payload);
+        const response = await api.post('/orders/supplier-deliveries/', payload);
+        console.log('Delivery created response:', response.data);
         toast({
           title: 'Success',
           description: 'Delivery recorded successfully',
@@ -257,7 +262,9 @@ export default function OrderDetailPage() {
       }
 
       setShowDeliveryDialog(false);
+      console.log('Fetching deliveries after save...');
       await fetchDeliveries();
+      console.log('Deliveries fetched, current state:', deliveries);
     } catch (error: any) {
       console.error('Failed to save delivery:', error);
       toast({
