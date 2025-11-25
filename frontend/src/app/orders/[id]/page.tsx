@@ -195,9 +195,15 @@ export default function OrderDetailPage() {
 
   const fetchDeliveries = async () => {
     try {
-      // Add timestamp to prevent caching
+      // Add timestamp to prevent caching and use Axios params so interceptor
+      // can safely append trailing slashes without breaking the URL
       const timestamp = new Date().getTime();
-      const response = await api.get(`/orders/supplier-deliveries/?order=${params.id}&_t=${timestamp}`);
+      const response = await api.get('/orders/supplier-deliveries/', {
+        params: {
+          order: params.id,
+          _t: timestamp,
+        },
+      });
       console.log('Fetched deliveries:', response.data);
       setDeliveries(response.data || []);
     } catch (error) {
