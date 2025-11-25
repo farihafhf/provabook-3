@@ -448,14 +448,6 @@ export default function DashboardPage() {
                   ) : (
                     <OrdersByStageChart data={chartData?.orders_by_stage || []} />
                   )}
-                  <div className="grid grid-cols-3 gap-2 mt-4">
-                    {Object.entries(data.byStage).slice(0, 6).map(([stage, count]) => (
-                      <div key={stage} className="text-center p-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-                        <div className="text-2xl font-bold text-gray-800">{count}</div>
-                        <p className="text-xs text-gray-600 mt-1">{stage}</p>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             )}
