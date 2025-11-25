@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
 interface StyleFormData {
+  styleNumber?: string;
   description?: string;
   fabricType?: string;
   fabricComposition?: string;
@@ -291,6 +292,7 @@ export function CreateOrderDialog({
         ),
         unit: 'meters',
         styles: styles.map((style) => ({
+          styleNumber: style.styleNumber || undefined,
           description: style.description || undefined,
           fabricType: style.fabricType || formData.fabricType,
           fabricComposition: style.fabricComposition || undefined,
@@ -483,7 +485,6 @@ export function CreateOrderDialog({
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">
                   Style {styleIndex + 1}
-                  {formData.baseStyleNumber && ` (${formData.baseStyleNumber}-${String(styleIndex + 1).padStart(2, '0')})`}
                 </CardTitle>
                 {styles.length > 1 && (
                   <Button
@@ -499,6 +500,20 @@ export function CreateOrderDialog({
               <CardContent className="space-y-4">
                 {/* Style Fields */}
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-3">
+                    <Label htmlFor={`style-${styleIndex}-number`}>Style Number</Label>
+                    <Input
+                      id={`style-${styleIndex}-number`}
+                      value={style.styleNumber || ''}
+                      onChange={(e) =>
+                        updateStyle(styleIndex, 'styleNumber', e.target.value)
+                      }
+                      placeholder="e.g., ST2024-01 or any custom style number"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter a custom style number for this style variant
+                    </p>
+                  </div>
                   <div className="col-span-3">
                     <Label>Description</Label>
                     <Textarea
