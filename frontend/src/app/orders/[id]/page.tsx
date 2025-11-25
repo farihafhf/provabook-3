@@ -119,7 +119,7 @@ export default function OrderDetailPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/auth/users');
+      const response = await api.get('/auth/users/');
       setUsers(response.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -572,11 +572,19 @@ export default function OrderDetailPage() {
                         {order.currentStage || '—'}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-2 mt-3">Set Status</p>
-                      <div className="flex items-center gap-2">
+                  </CardContent>
+                </Card>
+
+                {/* Set Status Card */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader>
+                    <CardTitle>Set Order Status</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
                         <Select value={statusSelection} onValueChange={setStatusSelection}>
-                          <SelectTrigger className="w-[220px]">
+                          <SelectTrigger className="w-full max-w-xs">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -586,40 +594,72 @@ export default function OrderDetailPage() {
                             <SelectItem value="bulk">Bulk</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button size="sm" onClick={handleConfirmStatusChange} disabled={updating}>
-                          {updating ? 'Updating...' : 'Confirm'}
+                        <Button onClick={handleConfirmStatusChange} disabled={updating}>
+                          {updating ? 'Updating...' : 'Confirm Status'}
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Status can be manually set or automatically updated when all approvals are completed.</p>
+                      <p className="text-xs text-gray-500">
+                        Status can be manually set or automatically updated when all approvals are completed.
+                      </p>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <div className="border-t pt-4 mt-4">
-                      <p className="text-sm text-gray-500 mb-2">Assign Task</p>
+                {/* Assign Task Card */}
+                <Card className="border-l-4 border-l-purple-500 shadow-md">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                    <CardTitle className="flex items-center gap-2">
+                      <span>Assign Task to Team Member</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
                       <div className="space-y-2">
+                        <Label htmlFor="task-title" className="text-sm font-medium">
+                          Task Title *
+                        </Label>
                         <Input
-                          placeholder="Task title..."
+                          id="task-title"
+                          placeholder="e.g., Review fabric specifications, Check pricing..."
                           value={taskTitle}
                           onChange={(e) => setTaskTitle(e.target.value)}
+                          className="w-full"
                         />
-                        <div className="flex items-center gap-2">
-                          <Select value={selectedUser} onValueChange={setSelectedUser}>
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Select user to assign" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {users && Array.isArray(users) && users.map((user) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  {user.fullName} ({user.role})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button size="sm" onClick={handleAssignTask} disabled={assigningTask}>
-                            {assigningTask ? 'Assigning...' : 'Assign'}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-500">Assign a task to any team member. They will be notified.</p>
                       </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="assign-user" className="text-sm font-medium">
+                          Assign To *
+                        </Label>
+                        <Select value={selectedUser} onValueChange={setSelectedUser}>
+                          <SelectTrigger id="assign-user" className="w-full">
+                            <SelectValue placeholder="Select team member to assign task" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {users && Array.isArray(users) && users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{user.fullName}</span>
+                                  <span className="text-xs text-gray-500">({user.role})</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="text-blue-600 text-sm">ℹ️</span>
+                        <p className="text-xs text-blue-700">
+                          The assigned team member will receive an instant notification and can view this task on their dashboard.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={handleAssignTask} 
+                        disabled={assigningTask || !taskTitle.trim() || !selectedUser}
+                        className="w-full"
+                        size="lg"
+                      >
+                        {assigningTask ? 'Assigning Task...' : 'Assign Task'}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

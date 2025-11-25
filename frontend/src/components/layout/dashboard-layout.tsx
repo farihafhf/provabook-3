@@ -18,7 +18,8 @@ import {
   Menu,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,10 +29,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/notifications/unread-count');
+      setUnreadCount(response.data.unreadCount || 0);
+    } catch (error) {
+      // Silently fail - user might not be authenticated yet
+    }
   };
 
   const navigation = [
@@ -42,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Production', href: '/production', icon: Factory },
     { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
     { name: 'Shipments', href: '/shipments', icon: Truck },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
+    { name: 'Notifications', href: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
   return (
@@ -61,9 +79,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => (
             <Link key={item.name} href={item.href}>
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+              <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors relative">
                 <item.icon className="h-5 w-5" />
-                {sidebarOpen && <span>{item.name}</span>}
+                {sidebarOpen && <span className="flex-1">{item.name}</span>}
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className={`${
+                    sidebarOpen 
+                      ? 'bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full' 
+                      : 'absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </div>
             </Link>
           ))}

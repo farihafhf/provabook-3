@@ -4,10 +4,14 @@ Core views - Dashboard and other shared endpoints
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import status, viewsets
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from apps.orders.models import Order, OrderStatus, OrderCategory
 from datetime import date, timedelta
+from .models import Notification
+from .serializers import NotificationSerializer
+from rest_framework.decorators import action
 
 
 @api_view(['GET'])
@@ -285,3 +289,44 @@ def orders_by_merchandiser_view(request):
         'total_orders': len(orders_data),
         'orders': orders_data
     })
+
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for user notifications
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Return notifications for current user only"""
+        return Notification.objects.filter(
+            user=self.request.user
+        ).order_by('-created_at')
+    
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get count of unread notifications"""
+        count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        return Response({'unreadCount': count})
+    
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        """Mark a specific notification as read"""
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save()
+        serializer = self.get_serializer(notification)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        """Mark all notifications as read"""
+        Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True)
+        return Response({'message': 'All notifications marked as read'})

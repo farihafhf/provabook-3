@@ -9,6 +9,8 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from apps.orders.views import OrderViewSet
+from rest_framework.routers import DefaultRouter
+from apps.core.views import NotificationViewSet
 
 # Swagger/OpenAPI Schema
 schema_view = get_schema_view(
@@ -23,6 +25,10 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
+
+# Router for notifications
+notifications_router = DefaultRouter(trailing_slash=False)
+notifications_router.register(r'', NotificationViewSet, basename='notification')
 
 urlpatterns = [
     # Django Admin
@@ -71,7 +77,9 @@ urlpatterns = [
     path('api/v1/production/', include('apps.production.urls')),
     # path('api/v1/incidents/', include('apps.incidents.urls')),
     path('api/v1/shipments/', include('apps.shipments.urls')),
-    # path('api/v1/notifications/', include('apps.notifications.urls')),
+    
+    # Notifications API
+    path('api/v1/notifications/', include(notifications_router.urls)),
 ]
 
 # Serve media files in development
