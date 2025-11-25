@@ -1,6 +1,7 @@
 """
 Orders models - Matches NestJS Order entity structure
 """
+import uuid
 from django.db import models
 from apps.core.models import TimestampedModel
 from apps.authentication.models import User
@@ -27,13 +28,20 @@ class Order(TimestampedModel):
     """
     Order model - Main order entity
     Matches the orders table from NestJS TypeORM entity
+    
+    Note: order_number is now PO (Purchase Order) number and can have duplicates.
+    Internal uid is used for unique identification.
     """
+    # Internal Unique Identifier (hidden from users)
+    uid = models.UUIDField(unique=True, editable=False, db_index=True, help_text='Internal unique identifier for this order')
+    
     # Basic Information
-    order_number = models.CharField(max_length=50, unique=True, db_index=True)
+    order_number = models.CharField(max_length=50, db_index=True, help_text='PO (Purchase Order) number - can have duplicates')
     customer_name = models.CharField(max_length=255)
     buyer_name = models.CharField(max_length=255, blank=True, null=True)
     base_style_number = models.CharField(max_length=100, blank=True, null=True, help_text='Base style number for auto-generating style variants')
     style_number = models.CharField(max_length=100, blank=True, null=True)
+    cad = models.CharField(max_length=255, blank=True, null=True, help_text='CAD reference or identifier')
     
     # Fabric Details
     fabric_type = models.CharField(max_length=255)
@@ -100,6 +108,7 @@ class Order(TimestampedModel):
         verbose_name_plural = 'Orders'
         ordering = ['-created_at']
         indexes = [
+            models.Index(fields=['uid']),
             models.Index(fields=['order_number']),
             models.Index(fields=['status']),
             models.Index(fields=['category']),
@@ -111,7 +120,9 @@ class Order(TimestampedModel):
         return f"{self.order_number} - {self.customer_name}"
     
     def save(self, *args, **kwargs):
-        """Auto-generate order number if not provided"""
+        """Auto-generate order number and uid if not provided"""
+        if not self.uid:
+            self.uid = uuid.uuid4()
         if not self.order_number:
             from apps.core.utils import generate_order_number
             self.order_number = generate_order_number()

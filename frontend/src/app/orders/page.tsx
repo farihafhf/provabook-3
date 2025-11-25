@@ -17,7 +17,7 @@ import { CreateOrderDialog } from '@/components/orders/create-order-dialog';
 
 interface Order {
   id: string;
-  orderNumber: string;
+  poNumber: string;
   customerName: string;
   fabricType: string;
   quantity: number;
@@ -280,7 +280,7 @@ function OrdersPageContent() {
                 <table className="w-full">
                   <thead className="border-b">
                     <tr className="text-left text-sm text-gray-600">
-                      <th className="pb-3 font-medium">Order #</th>
+                      <th className="pb-3 font-medium">PO #</th>
                       <th className="pb-3 font-medium">Customer</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
@@ -297,7 +297,7 @@ function OrdersPageContent() {
                         className="text-sm hover:bg-gray-50 cursor-pointer"
                         onClick={() => router.push(`/orders/${order.id}`)}
                       >
-                        <td className="py-4 font-medium">{order.orderNumber}</td>
+                        <td className="py-4 font-medium">{order.poNumber}</td>
                         <td className="py-4">{order.customerName}</td>
                         <td className="py-4">{order.fabricType}</td>
                         <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
@@ -368,7 +368,7 @@ function OrdersPageContent() {
             {orderToDelete && (
               <div className="py-4">
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <p className="text-sm"><strong>Order #:</strong> {orderToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>PO #:</strong> {orderToDelete.poNumber}</p>
                   <p className="text-sm"><strong>Customer:</strong> {orderToDelete.customerName}</p>
                   <p className="text-sm"><strong>Fabric:</strong> {orderToDelete.fabricType}</p>
                   <p className="text-sm"><strong>Quantity:</strong> {orderToDelete.quantity} {orderToDelete.unit}</p>

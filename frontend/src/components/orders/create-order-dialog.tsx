@@ -67,6 +67,7 @@ export function CreateOrderDialog({
     fabricType: '',
     orderDate: '',
     notes: '',
+    cad: '',
   });
   
   const [styles, setStyles] = useState<StyleFormData[]>([
@@ -275,6 +276,7 @@ export function CreateOrderDialog({
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         notes: formData.notes || undefined,
+        cad: formData.cad || undefined,
         status: 'upcoming',
         category: 'upcoming',
         // Calculate total quantity from all colors
@@ -332,6 +334,7 @@ export function CreateOrderDialog({
         fabricType: '',
         orderDate: '',
         notes: '',
+        cad: '',
       });
       setStyles([
         {
@@ -434,6 +437,17 @@ export function CreateOrderDialog({
                     setFormData({ ...formData, fabricType: e.target.value })
                   }
                   required
+                />
+              </div>
+              <div>
+                <Label htmlFor="cad">CAD</Label>
+                <Input
+                  id="cad"
+                  value={formData.cad}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cad: e.target.value })
+                  }
+                  placeholder="CAD reference or identifier"
                 />
               </div>
               <div>

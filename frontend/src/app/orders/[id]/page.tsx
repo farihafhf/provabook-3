@@ -60,7 +60,7 @@ interface OrderStyle {
 interface SupplierDelivery {
   id: string;
   order: string;
-  orderNumber?: string;
+  poNumber?: string;
   deliveryDate: string;
   deliveredQuantity: number;
   unit: string;
@@ -74,7 +74,7 @@ interface SupplierDelivery {
 
 interface Order {
   id: string;
-  orderNumber: string;
+  poNumber: string;
   customerName: string;
   buyerName?: string;
   baseStyleNumber?: string;
@@ -465,7 +465,7 @@ export default function OrderDetailPage() {
 
       const disposition =
         response.headers['content-disposition'] || response.headers['Content-Disposition'];
-      let filename = `PO-${order.orderNumber}.pdf`;
+      let filename = `PO-${order.poNumber}.pdf`;
 
       if (disposition) {
         const match = disposition.match(/filename="?([^";]+)"?/i);
@@ -685,7 +685,7 @@ export default function OrderDetailPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Orders
             </Button>
-            <h1 className="text-3xl font-bold">Order #{order.orderNumber}</h1>
+            <h1 className="text-3xl font-bold">PO #{order.poNumber}</h1>
             <p className="text-gray-500 mt-2">{order.customerName}</p>
           </div>
           <div className="flex gap-2">
@@ -752,8 +752,8 @@ export default function OrderDetailPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-xs text-gray-500">Order Number</p>
-                        <p className="font-medium">{order.orderNumber}</p>
+                        <p className="text-xs text-gray-500">PO Number</p>
+                        <p className="font-medium">{order.poNumber}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Customer Name</p>
@@ -1449,7 +1449,7 @@ export default function OrderDetailPage() {
         <PrintableOrder 
           order={{
             id: order.id,
-            orderNumber: order.orderNumber,
+            poNumber: order.poNumber,
             customerName: order.customerName,
             buyerName: order.buyerName,
             styleNumber: order.styleNumber,

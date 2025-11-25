@@ -28,7 +28,7 @@ import { formatDate } from '@/lib/utils';
 interface ProformaInvoice {
   id: string;
   orderId: string;
-  orderNumber?: string;
+  poNumber?: string;
   customerName?: string;
   piNumber: string;
   version: number;
@@ -46,7 +46,7 @@ interface ProformaInvoice {
 interface LetterOfCredit {
   id: string;
   orderId: string;
-  orderNumber?: string;
+  poNumber?: string;
   customerName?: string;
   lcNumber: string;
   status: string;
@@ -63,7 +63,7 @@ interface LetterOfCredit {
 
 interface Order {
   id: string;
-  orderNumber: string;
+  poNumber: string;
   customerName: string;
 }
 
@@ -755,7 +755,7 @@ export default function FinancialsPage() {
                           <SelectContent>
                             {orders.map((order) => (
                               <SelectItem key={order.id} value={order.id}>
-                                {order.orderNumber} - {order.customerName}
+                                {order.poNumber} - {order.customerName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -850,7 +850,7 @@ export default function FinancialsPage() {
                               )}
                             </div>
                             <p className="text-sm text-gray-500">
-                              {pi.orderNumber} - {pi.customerName}
+                              {pi.poNumber} - {pi.customerName}
                             </p>
                             {pi.createdByName && (
                               <p className="text-xs text-blue-600 mt-1">
@@ -977,7 +977,7 @@ export default function FinancialsPage() {
                           <SelectContent>
                             {orders.map((order) => (
                               <SelectItem key={order.id} value={order.id}>
-                                {order.orderNumber} - {order.customerName}
+                                {order.poNumber} - {order.customerName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1198,7 +1198,7 @@ export default function FinancialsPage() {
                     <SelectContent>
                       {orders.map((order) => (
                         <SelectItem key={order.id} value={order.id}>
-                          {order.orderNumber} - {order.customerName}
+                          {order.poNumber} - {order.customerName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1303,7 +1303,7 @@ export default function FinancialsPage() {
                     <SelectContent>
                       {orders.map((order) => (
                         <SelectItem key={order.id} value={order.id}>
-                          {order.orderNumber} - {order.customerName}
+                          {order.poNumber} - {order.customerName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1417,7 +1417,7 @@ export default function FinancialsPage() {
               <div className="py-4">
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                   <p className="text-sm"><strong>PI Number:</strong> {piToDelete.piNumber}</p>
-                  <p className="text-sm"><strong>Order:</strong> {piToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {piToDelete.poNumber}</p>
                   <p className="text-sm"><strong>Customer:</strong> {piToDelete.customerName}</p>
                   <p className="text-sm"><strong>Amount:</strong> {piToDelete.currency} {piToDelete.amount.toLocaleString()}</p>
                 </div>
@@ -1455,7 +1455,7 @@ export default function FinancialsPage() {
               <div className="py-4">
                 <div className="bg-gray-50 rounded-lg p-3 space-y-2">
                   <p className="text-sm"><strong>LC Number:</strong> {lcToDelete.lcNumber}</p>
-                  <p className="text-sm"><strong>Order:</strong> {lcToDelete.orderNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {lcToDelete.poNumber}</p>
                   <p className="text-sm"><strong>Customer:</strong> {lcToDelete.customerName}</p>
                   <p className="text-sm"><strong>Amount:</strong> {lcToDelete.currency} {lcToDelete.amount.toLocaleString()}</p>
                 </div>

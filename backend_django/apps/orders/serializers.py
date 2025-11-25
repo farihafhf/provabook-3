@@ -20,7 +20,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'customer_name', 'buyer_name', 'base_style_number', 'style_number',
+            'id', 'uid', 'order_number', 'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
             'fabric_type', 'fabric_specifications', 'fabric_composition', 
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -30,7 +30,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
             'total_value', 'created_at', 'updated_at', 'timeline_events', 'styles'
         ]
-        read_only_fields = ['id', 'order_number', 'created_at', 'updated_at', 'total_value']
+        read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value']
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -50,11 +50,13 @@ class OrderSerializer(serializers.ModelSerializer):
         
         return {
             'id': str(data['id']),
-            'orderNumber': data['order_number'],
+            'uid': str(data['uid']),
+            'poNumber': data['order_number'],
             'customerName': data['customer_name'],
             'buyerName': data.get('buyer_name'),
             'baseStyleNumber': data.get('base_style_number'),
             'styleNumber': data.get('style_number'),
+            'cad': data.get('cad'),
             'fabricType': data['fabric_type'],
             'fabricSpecifications': data.get('fabric_specifications'),
             'fabricComposition': data.get('fabric_composition'),
@@ -257,7 +259,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'base_style_number', 'style_number',
+            'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -331,7 +333,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'base_style_number', 'style_number',
+            'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -424,7 +426,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         return {
             'id': str(data['id']),
-            'orderNumber': data['order_number'],
+            'poNumber': data['order_number'],
             'customerName': data['customer_name'],
             'fabricType': data['fabric_type'],
             'quantity': float(data['quantity']) if data['quantity'] else 0,
@@ -458,7 +460,7 @@ class OrderAlertSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         return {
             'id': str(data['id']),
-            'orderNumber': data['order_number'],
+            'poNumber': data['order_number'],
             'styleName': data.get('style_name'),
             'customerName': data['customer_name'],
             'etd': data.get('etd'),
