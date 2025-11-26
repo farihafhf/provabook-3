@@ -222,7 +222,6 @@ export default function OrderDetailPage() {
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<SupplierDelivery | null>(null);
   const [deliveryFormData, setDeliveryFormData] = useState({
-    orderLine: '',
     style: '',
     color: '',
     cad: '',
@@ -309,7 +308,6 @@ export default function OrderDetailPage() {
   const handleAddDelivery = () => {
     setEditingDelivery(null);
     setDeliveryFormData({
-      orderLine: '',
       style: '',
       color: '',
       cad: '',
@@ -323,7 +321,6 @@ export default function OrderDetailPage() {
   const handleEditDelivery = (delivery: SupplierDelivery) => {
     setEditingDelivery(delivery);
     setDeliveryFormData({
-      orderLine: delivery.orderLine || '',
       style: delivery.style || '',
       color: delivery.color || '',
       cad: delivery.cad || '',
@@ -332,6 +329,39 @@ export default function OrderDetailPage() {
       notes: delivery.notes || ''
     });
     setShowDeliveryDialog(true);
+  };
+
+  // Auto-calculate order line based on style, color, and CAD selections
+  const findMatchingOrderLine = (): string | undefined => {
+    if (!order?.styles || !deliveryFormData.style) return undefined;
+
+    const selectedStyle = order.styles.find(s => s.id === deliveryFormData.style);
+    if (!selectedStyle?.lines || selectedStyle.lines.length === 0) return undefined;
+
+    // Get selected color code (not ID)
+    const selectedColorCode = deliveryFormData.color 
+      ? selectedStyle.colors.find(c => c.id === deliveryFormData.color)?.colorCode
+      : undefined;
+
+    // Find matching line based on style + color + CAD combination
+    const matchingLine = selectedStyle.lines.find(line => {
+      // If both color and CAD are provided, match both
+      if (selectedColorCode && deliveryFormData.cad) {
+        return line.colorCode === selectedColorCode && line.id === deliveryFormData.cad;
+      }
+      // If only color is provided, match color (and line should have no CAD or any CAD)
+      if (selectedColorCode && !deliveryFormData.cad) {
+        return line.colorCode === selectedColorCode;
+      }
+      // If only CAD is provided, match CAD (and line should have no color or any color)
+      if (!selectedColorCode && deliveryFormData.cad) {
+        return line.id === deliveryFormData.cad;
+      }
+      // If neither color nor CAD, match any line from this style
+      return true;
+    });
+
+    return matchingLine?.id;
   };
 
   const handleSaveDelivery = async () => {
@@ -346,9 +376,12 @@ export default function OrderDetailPage() {
 
     setSavingDelivery(true);
     try {
+      // Auto-calculate the order line based on selections
+      const calculatedOrderLine = findMatchingOrderLine();
+
       const payload = {
         order: order?.id,
-        orderLine: deliveryFormData.orderLine || undefined,
+        orderLine: calculatedOrderLine || undefined,
         style: deliveryFormData.style || undefined,
         color: deliveryFormData.color || undefined,
         cad: deliveryFormData.cad || undefined,
@@ -2044,37 +2077,6 @@ export default function OrderDetailPage() {
                 />
               </div>
               
-              {/* Order Line Selection (Optional) */}
-              {order?.styles && order.styles.some(s => s.lines && s.lines.length > 0) && (
-                <div className="space-y-2">
-                  <Label htmlFor="delivery-order-line">Associate with Order Line (Optional)</Label>
-                  <Select
-                    value={deliveryFormData.orderLine || "none"}
-                    onValueChange={(value) =>
-                      setDeliveryFormData({
-                        ...deliveryFormData,
-                        orderLine: value === "none" ? "" : value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="delivery-order-line">
-                      <SelectValue placeholder="Select an order line (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific line</SelectItem>
-                      {order.styles.map((style) => 
-                        style.lines && style.lines.length > 0 ? style.lines.map((line) => (
-                          <SelectItem key={line.id} value={line.id}>
-                            {style.styleNumber} {line.colorCode ? `- ${line.colorCode}` : ''} {line.cadCode ? `- ${line.cadCode}` : ''}
-                          </SelectItem>
-                        )) : null
-                      )}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-500">Optionally associate this delivery with a specific order line for better tracking</p>
-                </div>
-              )}
-              
               {/* Style Selection */}
               {order?.styles && order.styles.length > 0 && (
                 <div className="space-y-2">
@@ -2107,27 +2109,26 @@ export default function OrderDetailPage() {
               {/* Color Selection - only show if style is selected */}
               {deliveryFormData.style && order?.styles && (
                 <div className="space-y-2">
-                  <Label htmlFor="delivery-color">Color (Optional)</Label>
+                  <Label htmlFor="delivery-color">Color Code (Optional)</Label>
                   <Select
-                    value={deliveryFormData.color || "all-colors"}
+                    value={deliveryFormData.color || "none"}
                     onValueChange={(value) =>
                       setDeliveryFormData({
                         ...deliveryFormData,
-                        color: value === "all-colors" ? "" : value,
-                        cad: "",
+                        color: value === "none" ? "" : value,
                       })
                     }
                   >
                     <SelectTrigger id="delivery-color">
-                      <SelectValue placeholder="Select a color or leave blank for all" />
+                      <SelectValue placeholder="Select color code (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all-colors">All Colors</SelectItem>
+                      <SelectItem value="none">No specific color</SelectItem>
                       {order.styles
                         .find((s) => s.id === deliveryFormData.style)
                         ?.colors.map((color) => (
                           <SelectItem key={color.id} value={color.id}>
-                            {color.colorCode} {color.colorName && `(${color.colorName})`}
+                            {color.colorCode}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -2135,33 +2136,30 @@ export default function OrderDetailPage() {
                 </div>
               )}
 
-              {/* CAD Selection - only show if color is selected */}
-              {deliveryFormData.color && order?.styles && (
+              {/* CAD Selection - only show if style is selected */}
+              {deliveryFormData.style && order?.styles && (
                 <div className="space-y-2">
-                  <Label htmlFor="delivery-cad">CAD (Optional)</Label>
+                  <Label htmlFor="delivery-cad">CAD Code (Optional)</Label>
                   <Select
-                    value={deliveryFormData.cad || "all-cads"}
+                    value={deliveryFormData.cad || "none"}
                     onValueChange={(value) =>
                       setDeliveryFormData({
                         ...deliveryFormData,
-                        cad: value === "all-cads" ? "" : value,
+                        cad: value === "none" ? "" : value,
                       })
                     }
                   >
                     <SelectTrigger id="delivery-cad">
-                      <SelectValue placeholder="Select a CAD or leave blank for all" />
+                      <SelectValue placeholder="Select CAD code (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all-cads">All CADs</SelectItem>
+                      <SelectItem value="none">No specific CAD</SelectItem>
                       {order.styles
                         .find((s) => s.id === deliveryFormData.style)
-                        ?.lines?.filter((line) => line.colorCode === order.styles
-                          .find((s) => s.id === deliveryFormData.style)
-                          ?.colors.find((c) => c.id === deliveryFormData.color)?.colorCode)
-                        .filter((line) => line.cadCode)
+                        ?.lines?.filter((line) => line.cadCode)
                         .map((line) => (
                           <SelectItem key={line.id} value={line.id}>
-                            {line.cadCode} {line.cadName && `(${line.cadName})`}
+                            {line.cadCode}
                           </SelectItem>
                         ))}
                     </SelectContent>
