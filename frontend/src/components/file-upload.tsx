@@ -46,7 +46,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
   const [category, setCategory] = useState<string>('');
   const [subcategory, setSubcategory] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [orderLine, setOrderLine] = useState<string>('');
+  const [orderLine, setOrderLine] = useState<string>('none');
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string>('');
 
@@ -133,7 +133,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       formData.append('category', category);
       if (subcategory) formData.append('subcategory', subcategory);
       if (description) formData.append('description', description);
-      if (orderLine) formData.append('orderLine', orderLine);
+      if (orderLine && orderLine !== 'none') formData.append('orderLine', orderLine);
 
       const token = localStorage.getItem('access_token');
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
@@ -181,7 +181,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       setCategory('');
       setSubcategory('');
       setDescription('');
-      setOrderLine('');
+      setOrderLine('none');
       setPreview('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -315,7 +315,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
                   <SelectValue placeholder="Select order line (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No specific line</SelectItem>
+                  <SelectItem value="none">No specific line</SelectItem>
                   {orderLines.map((line) => (
                     <SelectItem key={line.id} value={line.id}>
                       {line.styleNumber} {line.colorCode ? `- ${line.colorCode}` : ''} {line.cadCode ? `- ${line.cadCode}` : ''}
