@@ -54,6 +54,7 @@ export default function OrderEditPage() {
   const [submitting, setSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
+    poNumber: '',
     customerName: '',
     buyerName: '',
     baseStyleNumber: '',
@@ -79,6 +80,7 @@ export default function OrderEditPage() {
       
       // Set basic order data
       setFormData({
+        poNumber: order.poNumber || '',
         customerName: order.customerName || '',
         buyerName: order.buyerName || '',
         baseStyleNumber: order.baseStyleNumber || order.styleNumber || '',
@@ -157,6 +159,7 @@ export default function OrderEditPage() {
 
     try {
       const orderData = {
+        poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
         baseStyleNumber: formData.baseStyleNumber,
@@ -303,6 +306,15 @@ export default function OrderEditPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="poNumber">PO Number *</Label>
+                  <Input
+                    id="poNumber"
+                    required
+                    value={formData.poNumber}
+                    onChange={(e) => setFormData({ ...formData, poNumber: e.target.value })}
+                  />
+                </div>
                 <div>
                   <Label htmlFor="customerName">Customer Name *</Label>
                   <Input

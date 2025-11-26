@@ -298,7 +298,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
+            'order_number', 'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -311,6 +311,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         """Convert camelCase to snake_case"""
         # Map camelCase keys to snake_case
         field_mapping = {
+            'poNumber': 'order_number',
             'customerName': 'customer_name',
             'buyerName': 'buyer_name',
             'baseStyleNumber': 'base_style_number',
@@ -346,20 +347,73 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         return data
     
     def create(self, validated_data):
-        """Create order with nested styles and colors"""
+        """
+        Create order with nested styles and lines.
+        If order_number is provided and already exists, add new styles/lines to existing order.
+        """
+        from .models_style_color import OrderStyle
+        from .models_order_line import OrderLine
+        
         styles_data = validated_data.pop('styles')
+        order_number = validated_data.get('order_number')
         
-        # Create order (merchandiser will be set in the view)
-        order = Order.objects.create(**validated_data)
+        # Check if order with this PO number already exists
+        if order_number:
+            try:
+                # Find existing order with this PO number
+                order = Order.objects.get(order_number=order_number)
+                
+                # Update quantity to include new lines
+                new_quantity = sum(
+                    sum(float(line.get('quantity', 0)) for line in style_data.get('lines', []))
+                    for style_data in styles_data
+                )
+                order.quantity = float(order.quantity) + new_quantity
+                order.save(update_fields=['quantity', 'updated_at'])
+                
+            except Order.DoesNotExist:
+                # PO number provided but doesn't exist yet, create new order
+                order = Order.objects.create(**validated_data)
+        else:
+            # No PO number provided, create new order (will auto-generate)
+            order = Order.objects.create(**validated_data)
         
-        # Create nested styles and colors
-        from .models_style_color import OrderStyle, OrderColor
+        # Add new styles and lines to the order
         for style_data in styles_data:
-            colors_data = style_data.pop('colors')
-            style = OrderStyle.objects.create(order=order, **style_data)
+            lines_data = style_data.pop('lines', [])
             
-            for color_data in colors_data:
-                OrderColor.objects.create(style=style, **color_data)
+            # Check if style already exists in this order
+            style_number = style_data.get('style_number')
+            if style_number:
+                try:
+                    style = OrderStyle.objects.get(order=order, style_number=style_number)
+                    # Style exists, just add new lines to it
+                except OrderStyle.DoesNotExist:
+                    # Style doesn't exist, create it
+                    style = OrderStyle.objects.create(order=order, **style_data)
+            else:
+                # No style_number provided, create new style
+                style = OrderStyle.objects.create(order=order, **style_data)
+            
+            # Add lines to the style
+            for line_data in lines_data:
+                # Check if this line combination already exists
+                color_code = line_data.get('color_code')
+                cad_code = line_data.get('cad_code')
+                
+                try:
+                    # Try to find existing line with same style+color+cad
+                    existing_line = OrderLine.objects.get(
+                        style=style,
+                        color_code=color_code or '',
+                        cad_code=cad_code or ''
+                    )
+                    # Line exists, update quantity
+                    existing_line.quantity = float(existing_line.quantity) + float(line_data.get('quantity', 0))
+                    existing_line.save(update_fields=['quantity', 'updated_at'])
+                except OrderLine.DoesNotExist:
+                    # Line doesn't exist, create it
+                    OrderLine.objects.create(style=style, **line_data)
         
         return order
 
@@ -372,7 +426,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
+            'order_number', 'customer_name', 'buyer_name', 'base_style_number', 'style_number', 'cad',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction',
             'mill_name', 'mill_price', 'prova_price', 'currency',
@@ -385,6 +439,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         """Convert camelCase to snake_case"""
         # Map camelCase keys to snake_case
         field_mapping = {
+            'poNumber': 'order_number',
             'customerName': 'customer_name',
             'buyerName': 'buyer_name',
             'baseStyleNumber': 'base_style_number',

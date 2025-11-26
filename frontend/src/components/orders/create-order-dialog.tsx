@@ -27,23 +27,19 @@ interface OrderLineFormData {
   
   // Optional Color
   colorCode?: string;
-  colorName?: string;
   
   // Optional CAD
   cadCode?: string;
-  cadName?: string;
   
   // Optional Style Technical Details
   description?: string;
   fabricType?: string;
   fabricComposition?: string;
   gsm?: string;
-  finishType?: string;
   construction?: string;
   cuttableWidth?: string;
   
   // Optional Commercial Data
-  millName?: string;
   millPrice?: string;
   provaPrice?: string;
   commission?: string;
@@ -73,6 +69,7 @@ export function CreateOrderDialog({
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    poNumber: '',
     customerName: '',
     buyerName: '',
     fabricType: '',
@@ -131,7 +128,6 @@ export function CreateOrderDialog({
       if (index === sourceIndex) return line;
       return {
         ...line,
-        millName: sourceLine.millName,
         millPrice: sourceLine.millPrice,
         provaPrice: sourceLine.provaPrice,
         commission: sourceLine.commission,
@@ -239,6 +235,7 @@ export function CreateOrderDialog({
       });
 
       const orderData = {
+        poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
         fabricType: formData.fabricType,
@@ -259,7 +256,6 @@ export function CreateOrderDialog({
             fabricType: firstLine.fabricType || formData.fabricType,
             fabricComposition: firstLine.fabricComposition || undefined,
             gsm: firstLine.gsm ? parseFloat(firstLine.gsm) : undefined,
-            finishType: firstLine.finishType || undefined,
             construction: firstLine.construction || undefined,
             cuttableWidth: firstLine.cuttableWidth || undefined,
             etd: firstLine.etd || undefined,
@@ -267,12 +263,9 @@ export function CreateOrderDialog({
             submissionDate: firstLine.submissionDate || undefined,
             lines: lines.map((line) => ({
               colorCode: line.colorCode || undefined,
-              colorName: line.colorName || undefined,
               cadCode: line.cadCode || undefined,
-              cadName: line.cadName || undefined,
               quantity: parseFloat(line.quantity),
               unit: line.unit,
-              millName: line.millName || undefined,
               millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
               provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
               commission: line.commission ? parseFloat(line.commission) : undefined,
@@ -298,6 +291,7 @@ export function CreateOrderDialog({
 
       // Reset form
       setFormData({
+        poNumber: '',
         customerName: '',
         buyerName: '',
         fabricType: '',
@@ -350,6 +344,17 @@ export function CreateOrderDialog({
               <CardTitle className="text-lg">Order Information</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="poNumber">PO Number</Label>
+                <Input
+                  id="poNumber"
+                  value={formData.poNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, poNumber: e.target.value })
+                  }
+                  placeholder="Leave empty to auto-generate"
+                />
+              </div>
               <div>
                 <Label htmlFor="customerName">
                   Customer Name <span className="text-red-500">*</span>
@@ -507,7 +512,7 @@ export function CreateOrderDialog({
                 {/* Optional: Color & CAD */}
                 <div className="border-b pb-4">
                   <Label className="text-sm font-semibold text-blue-700 mb-2 block">Color & CAD (Optional)</Label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor={`line-${lineIndex}-colorCode`}>Color Code</Label>
                       <Input
@@ -518,30 +523,12 @@ export function CreateOrderDialog({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`line-${lineIndex}-colorName`}>Color Name</Label>
-                      <Input
-                        id={`line-${lineIndex}-colorName`}
-                        value={line.colorName || ''}
-                        onChange={(e) => updateOrderLine(lineIndex, 'colorName', e.target.value)}
-                        placeholder="e.g., Crimson Red"
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor={`line-${lineIndex}-cadCode`}>CAD Code</Label>
                       <Input
                         id={`line-${lineIndex}-cadCode`}
                         value={line.cadCode || ''}
                         onChange={(e) => updateOrderLine(lineIndex, 'cadCode', e.target.value)}
                         placeholder="e.g., CAD-001"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`line-${lineIndex}-cadName`}>CAD Name</Label>
-                      <Input
-                        id={`line-${lineIndex}-cadName`}
-                        value={line.cadName || ''}
-                        onChange={(e) => updateOrderLine(lineIndex, 'cadName', e.target.value)}
-                        placeholder="e.g., Floral Pattern"
                       />
                     </div>
                   </div>
@@ -589,14 +576,6 @@ export function CreateOrderDialog({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`line-${lineIndex}-finishType`}>Finish Type</Label>
-                      <Input
-                        id={`line-${lineIndex}-finishType`}
-                        value={line.finishType || ''}
-                        onChange={(e) => updateOrderLine(lineIndex, 'finishType', e.target.value)}
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor={`line-${lineIndex}-cuttableWidth`}>Cuttable Width</Label>
                       <Input
                         id={`line-${lineIndex}-cuttableWidth`}
@@ -640,14 +619,6 @@ export function CreateOrderDialog({
                     )}
                   </summary>
                   <div className="grid grid-cols-3 gap-3 mt-2">
-                    <div>
-                      <Label htmlFor={`line-${lineIndex}-millName`}>Mill Name</Label>
-                      <Input
-                        id={`line-${lineIndex}-millName`}
-                        value={line.millName || ''}
-                        onChange={(e) => updateOrderLine(lineIndex, 'millName', e.target.value)}
-                      />
-                    </div>
                     <div>
                       <Label htmlFor={`line-${lineIndex}-millPrice`}>Mill Price</Label>
                       <Input
