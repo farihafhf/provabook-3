@@ -22,6 +22,33 @@ import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
 
+interface OrderLine {
+  id: string;
+  styleId: string;
+  styleNumber?: string;
+  colorCode?: string;
+  colorName?: string;
+  cadCode?: string;
+  cadName?: string;
+  quantity: number;
+  unit: string;
+  millName?: string;
+  millPrice?: number;
+  provaPrice?: number;
+  commission?: number;
+  currency?: string;
+  etd?: string;
+  eta?: string;
+  submissionDate?: string;
+  approvalDate?: string;
+  approvalStatus?: Record<string, string>;
+  notes?: string;
+  totalValue?: number;
+  totalCost?: number;
+  profit?: number;
+  lineLabel?: string;
+}
+
 interface OrderColor {
   id: string;
   colorCode: string;
@@ -54,6 +81,7 @@ interface OrderStyle {
   submissionDate?: string;
   notes?: string;
   colors: OrderColor[];
+  lines: OrderLine[];
   createdAt: string;
   updatedAt: string;
 }
@@ -170,6 +198,7 @@ export default function OrderDetailPage() {
   const [isStatusCardOpen, setIsStatusCardOpen] = useState(true);
   const [isAssignTaskOpen, setIsAssignTaskOpen] = useState(true);
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(true);
+  const [selectedStyleForApproval, setSelectedStyleForApproval] = useState<string>('all');
   
   // Supplier Deliveries state
   const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
@@ -428,6 +457,36 @@ export default function OrderDetailPage() {
       await fetchOrder();
     } catch (error: any) {
       console.error('Failed to update approval:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update approval',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleLineApprovalChange = async (approvalType: string, newStatus: string, lineId: string, lineLabel: string) => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}/approvals/`, {
+        approvalType,
+        status: newStatus,
+        orderLineId: lineId,
+      });
+
+      toast({
+        title: 'Success',
+        description: `${formatApprovalName(approvalType)} updated to ${newStatus} for ${lineLabel}`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update line approval:', error);
       toast({
         title: 'Error',
         description: error.response?.data?.message || 'Failed to update approval',
@@ -1074,217 +1133,129 @@ export default function OrderDetailPage() {
 
                 {/* Styles and Colors Section */}
                 {order.styles && order.styles.length > 0 && (
-                  <Card className="border-l-4 border-l-indigo-500">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <Package className="h-5 w-5 text-indigo-600" />
-                        Styles & Color Variants
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        Order Lines ({order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} lines)
                       </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">Each line represents a unique Style + Color + CAD combination</p>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
-                        {order.styles.map((style, styleIndex) => (
-                          <div key={style.id} className="border rounded-lg p-3 bg-gradient-to-br from-white to-gray-50">
-                            <div className="flex items-start justify-between mb-4">
-                              <div>
-                                <h3 className="font-semibold text-lg text-indigo-900">
-                                  {style.styleNumber}
-                                </h3>
-                                {style.description && (
-                                  <p className="text-sm text-gray-600 mt-1">{style.description}</p>
+                      <div className="grid grid-cols-1 gap-3">
+                        {order.styles.map((style) => 
+                          style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                            <Card key={line.id} className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-all">
+                              <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
+                                        {style.styleNumber}
+                                      </Badge>
+                                      {line.colorCode && (
+                                        <Badge className="bg-blue-100 text-blue-800 font-mono px-3 py-1">
+                                          {line.colorCode}
+                                        </Badge>
+                                      )}
+                                      {line.cadCode && (
+                                        <Badge className="bg-purple-100 text-purple-800 font-mono px-3 py-1">
+                                          {line.cadCode}
+                                        </Badge>
+                                      )}
+                                      {!line.colorCode && !line.cadCode && (
+                                        <Badge className="bg-gray-100 text-gray-600 px-3 py-1">
+                                          Style Only
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {style.description && (
+                                      <p className="text-xs text-gray-600">{style.description}</p>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-lg font-bold text-indigo-700">
+                                      {line.quantity.toLocaleString()} <span className="text-sm font-normal text-gray-600">{line.unit}</span>
+                                    </div>
+                                    {line.provaPrice && (
+                                      <div className="text-sm font-semibold text-green-700">
+                                        ${line.provaPrice.toFixed(2)}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  {/* Commercial Data */}
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Mill Price</p>
+                                    <p className="text-sm font-semibold">
+                                      {line.millPrice ? `${line.currency || 'USD'} ${line.millPrice.toFixed(2)}` : '-'}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Commission</p>
+                                    <p className="text-sm font-semibold text-orange-700">
+                                      {line.commission ? `${line.commission.toFixed(2)}%` : '-'}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">ETD</p>
+                                    <p className="text-sm font-semibold text-blue-600">
+                                      {line.etd ? formatDate(line.etd) : '-'}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">ETA</p>
+                                    <p className="text-sm font-semibold text-green-600">
+                                      {line.eta ? formatDate(line.eta) : '-'}
+                                    </p>
+                                  </div>
+                                </div>
+                                  
+                                {/* Style Technical Details - Collapsed by default */}
+                                {(style.fabricType || style.gsm || style.construction) && (
+                                  <details className="mt-3 p-2 bg-gray-50 rounded border">
+                                    <summary className="text-xs font-semibold text-gray-700 cursor-pointer">
+                                      Technical Details
+                                    </summary>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-xs">
+                                      {style.fabricType && (
+                                        <div>
+                                          <p className="text-gray-500">Fabric</p>
+                                          <p className="font-medium">{style.fabricType}</p>
+                                        </div>
+                                      )}
+                                      {style.gsm && (
+                                        <div>
+                                          <p className="text-gray-500">GSM</p>
+                                          <p className="font-medium">{style.gsm}</p>
+                                        </div>
+                                      )}
+                                      {style.construction && (
+                                        <div>
+                                          <p className="text-gray-500">Construction</p>
+                                          <p className="font-medium">{style.construction}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </details>
                                 )}
-                              </div>
-                              <Badge variant="outline" className="bg-indigo-50">
-                                Style {styleIndex + 1}
-                              </Badge>
-                            </div>
 
-                            {/* Style Details Grid - More Compact */}
-                            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-3 p-2 bg-white rounded border text-sm">
-                              {style.fabricType && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Fabric Type</p>
-                                  <p className="text-sm font-medium">{style.fabricType}</p>
-                                </div>
-                              )}
-                              {style.fabricComposition && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Composition</p>
-                                  <p className="text-sm font-medium">{style.fabricComposition}</p>
-                                </div>
-                              )}
-                              {style.gsm && (
-                                <div>
-                                  <p className="text-xs text-gray-500">GSM</p>
-                                  <p className="text-sm font-medium">{style.gsm}</p>
-                                </div>
-                              )}
-                              {style.cuttableWidth && (
-                                <div>
-                                  <p className="text-xs text-gray-500">Cuttable Width</p>
-                                  <p className="text-sm font-medium">{style.cuttableWidth}</p>
-                                </div>
-                              )}
-                              {style.construction && (
-                                <div className="col-span-2">
-                                  <p className="text-xs text-gray-500">Construction</p>
-                                  <p className="text-sm font-medium">{style.construction}</p>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Editable Style Dates */}
-                            <div className="border-t pt-2 mb-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <Label className="text-xs font-semibold flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  Delivery Dates
-                                </Label>
-                                {editingStyleId !== style.id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditStyleDates(style.id, style.etd || '', style.eta || '', style.submissionDate || '')}
-                                  >
-                                    <Edit2 className="h-3 w-3 mr-1" />
-                                    Edit
-                                  </Button>
+                                {line.notes && (
+                                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                                    <p className="text-yellow-700 font-medium">Note: {line.notes}</p>
+                                  </div>
                                 )}
-                              </div>
-                              {editingStyleId === style.id ? (
-                                <div className="space-y-2">
-                                  <div className="grid grid-cols-3 gap-2">
-                                    <div>
-                                      <Label className="text-xs">ETD</Label>
-                                      <Input
-                                        type="date"
-                                        className="h-8 text-xs"
-                                        value={styleDates[style.id]?.etd || ''}
-                                        onChange={(e) => setStyleDates(prev => ({
-                                          ...prev,
-                                          [style.id]: { ...prev[style.id], etd: e.target.value }
-                                        }))}
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs">ETA</Label>
-                                      <Input
-                                        type="date"
-                                        className="h-8 text-xs"
-                                        value={styleDates[style.id]?.eta || ''}
-                                        onChange={(e) => setStyleDates(prev => ({
-                                          ...prev,
-                                          [style.id]: { ...prev[style.id], eta: e.target.value }
-                                        }))}
-                                      />
-                                    </div>
-                                    <div>
-                                      <Label className="text-xs">Submission</Label>
-                                      <Input
-                                        type="date"
-                                        className="h-8 text-xs"
-                                        value={styleDates[style.id]?.submissionDate || ''}
-                                        onChange={(e) => setStyleDates(prev => ({
-                                          ...prev,
-                                          [style.id]: { ...prev[style.id], submissionDate: e.target.value }
-                                        }))}
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-end gap-2">
-                                    <Button size="sm" variant="outline" onClick={handleCancelEditDates}>
-                                      Cancel
-                                    </Button>
-                                    <Button size="sm" onClick={() => handleSaveStyleDates(style.id)} disabled={updating}>
-                                      {updating ? 'Saving...' : 'Save'}
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-3 gap-2 text-xs">
-                                  <div>
-                                    <p className="text-gray-500">ETD</p>
-                                    <p className="font-medium text-blue-600">{style.etd ? formatDate(style.etd) : '-'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-gray-500">ETA</p>
-                                    <p className="font-medium text-green-600">{style.eta ? formatDate(style.eta) : '-'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-gray-500">Submission</p>
-                                    <p className="font-medium text-gray-700">{style.submissionDate ? formatDate(style.submissionDate) : '-'}</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Colors Table */}
-                            <div>
-                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Color Variants ({style.colors.length})</h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                  <thead className="bg-gray-100 text-gray-700">
-                                    <tr>
-                                      <th className="text-left p-2 font-medium">Color Code</th>
-                                      <th className="text-right p-2 font-medium">Quantity</th>
-                                      <th className="text-right p-2 font-medium">Mill Price</th>
-                                      <th className="text-right p-2 font-medium">Prova Price</th>
-                                      <th className="text-center p-2 font-medium">ETD</th>
-                                      <th className="text-center p-2 font-medium">ETA</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y">
-                                    {style.colors.map((color) => (
-                                      <tr key={color.id} className="hover:bg-gray-50">
-                                        <td className="p-2">
-                                          <Badge variant="secondary" className="font-mono">
-                                            {color.colorCode}
-                                          </Badge>
-                                        </td>
-                                        <td className="p-2 text-right font-medium">
-                                          {color.quantity.toLocaleString()} {color.unit}
-                                        </td>
-                                        <td className="p-2 text-right">
-                                          {color.millPrice ? `${color.currency || 'USD'} ${color.millPrice.toFixed(2)}` : '-'}
-                                        </td>
-                                        <td className="p-2 text-right text-green-700 font-medium">
-                                          {color.provaPrice ? `${color.currency || 'USD'} ${color.provaPrice.toFixed(2)}` : '-'}
-                                        </td>
-                                        <td className="p-2 text-center text-xs">
-                                          {color.etd ? formatDate(color.etd) : '-'}
-                                        </td>
-                                        <td className="p-2 text-center text-xs">
-                                          {color.eta ? formatDate(color.eta) : '-'}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                  <tfoot className="bg-indigo-50 font-semibold">
-                                    <tr>
-                                      <td className="p-2">Total</td>
-                                      <td className="p-2 text-right">
-                                        {style.colors.reduce((sum, c) => sum + c.quantity, 0).toLocaleString()} {style.colors[0]?.unit || ''}
-                                      </td>
-                                      <td colSpan={4}></td>
-                                    </tr>
-                                  </tfoot>
-                                </table>
-                              </div>
-                            </div>
-
-                            {style.notes && (
-                              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm">
-                                <p className="text-xs text-yellow-700 font-medium mb-1">Notes:</p>
-                                <p className="text-yellow-900">{style.notes}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                              </CardContent>
+                            </Card>
+                          )) : null
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 )}
-
 
                 {order.notes && (
                   <Card>
@@ -1314,199 +1285,326 @@ export default function OrderDetailPage() {
           {/* Approval Gate Tab - Hidden for Bulk status */}
           {order.status !== 'bulk' && (
           <TabsContent value="approval">
-            <Card className="border-2 border-blue-200">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Approval Gate</CardTitle>
-              <div className="text-sm font-medium">
-                Progress: <span className="text-blue-600 text-lg">{getApprovedCount()} / {getTotalApprovals()}</span> Approved
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">
-              {order.status === 'running' 
-                ? 'Running Order approvals: Lab Dip, Strike Off, Handloom, PP Sample' 
-                : 'Early stage approvals: Quality, Price'}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Dynamic Approvals based on Order Status */}
-              {order.status === 'running' ? (
+            {/* Overall Summary Card */}
+            <Card className="border-2 border-blue-200 mb-6">
+              <CardHeader>
+                <CardTitle>Order-Level Approval Summary (Aggregated)</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  Aggregated from all lines below • Read-only
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {order.status === 'running' ? (
                 <>
-                  {/* Running Order Approvals: Lab Dip, Strike Off, Handloom, PP Sample */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                  {/* Running Order Approvals */}
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
                           {getApprovalIcon(order.approvalStatus?.labDip || 'submission')}
-                          <span className="font-medium">Lab Dip</span>
+                          <span className="text-sm font-medium">Lab Dip</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.labDip === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.labDip === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.labDip || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.labDip || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('labDip', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
                           {getApprovalIcon(order.approvalStatus?.strikeOff || 'submission')}
-                          <span className="font-medium">Strike Off</span>
+                          <span className="text-sm font-medium">Strike Off</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.strikeOff === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.strikeOff === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.strikeOff || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.strikeOff || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('strikeOff', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
                           {getApprovalIcon(order.approvalStatus?.handloom || 'submission')}
-                          <span className="font-medium">Handloom</span>
+                          <span className="text-sm font-medium">Handloom</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.handloom === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.handloom === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.handloom || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.handloom || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('handloom', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
                           {getApprovalIcon(order.approvalStatus?.ppSample || 'submission')}
-                          <span className="font-medium">PP Sample</span>
+                          <span className="text-sm font-medium">PP Sample</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.ppSample === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.ppSample === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.ppSample || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.ppSample || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('ppSample', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Auto-advance to Bulk notice */}
-                  {allRunningApproved() && (
-                    <div className="border-2 border-dashed border-purple-300 rounded-lg p-4 bg-purple-50">
-                      <p className="text-sm text-purple-800 font-medium">
-                        ✨ All running approvals completed! Order will auto-advance to <strong>Bulk</strong> status on next approval update.
-                      </p>
-                    </div>
-                  )}
                 </>
               ) : (
                 <>
-                  {/* Upcoming/In Development Approvals: Quality, Price */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'submission')}
-                          <span className="font-medium">Quality</span>
+                  {/* Upcoming/In Development Approvals */}
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getApprovalIcon(order.approvalStatus?.quality || 'submission')}
+                          <span className="text-sm font-medium">Quality</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.quality === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.quality === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.quality || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('quality', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'submission')}
-                          <span className="font-medium">Price</span>
+                      <div className="p-3 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getApprovalIcon(order.approvalStatus?.price || 'submission')}
+                          <span className="text-sm font-medium">Price</span>
                         </div>
+                        <Badge className={`text-xs ${
+                          order.approvalStatus?.price === 'approved' ? 'bg-green-100 text-green-800' :
+                          order.approvalStatus?.price === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.approvalStatus?.price || 'submission'}
+                        </Badge>
                       </div>
-                      <Select
-                        value={order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'submission'}
-                        onValueChange={(value) => handleApprovalChange('price', value)}
-                        disabled={updating}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="submission">Submission</SelectItem>
-                          <SelectItem value="resubmission">Re-submission</SelectItem>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Auto-advance to Running notice */}
-                  {allEarlyApproved() && (
-                    <div className="border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50">
-                      <p className="text-sm text-green-800 font-medium">
-                        ✨ All early approvals completed! Order will auto-advance to <strong>Running Order</strong> status on next approval update.
-                      </p>
-                    </div>
-                  )}
                 </>
               )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Filter Controls */}
+            <div className="flex items-center justify-between mb-4 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg">
+              <h3 className="text-lg font-semibold">Line-Level Approvals</h3>
+              <div className="flex items-center gap-3">
+                <Label className="text-sm font-medium">Filter by Style:</Label>
+                <Select value={selectedStyleForApproval} onValueChange={setSelectedStyleForApproval}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="All Styles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Styles</SelectItem>
+                    {order.styles?.map((style) => (
+                      <SelectItem key={style.id} value={style.id}>
+                        {style.styleNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Line-Level Approval Cards */}
+            <div className="space-y-4">
+              {order.styles
+                ?.filter(style => selectedStyleForApproval === 'all' || style.id === selectedStyleForApproval)
+                .map((style) => 
+                  style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                    <Card key={line.id} className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base font-semibold">
+                              {style.styleNumber}
+                            </CardTitle>
+                            <div className="flex gap-2 mt-1">
+                              {line.colorCode && (
+                                <Badge className="bg-blue-100 text-blue-800 font-mono">
+                                  Color: {line.colorCode}
+                                </Badge>
+                              )}
+                              {line.cadCode && (
+                                <Badge className="bg-purple-100 text-purple-800 font-mono">
+                                  CAD: {line.cadCode}
+                                </Badge>
+                              )}
+                              {!line.colorCode && !line.cadCode && (
+                                <Badge className="bg-gray-100 text-gray-600">
+                                  Style Only
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right text-xs text-gray-500">
+                            <div>{line.quantity} {line.unit}</div>
+                            {line.provaPrice && <div className="font-medium text-green-700">${line.provaPrice.toFixed(2)}</div>}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {order.status === 'running' ? (
+                            <>
+                              {/* Lab Dip */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.labDip || 'submission')}
+                                  Lab Dip
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.labDip || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('labDip', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Strike Off */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.strikeOff || 'submission')}
+                                  Strike Off
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.strikeOff || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('strikeOff', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Handloom */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.handloom || 'submission')}
+                                  Handloom
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.handloom || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('handloom', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* PP Sample */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.ppSample || 'submission')}
+                                  PP Sample
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.ppSample || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('ppSample', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {/* Quality */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.quality || 'submission')}
+                                  Quality
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.quality || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('quality', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Price */}
+                              <div>
+                                <Label className="text-xs font-semibold flex items-center gap-1 mb-2">
+                                  {getApprovalIcon(line.approvalStatus?.price || 'submission')}
+                                  Price
+                                </Label>
+                                <Select
+                                  value={line.approvalStatus?.price || 'submission'}
+                                  onValueChange={(value) => handleLineApprovalChange('price', value, line.id, `${style.styleNumber} ${line.colorCode || ''} ${line.cadCode || ''}`)}
+                                  disabled={updating}
+                                >
+                                  <SelectTrigger className="h-9">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="submission">Submission</SelectItem>
+                                    <SelectItem value="resubmission">Re-submission</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )) : null
+                )}
+            </div>
+
+            {/* If no lines */}
+            {(!order.styles || order.styles.every(s => !s.lines || s.lines.length === 0)) && (
+              <Card className="border-dashed border-2">
+                <CardContent className="pt-6 text-center">
+                  <p className="text-gray-500 mb-2">No lines available for approval management</p>
+                  <p className="text-sm text-gray-400">Lines will appear here once they are added to the order</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           )}
 
