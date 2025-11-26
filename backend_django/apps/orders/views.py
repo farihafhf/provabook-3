@@ -220,27 +220,58 @@ class OrderViewSet(viewsets.ModelViewSet):
     def update_approval(self, request, pk=None):
         """
         PATCH /orders/{id}/approvals/
-        Update order approval status
+        Update order or line-level approval status
         
         Request body:
         {
             "approvalType": "labDip",
-            "status": "approved"
+            "status": "approved",
+            "orderLineId": "uuid" (optional - for line-level approvals)
         }
         """
+        from .models_order_line import OrderLine
+        
         order = self.get_object()
         serializer = ApprovalUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
         approval_type = serializer.validated_data['approval_type']
         approval_status = serializer.validated_data['status']
+        order_line_id = serializer.validated_data.get('order_line_id')
         
-        # Update approval status
-        order.update_approval_status(approval_type, approval_status)
+        order_line = None
+        
+        if order_line_id:
+            # Line-level approval
+            try:
+                order_line = OrderLine.objects.get(id=order_line_id, style__order=order)
+            except OrderLine.DoesNotExist:
+                return Response(
+                    {'error': 'Order line not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Update line approval status
+            if not order_line.approval_status:
+                order_line.approval_status = {}
+            order_line.approval_status[approval_type] = approval_status
+            order_line.save(update_fields=['approval_status', 'updated_at'])
+            
+            # Update approval_date if status is approved
+            if approval_status == 'approved' and not order_line.approval_date:
+                order_line.approval_date = timezone.now().date()
+                order_line.save(update_fields=['approval_date', 'updated_at'])
+            
+            # Aggregate line approvals to order level
+            self._aggregate_line_approvals_to_order(order, approval_type)
+        else:
+            # Order-level approval (backwards compatible)
+            order.update_approval_status(approval_type, approval_status)
         
         # Create approval history record
         ApprovalHistory.objects.create(
             order=order,
+            order_line=order_line,
             approval_type=approval_type,
             status=approval_status,
             changed_by=request.user if request.user.is_authenticated else None
@@ -249,10 +280,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Auto-progress logic based on order status
         approvals = order.approval_status or {}
         
-        # If Running Order: check if all running approvals (Lab Dip, Strike Off, Handloom, PP Sample) are approved → auto-advance to Bulk
+        # If Running Order: check if all running approvals are approved → auto-advance to Bulk
         if order.status == OrderStatus.RUNNING:
             running_approvals = ['labDip', 'ppSample', 'handloom']
-            # Check 'strikeOff' for Strike Off approval
             strike_off_approved = approvals.get('strikeOff') == 'approved'
             
             if strike_off_approved and all(approvals.get(g) == 'approved' for g in running_approvals):
@@ -261,10 +291,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # If Upcoming/In Development: check if Quality and Price are approved → auto-advance to Running Order
         elif order.status in [OrderStatus.UPCOMING, OrderStatus.IN_DEVELOPMENT]:
-            early_approvals = []
-            # Check either 'quality' or 'qualityTest' for Quality
             quality_approved = approvals.get('quality') == 'approved' or approvals.get('qualityTest') == 'approved'
-            # Check either 'price' or 'bulkSwatch' for Price
             price_approved = approvals.get('price') == 'approved' or approvals.get('bulkSwatch') == 'approved'
             
             if quality_approved and price_approved:
@@ -275,6 +302,51 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Return updated order
         response_serializer = OrderSerializer(order)
         return Response(response_serializer.data)
+    
+    def _aggregate_line_approvals_to_order(self, order, approval_type):
+        """
+        Aggregate line-level approvals to order-level approval_status
+        """
+        from .models_order_line import OrderLine
+        
+        # Get all lines for this order
+        all_lines = OrderLine.objects.filter(style__order=order)
+        
+        if not all_lines.exists():
+            return
+        
+        # Count approval statuses for this approval type across all lines
+        approved_count = 0
+        rejected_count = 0
+        resubmission_count = 0
+        submission_count = 0
+        total_count = all_lines.count()
+        
+        for line in all_lines:
+            line_status = (line.approval_status or {}).get(approval_type)
+            if line_status == 'approved':
+                approved_count += 1
+            elif line_status == 'rejected':
+                rejected_count += 1
+            elif line_status == 'resubmission':
+                resubmission_count += 1
+            elif line_status == 'submission':
+                submission_count += 1
+        
+        # Aggregate logic: if all approved → approved, else if any rejected → rejected, else highest priority status
+        if not order.approval_status:
+            order.approval_status = {}
+        
+        if approved_count == total_count:
+            order.approval_status[approval_type] = 'approved'
+        elif rejected_count > 0:
+            order.approval_status[approval_type] = 'rejected'
+        elif resubmission_count > 0:
+            order.approval_status[approval_type] = 'resubmission'
+        elif submission_count > 0:
+            order.approval_status[approval_type] = 'submission'
+        
+        order.save(update_fields=['approval_status', 'updated_at'])
     
     @action(detail=True, methods=['post'], url_path='change-stage')
     def change_stage(self, request, pk=None):

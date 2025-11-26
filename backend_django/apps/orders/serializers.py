@@ -531,6 +531,7 @@ class ApprovalUpdateSerializer(serializers.Serializer):
     """
     Serializer for updating approval status
     Accepts camelCase from frontend
+    Now supports line-level approvals via orderLineId
     """
     approval_type = serializers.ChoiceField(
         choices=['labDip', 'strikeOff', 'handloom', 'aop', 'qualityTest', 'quality', 'bulkSwatch', 'price', 'ppSample']
@@ -538,11 +539,13 @@ class ApprovalUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(
         choices=['submission', 'resubmission', 'approved', 'rejected']
     )
+    order_line_id = serializers.UUIDField(required=False, allow_null=True)
     
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""
         field_mapping = {
             'approvalType': 'approval_type',
+            'orderLineId': 'order_line_id',
         }
         
         converted_data = {}
@@ -612,15 +615,23 @@ class ApprovalHistorySerializer(serializers.ModelSerializer):
     """
     Serializer for ApprovalHistory model
     Returns camelCase for frontend
+    Now includes order_line information for line-level approvals
     """
     changed_by_name = serializers.CharField(source='changed_by.full_name', read_only=True)
     changed_by_email = serializers.CharField(source='changed_by.email', read_only=True)
     
+    # Line-level details
+    line_label = serializers.CharField(source='order_line.line_label', read_only=True)
+    style_number = serializers.CharField(source='order_line.style.style_number', read_only=True)
+    color_code = serializers.CharField(source='order_line.color_code', read_only=True)
+    cad_code = serializers.CharField(source='order_line.cad_code', read_only=True)
+    
     class Meta:
         model = ApprovalHistory
         fields = [
-            'id', 'order', 'approval_type', 'status', 
+            'id', 'order', 'order_line', 'approval_type', 'status', 
             'changed_by', 'changed_by_name', 'changed_by_email',
+            'line_label', 'style_number', 'color_code', 'cad_code',
             'notes', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -631,11 +642,16 @@ class ApprovalHistorySerializer(serializers.ModelSerializer):
         return {
             'id': str(data['id']),
             'orderId': str(data['order']),
+            'orderLineId': str(data['order_line']) if data.get('order_line') else None,
             'approvalType': data['approval_type'],
             'status': data['status'],
             'changedBy': str(data['changed_by']) if data.get('changed_by') else None,
             'changedByName': data.get('changed_by_name'),
             'changedByEmail': data.get('changed_by_email'),
+            'lineLabel': data.get('line_label'),
+            'styleNumber': data.get('style_number'),
+            'colorCode': data.get('color_code'),
+            'cadCode': data.get('cad_code'),
             'notes': data.get('notes'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],

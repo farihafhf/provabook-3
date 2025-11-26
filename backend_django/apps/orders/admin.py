@@ -5,6 +5,7 @@ from django.contrib import admin
 from .models import Order
 from .models_task import Task
 from .models_style_color import OrderStyle, OrderColor
+from .models_order_line import OrderLine
 
 
 @admin.register(Order)
@@ -241,6 +242,69 @@ class OrderColorAdmin(admin.ModelAdmin):
         ('Color Information', {
             'fields': (
                 'id', 'style', 'color_code', 'color_name'
+            )
+        }),
+        ('Quantity', {
+            'fields': (
+                'quantity', 'unit'
+            )
+        }),
+        ('Pricing', {
+            'fields': (
+                'mill_name', 'mill_price', 'prova_price', 
+                'commission', 'currency'
+            )
+        }),
+        ('Dates', {
+            'fields': (
+                'etd', 'eta', 'submission_date', 'approval_date'
+            )
+        }),
+        ('Approval Status', {
+            'fields': (
+                'approval_status',
+            )
+        }),
+        ('Additional Information', {
+            'fields': (
+                'notes',
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': (
+                'created_at', 'updated_at'
+            )
+        }),
+    )
+    
+    def get_queryset(self, request):
+        """Optimize query with select_related"""
+        queryset = super().get_queryset(request)
+        return queryset.select_related('style', 'style__order')
+
+
+@admin.register(OrderLine)
+class OrderLineAdmin(admin.ModelAdmin):
+    """Admin interface for OrderLine model"""
+    list_display = [
+        'style', 'color_code', 'cad_code', 'quantity', 
+        'prova_price', 'etd', 'created_at'
+    ]
+    list_filter = ['etd', 'created_at', 'currency', 'style__order__status']
+    search_fields = [
+        'color_code', 'color_name', 'cad_code', 'cad_name',
+        'style__style_number', 'style__order__order_number'
+    ]
+    ordering = ['-created_at']
+    
+    readonly_fields = ['id', 'created_at', 'updated_at']
+    
+    fieldsets = (
+        ('Line Identification', {
+            'fields': (
+                'id', 'style', 'color_code', 'color_name', 
+                'cad_code', 'cad_name'
             )
         }),
         ('Quantity', {

@@ -308,6 +308,10 @@ class ApprovalHistory(TimestampedModel):
     """
     Approval History model - Tracks all approval changes for an order
     Stores multiple submission/resubmission dates and approval status changes
+    
+    Now links to OrderLine for line-level approvals.
+    If order_line is set, this is a line-level approval.
+    If order_line is null, this is a legacy order-level approval.
     """
     
     APPROVAL_TYPE_CHOICES = [
@@ -317,6 +321,9 @@ class ApprovalHistory(TimestampedModel):
         ('ppSample', 'PP Sample'),
         ('quality', 'Quality'),
         ('price', 'Price'),
+        ('aop', 'AOP'),
+        ('qualityTest', 'Quality Test'),
+        ('bulkSwatch', 'Bulk Swatch'),
     ]
     
     STATUS_CHOICES = [
@@ -331,6 +338,17 @@ class ApprovalHistory(TimestampedModel):
         on_delete=models.CASCADE,
         related_name='approval_history'
     )
+    
+    # Link to OrderLine for line-level approvals (optional for backwards compatibility)
+    order_line = models.ForeignKey(
+        'OrderLine',
+        on_delete=models.CASCADE,
+        related_name='approval_history',
+        null=True,
+        blank=True,
+        help_text='If set, this approval is specific to this order line'
+    )
+    
     approval_type = models.CharField(max_length=20, choices=APPROVAL_TYPE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     changed_by = models.ForeignKey(
@@ -349,8 +367,11 @@ class ApprovalHistory(TimestampedModel):
         verbose_name_plural = 'Approval Histories'
         indexes = [
             models.Index(fields=['order', 'approval_type']),
+            models.Index(fields=['order_line', 'approval_type']),
             models.Index(fields=['created_at']),
         ]
     
     def __str__(self):
+        if self.order_line:
+            return f"{self.order.order_number} - {self.order_line.line_label} - {self.get_approval_type_display()} - {self.get_status_display()}"
         return f"{self.order.order_number} - {self.get_approval_type_display()} - {self.get_status_display()}"

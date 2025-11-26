@@ -3,6 +3,7 @@ Serializers for OrderStyle and OrderColor
 """
 from rest_framework import serializers
 from .models_style_color import OrderStyle, OrderColor
+from .serializers_order_line import OrderLineSerializer, OrderLineCreateUpdateSerializer
 
 
 class OrderColorSerializer(serializers.ModelSerializer):
@@ -72,8 +73,9 @@ class OrderColorSerializer(serializers.ModelSerializer):
 
 
 class OrderStyleSerializer(serializers.ModelSerializer):
-    """Serializer for OrderStyle with nested colors"""
+    """Serializer for OrderStyle with nested colors and lines"""
     colors = OrderColorSerializer(many=True, required=False)
+    lines = OrderLineSerializer(many=True, required=False)
     
     class Meta:
         model = OrderStyle
@@ -82,7 +84,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction', 'cuttable_width',
             'etd', 'eta', 'submission_date', 'notes',
-            'colors', 'created_at', 'updated_at'
+            'colors', 'lines', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'style_number', 'created_at', 'updated_at']
     
@@ -105,6 +107,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
             'submissionDate': data.get('submission_date'),
             'notes': data.get('notes'),
             'colors': data.get('colors', []),
+            'lines': data.get('lines', []),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }
@@ -191,8 +194,8 @@ class OrderColorCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating OrderStyle with nested colors (accepts camelCase)"""
-    colors = OrderColorCreateUpdateSerializer(many=True, required=True)
+    """Serializer for creating/updating OrderStyle with nested lines (accepts camelCase)"""
+    lines = OrderLineCreateUpdateSerializer(many=True, required=True)
     
     class Meta:
         model = OrderStyle
@@ -201,7 +204,7 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction', 'cuttable_width',
             'etd', 'eta', 'submission_date', 'notes',
-            'colors'
+            'lines'
         ]
     
     def to_internal_value(self, data):
@@ -223,46 +226,52 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         return super().to_internal_value(converted_data)
     
     def validate(self, data):
-        """Validate that at least one color is provided"""
-        colors = data.get('colors', [])
-        if not colors:
+        """Validate that at least one line is provided"""
+        from .models_order_line import OrderLine
+        
+        lines = data.get('lines', [])
+        if not lines:
             raise serializers.ValidationError({
-                'colors': 'At least one color must be provided for each style'
+                'lines': 'At least one line must be provided for each style'
             })
         
-        # Validate that color codes are unique within this style
-        color_codes = [c['color_code'] for c in colors]
-        if len(color_codes) != len(set(color_codes)):
+        # Validate that combinations are unique within this style
+        combinations = [(l.get('color_code'), l.get('cad_code')) for l in lines]
+        if len(combinations) != len(set(combinations)):
             raise serializers.ValidationError({
-                'colors': 'Color codes must be unique within a style'
+                'lines': 'Each color+CAD combination must be unique within a style'
             })
         
         return data
     
     def create(self, validated_data):
-        """Create style with nested colors"""
-        colors_data = validated_data.pop('colors')
+        """Create style with nested lines"""
+        from .models_order_line import OrderLine
+        
+        lines_data = validated_data.pop('lines')
         style = OrderStyle.objects.create(**validated_data)
         
-        for color_data in colors_data:
-            OrderColor.objects.create(style=style, **color_data)
+        for line_data in lines_data:
+            OrderLine.objects.create(style=style, **line_data)
         
         return style
     
     def update(self, instance, validated_data):
-        """Update style and nested colors"""
-        colors_data = validated_data.pop('colors', None)
+        """Update style and nested lines"""
+        from .models_order_line import OrderLine
+        
+        lines_data = validated_data.pop('lines', None)
         
         # Update style fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         
-        # Update colors if provided
-        if colors_data is not None:
-            # Delete existing colors and create new ones
-            instance.colors.all().delete()
-            for color_data in colors_data:
-                OrderColor.objects.create(style=instance, **color_data)
+        # Update lines if provided
+        if lines_data is not None:
+            # Delete existing lines and create new ones
+            instance.lines.all().delete()
+            for line_data in lines_data:
+                OrderLine.objects.create(style=instance, **line_data)
         
         return instance
