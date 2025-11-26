@@ -125,11 +125,13 @@ export function LineItemDetailSheet({
   const handleApprovalUpdate = async (approvalType: string, newStatus: string) => {
     if (!onApprovalChange) return;
     const label = `${line.styleNumber || ''} ${line.colorCode || ''} ${line.cadCode || ''}`.trim();
+    
+    // Update the approval first
     await onApprovalChange(approvalType, newStatus, line.id, label);
     
     // Check if all gates for current status are approved and auto-advance status
     const currentApprovals = { ...line.approvalStatus, [approvalType]: newStatus };
-    await checkAndAutoAdvanceStatus(currentApprovals);
+    checkAndAutoAdvanceStatus(currentApprovals);
   };
 
   // Determine which approval gates to show based on LINE status (not order status)
@@ -151,7 +153,7 @@ export function LineItemDetailSheet({
   const approvalTypes = getApprovalGatesForStatus(line.status || 'upcoming');
 
   // Check if all required approvals for current stage are approved, then auto-advance
-  const checkAndAutoAdvanceStatus = async (currentApprovals: Record<string, string>) => {
+  const checkAndAutoAdvanceStatus = (currentApprovals: Record<string, string>) => {
     if (!onStatusChange) return;
     
     const currentStatus = line.status || 'upcoming';
@@ -170,10 +172,10 @@ export function LineItemDetailSheet({
       }
       
       if (nextStatus) {
-        // Small delay to let the approval update complete
-        setTimeout(async () => {
-          await onStatusChange(line.id, nextStatus);
-        }, 500);
+        // Trigger auto-advance after approval saves - parent will refetch with cache-bust
+        setTimeout(() => {
+          onStatusChange(line.id, nextStatus);
+        }, 300);
       }
     }
   };

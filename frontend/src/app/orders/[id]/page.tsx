@@ -255,7 +255,10 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}`);
+      // Add cache-busting to prevent stale state
+      const response = await api.get(`/orders/${params.id}`, {
+        params: { _t: Date.now() }
+      });
       setOrder(response.data);
       if (response.data?.status) {
         setStatusSelection(response.data.status);
@@ -516,12 +519,7 @@ export default function OrderDetailPage() {
         status: newStatus,
       });
 
-      toast({
-        title: 'Success',
-        description: `${formatApprovalName(approvalType)} updated to ${newStatus}`,
-      });
-
-      // Refetch order to get updated data
+      // Refetch order to get updated data (no toast for better UX)
       await fetchOrder();
     } catch (error: any) {
       console.error('Failed to update approval:', error);
@@ -546,12 +544,7 @@ export default function OrderDetailPage() {
         orderLineId: lineId,
       });
 
-      toast({
-        title: 'Success',
-        description: `${formatApprovalName(approvalType)} updated to ${newStatus} for ${lineLabel}`,
-      });
-
-      // Refetch order to get updated data
+      // Refetch order to get updated data (no toast for better UX)
       await fetchOrder();
     } catch (error: any) {
       console.error('Failed to update line approval:', error);
