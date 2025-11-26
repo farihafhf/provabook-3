@@ -309,6 +309,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         """
         POST /orders/{id}/documents/upload/
         Upload document for order - saves to local disk
+        
+        Category-specific logic:
+        - PI: Delete previous PI documents, rename new file to "revised PI"
+        - LC: Rename new file to "Amended LC"
+        - Other: Keep all previous documents
         """
         order = self.get_object()
         
@@ -329,11 +334,39 @@ class OrderViewSet(viewsets.ModelViewSet):
                 'error': f'Invalid category. Must be one of: {", ".join(dict(Document.Category.choices).keys())}'
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Handle category-specific logic
+        original_filename = uploaded_file.name
+        file_name = original_filename
+        
+        if category == Document.Category.PI:
+            # Delete all previous PI documents for this order
+            previous_pi_documents = Document.objects.filter(
+                order=order,
+                category=Document.Category.PI
+            )
+            for doc in previous_pi_documents:
+                doc.delete()  # This will also delete the physical file
+            
+            # Rename file to "revised PI"
+            file_extension = original_filename.split('.')[-1] if '.' in original_filename else ''
+            if file_extension:
+                file_name = f"revised_PI.{file_extension}"
+            else:
+                file_name = "revised_PI"
+        
+        elif category == Document.Category.LC:
+            # Rename file to "Amended LC"
+            file_extension = original_filename.split('.')[-1] if '.' in original_filename else ''
+            if file_extension:
+                file_name = f"Amended_LC.{file_extension}"
+            else:
+                file_name = "Amended_LC"
+        
         # Create document record and save file
         document = Document.objects.create(
             order=order,
             file=uploaded_file,
-            file_name=uploaded_file.name,
+            file_name=file_name,
             file_type=uploaded_file.content_type,
             file_size=uploaded_file.size,
             category=category,
