@@ -21,6 +21,8 @@ import { FileUpload } from '@/components/file-upload';
 import { DocumentList } from '@/components/document-list';
 import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
+import { LineItemCard } from '@/components/orders/line-item-card';
+import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
 
 interface OrderLine {
   id: string;
@@ -91,6 +93,8 @@ interface SupplierDelivery {
   id: string;
   order: string;
   poNumber?: string;
+  orderLine?: string;
+  orderLineLabel?: string;
   style?: string;
   styleNumber?: string;
   color?: string;
@@ -191,7 +195,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [documents, setDocuments] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab] = useState('lineitems');
   const [statusSelection, setStatusSelection] = useState<string>('upcoming');
   const [downloadingPO, setDownloadingPO] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -207,12 +211,15 @@ export default function OrderDetailPage() {
   const [selectedStyleForApproval, setSelectedStyleForApproval] = useState<string>('all');
   const [expandedOrderLines, setExpandedOrderLines] = useState<Set<string>>(new Set()); // Track expanded lines by line.id
   const [lineStatusSelections, setLineStatusSelections] = useState<{[key: string]: string}>({}); // Track status selection per line
+  const [selectedLineItem, setSelectedLineItem] = useState<OrderLine | null>(null); // For detail sheet
+  const [showLineItemSheet, setShowLineItemSheet] = useState(false);
   
   // Supplier Deliveries state
   const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<SupplierDelivery | null>(null);
   const [deliveryFormData, setDeliveryFormData] = useState({
+    orderLine: '',
     style: '',
     color: '',
     deliveryDate: '',
@@ -298,6 +305,7 @@ export default function OrderDetailPage() {
   const handleAddDelivery = () => {
     setEditingDelivery(null);
     setDeliveryFormData({
+      orderLine: '',
       style: '',
       color: '',
       deliveryDate: order?.etd || new Date().toISOString().split('T')[0],
@@ -310,6 +318,7 @@ export default function OrderDetailPage() {
   const handleEditDelivery = (delivery: SupplierDelivery) => {
     setEditingDelivery(delivery);
     setDeliveryFormData({
+      orderLine: delivery.orderLine || '',
       style: delivery.style || '',
       color: delivery.color || '',
       deliveryDate: delivery.deliveryDate,
@@ -333,6 +342,7 @@ export default function OrderDetailPage() {
     try {
       const payload = {
         order: order?.id,
+        orderLine: deliveryFormData.orderLine || undefined,
         style: deliveryFormData.style || undefined,
         color: deliveryFormData.color || undefined,
         deliveryDate: deliveryFormData.deliveryDate,
@@ -873,11 +883,11 @@ export default function OrderDetailPage() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-3' : 'grid-cols-4'}`}>
-            <TabsTrigger value="info">Order Info</TabsTrigger>
-            {order.status !== 'bulk' && (
-              <TabsTrigger value="approval">Approval Gate</TabsTrigger>
-            )}
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="lineitems">
+              <Package className="h-4 w-4 mr-2" />
+              Line Items ({order.styles?.reduce((sum, s) => sum + (s.lines?.length || 0), 0) || 0})
+            </TabsTrigger>
             <TabsTrigger value="deliveries">
               <Truck className="h-4 w-4 mr-2" />
               ETD & Deliveries ({deliveries.length})
@@ -888,7 +898,38 @@ export default function OrderDetailPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Info Tab */}
+          {/* Line Items Tab */}
+          <TabsContent value="lineitems" className="space-y-6">
+            {order.styles && order.styles.length > 0 && order.styles.some(s => s.lines && s.lines.length > 0) ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {order.styles.map((style) => 
+                  style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                    <LineItemCard
+                      key={line.id}
+                      line={{
+                        ...line,
+                        styleNumber: style.styleNumber,
+                      }}
+                      onClick={() => {
+                        setSelectedLineItem({...line, styleNumber: style.styleNumber});
+                        setShowLineItemSheet(true);
+                      }}
+                    />
+                  )) : null
+                )}
+              </div>
+            ) : (
+              <Card className="border-dashed border-2">
+                <CardContent className="pt-12 pb-12 text-center">
+                  <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg mb-2">No line items yet</p>
+                  <p className="text-sm text-gray-400">Line items will appear here once they are added to the order</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Info Tab (hidden, for backward compatibility) */}
           <TabsContent value="info" className="space-y-6">
             {/* Order Lines Section - Moved to Top */}
             {order.styles && order.styles.length > 0 && (
@@ -1779,7 +1820,7 @@ export default function OrderDetailPage() {
                       <thead>
                         <tr className="bg-gray-50 border-b">
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Date</th>
-                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Style/Color</th>
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Order Line</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Quantity</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Notes</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Created By</th>
@@ -1796,7 +1837,11 @@ export default function OrderDetailPage() {
                               </div>
                             </td>
                             <td className="p-3 text-sm">
-                              {delivery.styleNumber || delivery.colorCode ? (
+                              {delivery.orderLineLabel ? (
+                                <Badge className="bg-indigo-100 text-indigo-800 font-medium">
+                                  {delivery.orderLineLabel}
+                                </Badge>
+                              ) : delivery.styleNumber || delivery.colorCode ? (
                                 <div className="flex flex-col gap-0.5">
                                   {delivery.styleNumber && (
                                     <span className="font-medium text-gray-700">{delivery.styleNumber}</span>
@@ -1809,7 +1854,7 @@ export default function OrderDetailPage() {
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-gray-400 italic">All</span>
+                                <span className="text-gray-400 italic">General</span>
                               )}
                             </td>
                             <td className="p-3 text-sm font-medium">
@@ -1858,7 +1903,15 @@ export default function OrderDetailPage() {
               </CardHeader>
               <CardContent>
                 <FileUpload 
-                  orderId={order.id} 
+                  orderId={order.id}
+                  orderLines={order.styles?.flatMap(style => 
+                    (style.lines || []).map(line => ({
+                      id: line.id,
+                      styleNumber: style.styleNumber,
+                      colorCode: line.colorCode,
+                      cadCode: line.cadCode
+                    }))
+                  )}
                   onUploadComplete={fetchDocuments}
                 />
               </CardContent>
@@ -1931,6 +1984,37 @@ export default function OrderDetailPage() {
                   required
                 />
               </div>
+              
+              {/* Order Line Selection (Optional) */}
+              {order?.styles && order.styles.some(s => s.lines && s.lines.length > 0) && (
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-order-line">Associate with Order Line (Optional)</Label>
+                  <Select
+                    value={deliveryFormData.orderLine || "none"}
+                    onValueChange={(value) =>
+                      setDeliveryFormData({
+                        ...deliveryFormData,
+                        orderLine: value === "none" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="delivery-order-line">
+                      <SelectValue placeholder="Select an order line (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No specific line</SelectItem>
+                      {order.styles.map((style) => 
+                        style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                          <SelectItem key={line.id} value={line.id}>
+                            {style.styleNumber} {line.colorCode ? `- ${line.colorCode}` : ''} {line.cadCode ? `- ${line.cadCode}` : ''}
+                          </SelectItem>
+                        )) : null
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">Optionally associate this delivery with a specific order line for better tracking</p>
+                </div>
+              )}
               
               {/* Style Selection */}
               {order?.styles && order.styles.length > 0 && (
@@ -2035,6 +2119,20 @@ export default function OrderDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Line Item Detail Sheet */}
+        <LineItemDetailSheet
+          line={selectedLineItem}
+          open={showLineItemSheet}
+          onClose={() => {
+            setShowLineItemSheet(false);
+            setSelectedLineItem(null);
+          }}
+          orderStatus={order.status}
+          onStatusChange={handleLineStatusChange}
+          onApprovalChange={handleLineApprovalChange}
+          updating={updating}
+        />
       </div>
     </DashboardLayout>
   );

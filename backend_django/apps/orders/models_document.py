@@ -39,6 +39,16 @@ class Document(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='documents')
     
+    # Optional: Associate with specific order line
+    order_line = models.ForeignKey(
+        'orders.OrderLine',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documents',
+        help_text='Optional: Specific order line (style+color+CAD) this document is for'
+    )
+    
     # File fields
     file = models.FileField(upload_to=document_upload_path)
     file_name = models.CharField(max_length=255)

@@ -9,8 +9,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, X, FileIcon, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+interface OrderLine {
+  id: string;
+  styleNumber?: string;
+  colorCode?: string;
+  cadCode?: string;
+}
+
 interface FileUploadProps {
   orderId: string;
+  orderLines?: OrderLine[];
   onUploadComplete: () => void;
 }
 
@@ -30,7 +38,7 @@ const SUBCATEGORY_OPTIONS = [
   { value: 'pp_sample', label: 'PP Sample' },
 ];
 
-export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
+export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUploadProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -38,6 +46,7 @@ export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
   const [category, setCategory] = useState<string>('');
   const [subcategory, setSubcategory] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [orderLine, setOrderLine] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string>('');
 
@@ -124,6 +133,7 @@ export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
       formData.append('category', category);
       if (subcategory) formData.append('subcategory', subcategory);
       if (description) formData.append('description', description);
+      if (orderLine) formData.append('orderLine', orderLine);
 
       const token = localStorage.getItem('access_token');
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
@@ -171,6 +181,7 @@ export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
       setCategory('');
       setSubcategory('');
       setDescription('');
+      setOrderLine('');
       setPreview('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -294,6 +305,27 @@ export function FileUpload({ orderId, onUploadComplete }: FileUploadProps) {
               </div>
             )}
           </div>
+
+          {/* Order Line Association */}
+          {orderLines && orderLines.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="orderLine">Associate with Order Line (optional)</Label>
+              <Select value={orderLine} onValueChange={setOrderLine}>
+                <SelectTrigger id="orderLine">
+                  <SelectValue placeholder="Select order line (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No specific line</SelectItem>
+                  {orderLines.map((line) => (
+                    <SelectItem key={line.id} value={line.id}>
+                      {line.styleNumber} {line.colorCode ? `- ${line.colorCode}` : ''} {line.cadCode ? `- ${line.cadCode}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">Link this document to a specific order line for better organization</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Description (optional)</Label>

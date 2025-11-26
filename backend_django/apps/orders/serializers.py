@@ -572,11 +572,12 @@ class DocumentSerializer(serializers.ModelSerializer):
     """
     uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
     file_url = serializers.SerializerMethodField()
+    order_line_label = serializers.CharField(source='order_line.line_label', read_only=True, allow_null=True)
     
     class Meta:
         model = Document
         fields = [
-            'id', 'order', 'file', 'file_name', 'file_type', 'file_size',
+            'id', 'order', 'order_line', 'order_line_label', 'file', 'file_name', 'file_type', 'file_size',
             'category', 'subcategory', 'description',
             'uploaded_by', 'uploaded_by_name', 'file_url', 'created_at', 'updated_at'
         ]
@@ -597,6 +598,8 @@ class DocumentSerializer(serializers.ModelSerializer):
         return {
             'id': str(data['id']),
             'orderId': str(data['order']),
+            'orderLine': str(data['order_line']) if data.get('order_line') else None,
+            'orderLineLabel': data.get('order_line_label'),
             'fileName': data['file_name'],
             'fileType': data['file_type'],
             'fileSize': data['file_size'],

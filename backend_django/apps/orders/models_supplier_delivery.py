@@ -18,7 +18,17 @@ class SupplierDelivery(TimestampedModel):
         db_index=True
     )
     
-    # Style and Color references (optional)
+    # OrderLine reference (optional) - most specific association
+    order_line = models.ForeignKey(
+        'orders.OrderLine',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deliveries',
+        help_text='Optional: Specific order line (style+color+CAD) this delivery is for'
+    )
+    
+    # Style and Color references (optional) - for backward compatibility
     style = models.ForeignKey(
         'orders.OrderStyle',
         on_delete=models.SET_NULL,
