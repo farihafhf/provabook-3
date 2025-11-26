@@ -15,37 +15,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, X, Copy, Calendar } from 'lucide-react';
+import { Plus, Trash2, Calendar, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
-interface StyleFormData {
-  styleNumber?: string;
-  description?: string;
-  fabricType?: string;
-  fabricComposition?: string;
-  gsm?: string;
-  finishType?: string;
-  construction?: string;
-  cuttableWidth?: string;
-  etd?: string;
-  eta?: string;
-  submissionDate?: string;
-  colors: ColorFormData[];
-}
-
-interface ColorFormData {
-  colorCode: string;
+interface OrderLineFormData {
+  styleNumber: string;
   quantity: string;
   unit: string;
-  millName?: string;
+  colorCode?: string;
+  cadCode?: string;
   millPrice?: string;
   provaPrice?: string;
-  currency: string;
+  commission?: string;
+  currency?: string;
   etd?: string;
   eta?: string;
-  submissionDate?: string;
-  approvalDate?: string;
+  notes?: string;
 }
 
 interface CreateOrderDialogProps {
@@ -67,108 +53,42 @@ export function CreateOrderDialog({
     fabricType: '',
     orderDate: '',
     notes: '',
-    cad: '',
   });
   
-  const [styles, setStyles] = useState<StyleFormData[]>([
+  const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([
     {
-      colors: [
-        {
-          colorCode: '',
-          quantity: '',
-          unit: 'meters',
-          currency: 'USD',
-        },
-      ],
+      styleNumber: '',
+      quantity: '',
+      unit: 'meters',
+      currency: 'USD',
     },
   ]);
 
-  const addStyle = () => {
-    setStyles([
-      ...styles,
+  const addOrderLine = () => {
+    setOrderLines([
+      ...orderLines,
       {
-        colors: [
-          {
-            colorCode: '',
-            quantity: '',
-            unit: 'meters',
-            currency: 'USD',
-          },
-        ],
+        styleNumber: '',
+        quantity: '',
+        unit: 'meters',
+        currency: 'USD',
       },
     ]);
   };
 
-  const removeStyle = (styleIndex: number) => {
-    if (styles.length > 1) {
-      setStyles(styles.filter((_, i) => i !== styleIndex));
+  const removeOrderLine = (index: number) => {
+    if (orderLines.length > 1) {
+      setOrderLines(orderLines.filter((_, i) => i !== index));
     }
   };
 
-  const addColor = (styleIndex: number) => {
-    const newStyles = [...styles];
-    newStyles[styleIndex].colors.push({
-      colorCode: '',
-      quantity: '',
-      unit: 'meters',
-      currency: 'USD',
-    });
-    setStyles(newStyles);
-  };
-
-  const removeColor = (styleIndex: number, colorIndex: number) => {
-    const newStyles = [...styles];
-    if (newStyles[styleIndex].colors.length > 1) {
-      newStyles[styleIndex].colors = newStyles[styleIndex].colors.filter(
-        (_, i) => i !== colorIndex
-      );
-      setStyles(newStyles);
-    }
-  };
-
-  const updateStyle = (styleIndex: number, field: keyof StyleFormData, value: any) => {
-    const newStyles = [...styles];
-    newStyles[styleIndex] = { ...newStyles[styleIndex], [field]: value };
-    setStyles(newStyles);
-  };
-
-  const updateColor = (
-    styleIndex: number,
-    colorIndex: number,
-    field: keyof ColorFormData,
-    value: any
-  ) => {
-    const newStyles = [...styles];
-    newStyles[styleIndex].colors[colorIndex] = {
-      ...newStyles[styleIndex].colors[colorIndex],
-      [field]: value,
-    };
-    setStyles(newStyles);
-  };
-
-  const copyFirstStyleDatesToAll = () => {
-    if (styles.length === 0) return;
-    
-    const firstStyle = styles[0];
-    const newStyles = styles.map((style, index) => {
-      if (index === 0) return style;
-      return {
-        ...style,
-        etd: firstStyle.etd,
-        eta: firstStyle.eta,
-        submissionDate: firstStyle.submissionDate,
-      };
-    });
-    
-    setStyles(newStyles);
-    toast({
-      title: 'Dates Copied',
-      description: `Dates from Style 1 copied to all ${styles.length - 1} other style(s)`,
-    });
+  const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
+    const newLines = [...orderLines];
+    newLines[index] = { ...newLines[index], [field]: value };
+    setOrderLines(newLines);
   };
 
   const validateForm = () => {
-    // Validate required order fields
     if (!formData.customerName.trim()) {
       toast({
         title: 'Validation Error',
@@ -187,63 +107,35 @@ export function CreateOrderDialog({
       return false;
     }
 
-    // Validate styles
-    if (styles.length === 0) {
+    if (orderLines.length === 0) {
       toast({
         title: 'Validation Error',
-        description: 'At least one style is required',
+        description: 'At least one order line is required',
         variant: 'destructive',
       });
       return false;
     }
 
-    for (let i = 0; i < styles.length; i++) {
-      const style = styles[i];
+    for (let i = 0; i < orderLines.length; i++) {
+      const line = orderLines[i];
 
-      if (style.colors.length === 0) {
+      if (!line.styleNumber.trim()) {
         toast({
           title: 'Validation Error',
-          description: `Style ${i + 1}: At least one color is required`,
+          description: `Line ${i + 1}: Style number is required`,
           variant: 'destructive',
         });
         return false;
       }
 
-      for (let j = 0; j < style.colors.length; j++) {
-        const color = style.colors[j];
-        
-        if (!color.colorCode.trim()) {
-          toast({
-            title: 'Validation Error',
-            description: `Style ${i + 1}, Color ${j + 1}: Color code is required`,
-            variant: 'destructive',
-          });
-          return false;
-        }
-
-        if (!color.quantity || parseFloat(color.quantity) <= 0) {
-          toast({
-            title: 'Validation Error',
-            description: `Style ${i + 1}, Color ${j + 1}: Valid quantity is required`,
-            variant: 'destructive',
-          });
-          return false;
-        }
+      if (!line.quantity || parseFloat(line.quantity) <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: `Line ${i + 1}: Valid quantity is required`,
+          variant: 'destructive',
+        });
+        return false;
       }
-    }
-
-    // Check for duplicate color codes across all styles
-    const allColorCodes = styles.flatMap(style => 
-      style.colors.map(c => c.colorCode.trim().toLowerCase())
-    );
-    const uniqueColorCodes = new Set(allColorCodes);
-    if (allColorCodes.length !== uniqueColorCodes.size) {
-      toast({
-        title: 'Validation Error',
-        description: 'Color codes must be unique across all styles in an order',
-        variant: 'destructive',
-      });
-      return false;
     }
 
     return true;
@@ -259,53 +151,50 @@ export function CreateOrderDialog({
     setSubmitting(true);
 
     try {
-      // Prepare order data with styles
+      // Group lines by style
+      const styleGroups = new Map<string, typeof orderLines>();
+      
+      orderLines.forEach(line => {
+        const styleKey = line.styleNumber.trim();
+        if (!styleGroups.has(styleKey)) {
+          styleGroups.set(styleKey, []);
+        }
+        styleGroups.get(styleKey)!.push(line);
+      });
+
       const orderData = {
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         notes: formData.notes || undefined,
-        cad: formData.cad || undefined,
         status: 'upcoming',
         category: 'upcoming',
-        // Calculate total quantity from all colors
-        quantity: styles.reduce(
-          (total, style) =>
-            total +
-            style.colors.reduce(
-              (styleTotal, color) => styleTotal + (parseFloat(color.quantity) || 0),
-              0
-            ),
+        quantity: orderLines.reduce(
+          (total, line) => total + (parseFloat(line.quantity) || 0),
           0
         ),
         unit: 'meters',
-        styles: styles.map((style) => ({
-          styleNumber: style.styleNumber || undefined,
-          description: style.description || undefined,
-          fabricType: style.fabricType || formData.fabricType,
-          fabricComposition: style.fabricComposition || undefined,
-          gsm: style.gsm ? parseFloat(style.gsm) : undefined,
-          finishType: style.finishType || undefined,
-          construction: style.construction || undefined,
-          cuttableWidth: style.cuttableWidth || undefined,
-          etd: style.etd || undefined,
-          eta: style.eta || undefined,
-          submissionDate: style.submissionDate || undefined,
-          colors: style.colors.map((color) => ({
-            colorCode: color.colorCode,
-            quantity: parseFloat(color.quantity),
-            unit: color.unit,
-            millName: color.millName || undefined,
-            millPrice: color.millPrice ? parseFloat(color.millPrice) : undefined,
-            provaPrice: color.provaPrice ? parseFloat(color.provaPrice) : undefined,
-            currency: color.currency,
-            etd: color.etd || undefined,
-            eta: color.eta || undefined,
-            submissionDate: color.submissionDate || undefined,
-            approvalDate: color.approvalDate || undefined,
-          })),
-        })),
+        styles: Array.from(styleGroups.entries()).map(([styleNumber, lines]) => {
+          const firstLine = lines[0];
+          return {
+            styleNumber: styleNumber,
+            fabricType: formData.fabricType,
+            lines: lines.map((line) => ({
+              colorCode: line.colorCode || undefined,
+              cadCode: line.cadCode || undefined,
+              quantity: parseFloat(line.quantity),
+              unit: line.unit,
+              millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
+              provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
+              commission: line.commission ? parseFloat(line.commission) : undefined,
+              currency: line.currency || undefined,
+              etd: line.etd || undefined,
+              eta: line.eta || undefined,
+              notes: line.notes || undefined,
+            })),
+          };
+        }),
       };
 
       console.log('Creating order with data:', orderData);
@@ -324,18 +213,13 @@ export function CreateOrderDialog({
         fabricType: '',
         orderDate: '',
         notes: '',
-        cad: '',
       });
-      setStyles([
+      setOrderLines([
         {
-          colors: [
-            {
-              colorCode: '',
-              quantity: '',
-              unit: 'meters',
-              currency: 'USD',
-            },
-          ],
+          styleNumber: '',
+          quantity: '',
+          unit: 'meters',
+          currency: 'USD',
         },
       ]);
 
@@ -365,7 +249,7 @@ export function CreateOrderDialog({
         <DialogHeader>
           <DialogTitle>Create New Order</DialogTitle>
           <DialogDescription>
-            Add a new order with multiple styles and color variants
+            Add order lines - each line is a Style + optional Color + optional CAD combination
           </DialogDescription>
         </DialogHeader>
 
@@ -413,17 +297,6 @@ export function CreateOrderDialog({
                 />
               </div>
               <div>
-                <Label htmlFor="cad">CAD</Label>
-                <Input
-                  id="cad"
-                  value={formData.cad}
-                  onChange={(e) =>
-                    setFormData({ ...formData, cad: e.target.value })
-                  }
-                  placeholder="CAD reference or identifier"
-                />
-              </div>
-              <div>
                 <Label htmlFor="orderDate">Order Date</Label>
                 <Input
                   id="orderDate"
@@ -433,9 +306,6 @@ export function CreateOrderDialog({
                     setFormData({ ...formData, orderDate: e.target.value })
                   }
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Date when the order was placed
-                </p>
               </div>
               <div className="col-span-2">
                 <Label htmlFor="notes">Notes</Label>
@@ -450,300 +320,196 @@ export function CreateOrderDialog({
             </CardContent>
           </Card>
 
-          {/* Styles and Colors */}
-          {styles.map((style, styleIndex) => (
-            <Card key={styleIndex} className="relative">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">
-                  Style {styleIndex + 1}
+          {/* Order Lines */}
+          {orderLines.map((line, lineIndex) => (
+            <Card key={lineIndex} className="relative border-l-4 border-l-indigo-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
+                    Line {lineIndex + 1}
+                  </span>
+                  {line.styleNumber && (
+                    <span className="text-sm text-gray-600">Style: {line.styleNumber}</span>
+                  )}
+                  {line.colorCode && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">🎨 {line.colorCode}</span>
+                  )}
+                  {line.cadCode && (
+                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📐 {line.cadCode}</span>
+                  )}
                 </CardTitle>
-                {styles.length > 1 && (
+                {orderLines.length > 1 && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeStyle(styleIndex)}
+                    onClick={() => removeOrderLine(lineIndex)}
                   >
-                    <X className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Style Fields */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-3">
-                    <Label htmlFor={`style-${styleIndex}-number`}>Style Number</Label>
-                    <Input
-                      id={`style-${styleIndex}-number`}
-                      value={style.styleNumber || ''}
-                      onChange={(e) =>
-                        updateStyle(styleIndex, 'styleNumber', e.target.value)
-                      }
-                      placeholder="e.g., ST2024-01 or any custom style number"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Enter a custom style number for this style variant
-                    </p>
-                  </div>
-                  <div className="col-span-3">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={style.description || ''}
-                      onChange={(e) =>
-                        updateStyle(styleIndex, 'description', e.target.value)
-                      }
-                      placeholder="Style description"
-                      rows={2}
-                    />
-                  </div>
-                  <div>
-                    <Label>Fabric Composition</Label>
-                    <Input
-                      value={style.fabricComposition || ''}
-                      onChange={(e) =>
-                        updateStyle(styleIndex, 'fabricComposition', e.target.value)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>GSM</Label>
-                    <Input
-                      type="number"
-                      value={style.gsm || ''}
-                      onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Cuttable Width</Label>
-                    <Input
-                      value={style.cuttableWidth || ''}
-                      onChange={(e) =>
-                        updateStyle(styleIndex, 'cuttableWidth', e.target.value)
-                      }
-                      placeholder="e.g., 60 inches"
-                    />
-                  </div>
-                  <div className="col-span-3">
-                    <Label>Construction</Label>
-                    <Textarea
-                      value={style.construction || ''}
-                      onChange={(e) =>
-                        updateStyle(styleIndex, 'construction', e.target.value)
-                      }
-                      placeholder="Construction details including width and other info"
-                      rows={2}
-                    />
-                  </div>
-                </div>
-
-                {/* Style Dates */}
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <Label className="text-base font-semibold flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Delivery Dates for This Style
-                    </Label>
-                    {styleIndex === 0 && styles.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={copyFirstStyleDatesToAll}
+              <CardContent className="space-y-4 pt-4">
+                {/* Required Fields */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Required Information</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-styleNumber`}>
+                        Style Number <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id={`line-${lineIndex}-styleNumber`}
+                        value={line.styleNumber}
+                        onChange={(e) => updateOrderLine(lineIndex, 'styleNumber', e.target.value)}
+                        placeholder="e.g., ST-2024-01"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-quantity`}>
+                        Quantity <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id={`line-${lineIndex}-quantity`}
+                        type="number"
+                        step="0.01"
+                        value={line.quantity}
+                        onChange={(e) => updateOrderLine(lineIndex, 'quantity', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-unit`}>Unit</Label>
+                      <Select
+                        value={line.unit}
+                        onValueChange={(value) => updateOrderLine(lineIndex, 'unit', value)}
                       >
-                        <Copy className="h-4 w-4 mr-1" />
-                        Copy to All Styles
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor={`style-${styleIndex}-etd`}>ETD (Est. Dispatch)</Label>
-                      <Input
-                        id={`style-${styleIndex}-etd`}
-                        type="date"
-                        value={style.etd || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`style-${styleIndex}-eta`}>ETA (Est. Arrival)</Label>
-                      <Input
-                        id={`style-${styleIndex}-eta`}
-                        type="date"
-                        value={style.eta || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`style-${styleIndex}-submission`}>Submission Date</Label>
-                      <Input
-                        id={`style-${styleIndex}-submission`}
-                        type="date"
-                        value={style.submissionDate || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
-                      />
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="meters">Meters</SelectItem>
+                          <SelectItem value="yards">Yards</SelectItem>
+                          <SelectItem value="kg">Kilograms</SelectItem>
+                          <SelectItem value="lbs">Pounds</SelectItem>
+                          <SelectItem value="pieces">Pieces</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Different styles can have different delivery schedules based on supplier availability
-                  </p>
                 </div>
 
-                {/* Colors for this style */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <Label className="text-base font-semibold">Colors</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addColor(styleIndex)}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Color
-                    </Button>
+                {/* Optional: Color & CAD */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-blue-700 mb-2 block">Color & CAD (Optional)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-colorCode`}>Color Code</Label>
+                      <Input
+                        id={`line-${lineIndex}-colorCode`}
+                        value={line.colorCode || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'colorCode', e.target.value)}
+                        placeholder="e.g., RED-01"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cadCode`}>CAD Code</Label>
+                      <Input
+                        id={`line-${lineIndex}-cadCode`}
+                        value={line.cadCode || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cadCode', e.target.value)}
+                        placeholder="e.g., CAD-001"
+                      />
+                    </div>
                   </div>
+                </div>
 
-                  {style.colors.map((color, colorIndex) => (
-                    <Card key={colorIndex} className="bg-gray-50">
-                      <CardContent className="pt-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-sm font-medium">
-                            Color {colorIndex + 1}
-                          </span>
-                          {style.colors.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeColor(styleIndex, colorIndex)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                {/* Optional: Commercial Data */}
+                <details>
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
+                    Commercial Data (Optional)
+                  </summary>
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-millPrice`}>Mill Price</Label>
+                      <Input
+                        id={`line-${lineIndex}-millPrice`}
+                        type="number"
+                        step="0.01"
+                        value={line.millPrice || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'millPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-provaPrice`}>Prova Price</Label>
+                      <Input
+                        id={`line-${lineIndex}-provaPrice`}
+                        type="number"
+                        step="0.01"
+                        value={line.provaPrice || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'provaPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-commission`}>Commission (%)</Label>
+                      <Input
+                        id={`line-${lineIndex}-commission`}
+                        type="number"
+                        step="0.01"
+                        value={line.commission || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'commission', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </details>
 
-                        <div className="grid grid-cols-4 gap-3">
-                          <div>
-                            <Label className="text-xs">
-                              Color Code <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              value={color.colorCode}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'colorCode',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="e.g., RED-01"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">
-                              Quantity <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.quantity}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'quantity',
-                                  e.target.value
-                                )
-                              }
-                              required
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Unit</Label>
-                            <Select
-                              value={color.unit}
-                              onValueChange={(value) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'unit',
-                                  value
-                                )
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="meters">Meters</SelectItem>
-                                <SelectItem value="yards">Yards</SelectItem>
-                                <SelectItem value="kg">Kilograms</SelectItem>
-                                <SelectItem value="lbs">Pounds</SelectItem>
-                                <SelectItem value="pieces">Pieces</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Currency</Label>
-                            <Input
-                              value={color.currency}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'currency',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Mill Price</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.millPrice || ''}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'millPrice',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Prova Price</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.provaPrice || ''}
-                              onChange={(e) =>
-                                updateColor(
-                                  styleIndex,
-                                  colorIndex,
-                                  'provaPrice',
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                {/* Optional: Dates */}
+                <details>
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    Delivery Dates (Optional)
+                  </summary>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-etd`}>ETD</Label>
+                      <Input
+                        id={`line-${lineIndex}-etd`}
+                        type="date"
+                        value={line.etd || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'etd', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-eta`}>ETA</Label>
+                      <Input
+                        id={`line-${lineIndex}-eta`}
+                        type="date"
+                        value={line.eta || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'eta', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Optional: Notes */}
+                <div>
+                  <Label htmlFor={`line-${lineIndex}-notes`}>Line Notes</Label>
+                  <Textarea
+                    id={`line-${lineIndex}-notes`}
+                    value={line.notes || ''}
+                    onChange={(e) => updateOrderLine(lineIndex, 'notes', e.target.value)}
+                    placeholder="Any specific notes for this line"
+                    rows={2}
+                  />
                 </div>
               </CardContent>
             </Card>
           ))}
 
-          <Button type="button" variant="outline" onClick={addStyle} className="w-full">
+          <Button type="button" variant="outline" onClick={addOrderLine} className="w-full">
             <Plus className="h-4 w-4 mr-2" />
-            Add Another Style
+            Add Another Line
           </Button>
 
           <DialogFooter>

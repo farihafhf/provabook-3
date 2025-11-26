@@ -1,0 +1,328 @@
+          {/* Order Lines */}
+          {orderLines.map((line, lineIndex) => (
+            <Card key={lineIndex} className="relative border-l-4 border-l-indigo-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
+                    Line {lineIndex + 1}
+                  </span>
+                  {line.styleNumber && (
+                    <span className="text-sm text-gray-600">Style: {line.styleNumber}</span>
+                  )}
+                  {line.colorCode && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">🎨 {line.colorCode}</span>
+                  )}
+                  {line.cadCode && (
+                    <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📐 {line.cadCode}</span>
+                  )}
+                </CardTitle>
+                {orderLines.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeOrderLine(lineIndex)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {/* Required Fields */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Required Information</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-styleNumber`}>
+                        Style Number <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id={`line-${lineIndex}-styleNumber`}
+                        value={line.styleNumber}
+                        onChange={(e) => updateOrderLine(lineIndex, 'styleNumber', e.target.value)}
+                        placeholder="e.g., ST-2024-01"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-quantity`}>
+                        Quantity <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id={`line-${lineIndex}-quantity`}
+                        type="number"
+                        step="0.01"
+                        value={line.quantity}
+                        onChange={(e) => updateOrderLine(lineIndex, 'quantity', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-unit`}>Unit</Label>
+                      <Select
+                        value={line.unit}
+                        onValueChange={(value) => updateOrderLine(lineIndex, 'unit', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="meters">Meters</SelectItem>
+                          <SelectItem value="yards">Yards</SelectItem>
+                          <SelectItem value="kg">Kilograms</SelectItem>
+                          <SelectItem value="lbs">Pounds</SelectItem>
+                          <SelectItem value="pieces">Pieces</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Optional: Color & CAD */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-blue-700 mb-2 block">Color & CAD (Optional)</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-colorCode`}>Color Code</Label>
+                      <Input
+                        id={`line-${lineIndex}-colorCode`}
+                        value={line.colorCode || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'colorCode', e.target.value)}
+                        placeholder="e.g., RED-01"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-colorName`}>Color Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-colorName`}
+                        value={line.colorName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'colorName', e.target.value)}
+                        placeholder="e.g., Crimson Red"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cadCode`}>CAD Code</Label>
+                      <Input
+                        id={`line-${lineIndex}-cadCode`}
+                        value={line.cadCode || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cadCode', e.target.value)}
+                        placeholder="e.g., CAD-001"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cadName`}>CAD Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-cadName`}
+                        value={line.cadName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cadName', e.target.value)}
+                        placeholder="e.g., Floral Pattern"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Optional: Style Technical Details */}
+                <details className="border-b pb-4">
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
+                    Style Technical Details (Optional)
+                  </summary>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="col-span-2">
+                      <Label htmlFor={`line-${lineIndex}-description`}>Description</Label>
+                      <Textarea
+                        id={`line-${lineIndex}-description`}
+                        value={line.description || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'description', e.target.value)}
+                        placeholder="Style description"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-fabricType`}>Fabric Type</Label>
+                      <Input
+                        id={`line-${lineIndex}-fabricType`}
+                        value={line.fabricType || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'fabricType', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-fabricComposition`}>Fabric Composition</Label>
+                      <Input
+                        id={`line-${lineIndex}-fabricComposition`}
+                        value={line.fabricComposition || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'fabricComposition', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-gsm`}>GSM</Label>
+                      <Input
+                        id={`line-${lineIndex}-gsm`}
+                        type="number"
+                        value={line.gsm || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'gsm', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-finishType`}>Finish Type</Label>
+                      <Input
+                        id={`line-${lineIndex}-finishType`}
+                        value={line.finishType || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'finishType', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cuttableWidth`}>Cuttable Width</Label>
+                      <Input
+                        id={`line-${lineIndex}-cuttableWidth`}
+                        value={line.cuttableWidth || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cuttableWidth', e.target.value)}
+                        placeholder="e.g., 60 inches"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor={`line-${lineIndex}-construction`}>Construction</Label>
+                      <Textarea
+                        id={`line-${lineIndex}-construction`}
+                        value={line.construction || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'construction', e.target.value)}
+                        placeholder="Construction details"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Optional: Commercial Data */}
+                <details className="border-b pb-4">
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
+                    Commercial Data (Optional)
+                  </summary>
+                  <div className="grid grid-cols-3 gap-3 mt-2">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-millName`}>Mill Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-millName`}
+                        value={line.millName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'millName', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-millPrice`}>Mill Price</Label>
+                      <Input
+                        id={`line-${lineIndex}-millPrice`}
+                        type="number"
+                        step="0.01"
+                        value={line.millPrice || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'millPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-provaPrice`}>Prova Price</Label>
+                      <Input
+                        id={`line-${lineIndex}-provaPrice`}
+                        type="number"
+                        step="0.01"
+                        value={line.provaPrice || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'provaPrice', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-commission`}>Commission (%)</Label>
+                      <Input
+                        id={`line-${lineIndex}-commission`}
+                        type="number"
+                        step="0.01"
+                        value={line.commission || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'commission', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-currency`}>Currency</Label>
+                      <Input
+                        id={`line-${lineIndex}-currency`}
+                        value={line.currency || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'currency', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </details>
+
+                {/* Optional: Dates */}
+                <details className="border-b pb-4">
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    Delivery Dates (Optional)
+                  </summary>
+                  <div className="grid grid-cols-4 gap-3 mt-2">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-etd`}>ETD</Label>
+                      <Input
+                        id={`line-${lineIndex}-etd`}
+                        type="date"
+                        value={line.etd || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'etd', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-eta`}>ETA</Label>
+                      <Input
+                        id={`line-${lineIndex}-eta`}
+                        type="date"
+                        value={line.eta || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'eta', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-submissionDate`}>Submission Date</Label>
+                      <Input
+                        id={`line-${lineIndex}-submissionDate`}
+                        type="date"
+                        value={line.submissionDate || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'submissionDate', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-approvalDate`}>Approval Date</Label>
+                      <Input
+                        id={`line-${lineIndex}-approvalDate`}
+                        type="date"
+                        value={line.approvalDate || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'approvalDate', e.target.value)}
+                      />
+                    </div>
+                    {lineIndex === 0 && orderLines.length > 1 && (
+                      <div className="col-span-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={copyFirstLineDatesToAll}
+                          className="w-full"
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Copy Dates from Line 1 to All Lines
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </details>
+
+                {/* Optional: Notes */}
+                <div>
+                  <Label htmlFor={`line-${lineIndex}-notes`}>Line Notes</Label>
+                  <Textarea
+                    id={`line-${lineIndex}-notes`}
+                    value={line.notes || ''}
+                    onChange={(e) => updateOrderLine(lineIndex, 'notes', e.target.value)}
+                    placeholder="Any specific notes for this line"
+                    rows={2}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          <Button type="button" variant="outline" onClick={addOrderLine} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Another Line
+          </Button>
