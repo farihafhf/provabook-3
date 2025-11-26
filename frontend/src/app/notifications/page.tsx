@@ -80,6 +80,10 @@ export default function NotificationsPage() {
         return <Clock className="h-5 w-5 text-orange-600" />;
       case 'status_update':
         return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case 'delivery_recorded':
+        return <CheckCircle className="h-5 w-5 text-blue-600" />;
+      case 'etd_reminder':
+        return <Clock className="h-5 w-5 text-red-600" />;
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;
     }

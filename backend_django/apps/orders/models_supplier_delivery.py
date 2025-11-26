@@ -18,6 +18,24 @@ class SupplierDelivery(TimestampedModel):
         db_index=True
     )
     
+    # Style and Color references (optional)
+    style = models.ForeignKey(
+        'orders.OrderStyle',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deliveries',
+        help_text='Optional: Style this delivery is for'
+    )
+    color = models.ForeignKey(
+        'orders.OrderColor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deliveries',
+        help_text='Optional: Color this delivery is for'
+    )
+    
     # Delivery details
     delivery_date = models.DateField(
         help_text='Actual delivery date (defaults to ETD)'

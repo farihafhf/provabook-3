@@ -13,15 +13,20 @@ class SupplierDeliverySerializer(serializers.ModelSerializer):
     """
     created_by_details = UserSerializer(source='created_by', read_only=True)
     order_number = serializers.CharField(source='order.order_number', read_only=True)
+    style_number = serializers.CharField(source='style.style_number', read_only=True, allow_null=True)
+    color_code = serializers.CharField(source='color.color_code', read_only=True, allow_null=True)
+    color_name = serializers.CharField(source='color.color_name', read_only=True, allow_null=True)
     
     class Meta:
         model = SupplierDelivery
         fields = [
-            'id', 'order', 'order_number', 'delivery_date', 'delivered_quantity',
+            'id', 'order', 'order_number', 'style', 'style_number',
+            'color', 'color_code', 'color_name',
+            'delivery_date', 'delivered_quantity',
             'unit', 'notes', 'created_by', 'created_by_details',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'order_number']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'order_number', 'style_number', 'color_code', 'color_name']
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -44,6 +49,11 @@ class SupplierDeliverySerializer(serializers.ModelSerializer):
             'id': str(data['id']),
             'order': str(data['order']),
             'orderNumber': data.get('order_number'),
+            'style': str(data['style']) if data.get('style') else None,
+            'styleNumber': data.get('style_number'),
+            'color': str(data['color']) if data.get('color') else None,
+            'colorCode': data.get('color_code'),
+            'colorName': data.get('color_name'),
             'deliveryDate': data['delivery_date'],
             'deliveredQuantity': float(data['delivered_quantity']) if data.get('delivered_quantity') else 0,
             'unit': data['unit'],
@@ -69,7 +79,7 @@ class SupplierDeliveryCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierDelivery
         fields = [
-            'order', 'delivery_date', 'delivered_quantity', 'unit', 'notes'
+            'order', 'style', 'color', 'delivery_date', 'delivered_quantity', 'unit', 'notes'
         ]
     
     def to_internal_value(self, data):
@@ -85,7 +95,11 @@ class SupplierDeliveryCreateSerializer(serializers.ModelSerializer):
         for key, value in data.items():
             # Use mapped key if exists, otherwise use original key
             new_key = field_mapping.get(key, key)
-            converted_data[new_key] = value
+            # Handle null/empty strings for foreign keys
+            if new_key in ['style', 'color'] and (value == '' or value is None):
+                converted_data[new_key] = None
+            else:
+                converted_data[new_key] = value
         
         return super().to_internal_value(converted_data)
     
@@ -104,7 +118,7 @@ class SupplierDeliveryUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierDelivery
         fields = [
-            'delivery_date', 'delivered_quantity', 'unit', 'notes'
+            'style', 'color', 'delivery_date', 'delivered_quantity', 'unit', 'notes'
         ]
     
     def to_internal_value(self, data):
@@ -120,7 +134,11 @@ class SupplierDeliveryUpdateSerializer(serializers.ModelSerializer):
         for key, value in data.items():
             # Use mapped key if exists, otherwise use original key
             new_key = field_mapping.get(key, key)
-            converted_data[new_key] = value
+            # Handle null/empty strings for foreign keys
+            if new_key in ['style', 'color'] and (value == '' or value is None):
+                converted_data[new_key] = None
+            else:
+                converted_data[new_key] = value
         
         return super().to_internal_value(converted_data)
     
@@ -138,11 +156,16 @@ class SupplierDeliveryListSerializer(serializers.ModelSerializer):
     """
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
     order_number = serializers.CharField(source='order.order_number', read_only=True)
+    style_number = serializers.CharField(source='style.style_number', read_only=True, allow_null=True)
+    color_code = serializers.CharField(source='color.color_code', read_only=True, allow_null=True)
+    color_name = serializers.CharField(source='color.color_name', read_only=True, allow_null=True)
     
     class Meta:
         model = SupplierDelivery
         fields = [
-            'id', 'order', 'order_number', 'delivery_date', 'delivered_quantity',
+            'id', 'order', 'order_number', 'style', 'style_number',
+            'color', 'color_code', 'color_name',
+            'delivery_date', 'delivered_quantity',
             'unit', 'notes', 'created_by_name', 'created_at'
         ]
     
@@ -153,6 +176,11 @@ class SupplierDeliveryListSerializer(serializers.ModelSerializer):
             'id': str(data['id']),
             'order': str(data['order']),
             'orderNumber': data.get('order_number'),
+            'style': str(data['style']) if data.get('style') else None,
+            'styleNumber': data.get('style_number'),
+            'color': str(data['color']) if data.get('color') else None,
+            'colorCode': data.get('color_code'),
+            'colorName': data.get('color_name'),
             'deliveryDate': data['delivery_date'],
             'deliveredQuantity': float(data['delivered_quantity']) if data['delivered_quantity'] else 0,
             'unit': data['unit'],

@@ -14,6 +14,7 @@ from .serializers_supplier_delivery import (
     SupplierDeliveryListSerializer
 )
 from apps.core.permissions import IsMerchandiser
+from apps.core.models import Notification
 
 
 class SupplierDeliveryViewSet(viewsets.ModelViewSet):
@@ -73,6 +74,22 @@ class SupplierDeliveryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         delivery = serializer.save(created_by=request.user)
+        
+        # Create notification for the order's merchandiser
+        order = delivery.order
+        if order.merchandiser:
+            # Build notification message
+            style_info = f" for style {delivery.style.style_number}" if delivery.style else ""
+            color_info = f" - {delivery.color.color_code}" if delivery.color else ""
+            
+            Notification.objects.create(
+                user=order.merchandiser,
+                title='Delivery Recorded',
+                message=f'A delivery of {delivery.delivered_quantity} {delivery.unit} was recorded for order {order.order_number}{style_info}{color_info}',
+                notification_type='delivery_recorded',
+                related_id=str(order.id),
+                related_type='order'
+            )
         
         # Return full delivery data
         response_serializer = SupplierDeliverySerializer(delivery)

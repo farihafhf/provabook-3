@@ -25,6 +25,7 @@ import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-tim
 interface OrderColor {
   id: string;
   colorCode: string;
+  colorName?: string;
   quantity: number;
   unit: string;
   millName?: string;
@@ -61,6 +62,11 @@ interface SupplierDelivery {
   id: string;
   order: string;
   poNumber?: string;
+  style?: string;
+  styleNumber?: string;
+  color?: string;
+  colorCode?: string;
+  colorName?: string;
   deliveryDate: string;
   deliveredQuantity: number;
   unit: string;
@@ -152,6 +158,8 @@ export default function OrderDetailPage() {
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<SupplierDelivery | null>(null);
   const [deliveryFormData, setDeliveryFormData] = useState({
+    style: '',
+    color: '',
     deliveryDate: '',
     deliveredQuantity: '',
     notes: ''
@@ -225,6 +233,8 @@ export default function OrderDetailPage() {
   const handleAddDelivery = () => {
     setEditingDelivery(null);
     setDeliveryFormData({
+      style: '',
+      color: '',
       deliveryDate: order?.etd || new Date().toISOString().split('T')[0],
       deliveredQuantity: '',
       notes: ''
@@ -235,6 +245,8 @@ export default function OrderDetailPage() {
   const handleEditDelivery = (delivery: SupplierDelivery) => {
     setEditingDelivery(delivery);
     setDeliveryFormData({
+      style: delivery.style || '',
+      color: delivery.color || '',
       deliveryDate: delivery.deliveryDate,
       deliveredQuantity: delivery.deliveredQuantity.toString(),
       notes: delivery.notes || ''
@@ -256,6 +268,8 @@ export default function OrderDetailPage() {
     try {
       const payload = {
         order: order?.id,
+        style: deliveryFormData.style || undefined,
+        color: deliveryFormData.color || undefined,
         deliveryDate: deliveryFormData.deliveryDate,
         deliveredQuantity: parseFloat(deliveryFormData.deliveredQuantity),
         unit: order?.unit || 'meters',
@@ -1515,6 +1529,7 @@ export default function OrderDetailPage() {
                       <thead>
                         <tr className="bg-gray-50 border-b">
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Date</th>
+                          <th className="text-left p-3 text-sm font-semibold text-gray-700">Style/Color</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Quantity</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Notes</th>
                           <th className="text-left p-3 text-sm font-semibold text-gray-700">Created By</th>
@@ -1529,6 +1544,23 @@ export default function OrderDetailPage() {
                                 <Calendar className="h-4 w-4 text-gray-400" />
                                 {formatDate(delivery.deliveryDate)}
                               </div>
+                            </td>
+                            <td className="p-3 text-sm">
+                              {delivery.styleNumber || delivery.colorCode ? (
+                                <div className="flex flex-col gap-0.5">
+                                  {delivery.styleNumber && (
+                                    <span className="font-medium text-gray-700">{delivery.styleNumber}</span>
+                                  )}
+                                  {delivery.colorCode && (
+                                    <span className="text-xs text-gray-500">
+                                      {delivery.colorCode}
+                                      {delivery.colorName && ` (${delivery.colorName})`}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">All</span>
+                              )}
                             </td>
                             <td className="p-3 text-sm font-medium">
                               {delivery.deliveredQuantity.toLocaleString()} {delivery.unit}
@@ -1649,6 +1681,55 @@ export default function OrderDetailPage() {
                   required
                 />
               </div>
+              
+              {/* Style Selection */}
+              {order?.styles && order.styles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-style">Style (Optional)</Label>
+                  <Select 
+                    value={deliveryFormData.style} 
+                    onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, style: value, color: '' })}
+                  >
+                    <SelectTrigger id="delivery-style">
+                      <SelectValue placeholder="Select a style or leave blank for all" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Styles</SelectItem>
+                      {order.styles.map((style) => (
+                        <SelectItem key={style.id} value={style.id}>
+                          {style.styleNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Color Selection - only show if style is selected */}
+              {deliveryFormData.style && order?.styles && (
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-color">Color (Optional)</Label>
+                  <Select 
+                    value={deliveryFormData.color} 
+                    onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, color: value })}
+                  >
+                    <SelectTrigger id="delivery-color">
+                      <SelectValue placeholder="Select a color or leave blank for all" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Colors</SelectItem>
+                      {order.styles
+                        .find((s) => s.id === deliveryFormData.style)
+                        ?.colors.map((color) => (
+                          <SelectItem key={color.id} value={color.id}>
+                            {color.colorCode} {color.colorName && `(${color.colorName})`}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="delivered-quantity">Delivered Quantity *</Label>
                 <div className="flex gap-2">
