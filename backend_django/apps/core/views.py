@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status, viewsets
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncMonth
 from apps.orders.models import Order, OrderStatus, OrderCategory
 from datetime import date, timedelta
@@ -76,7 +76,10 @@ def dashboard_view(request):
     
     # Get orders queryset based on role
     if user.role == 'merchandiser':
-        orders = Order.objects.filter(merchandiser=user)
+        # Include orders where this user is the merchandiser OR has tasks assigned
+        orders = Order.objects.filter(
+            Q(merchandiser=user) | Q(tasks__assigned_to=user)
+        ).distinct()
     else:
         orders = Order.objects.all()
     
@@ -160,7 +163,10 @@ def dashboard_stats_view(request):
     
     # Get orders queryset based on role
     if user.role == 'merchandiser':
-        orders = Order.objects.filter(merchandiser=user)
+        # Include orders where this user is the merchandiser OR has tasks assigned
+        orders = Order.objects.filter(
+            Q(merchandiser=user) | Q(tasks__assigned_to=user)
+        ).distinct()
     else:
         orders = Order.objects.all()
     
