@@ -126,12 +126,57 @@ export function LineItemDetailSheet({
     if (!onApprovalChange) return;
     const label = `${line.styleNumber || ''} ${line.colorCode || ''} ${line.cadCode || ''}`.trim();
     await onApprovalChange(approvalType, newStatus, line.id, label);
+    
+    // Check if all gates for current status are approved and auto-advance status
+    const currentApprovals = { ...line.approvalStatus, [approvalType]: newStatus };
+    await checkAndAutoAdvanceStatus(currentApprovals);
   };
 
-  // Determine which approval gates to show based on order status
-  const runningApprovals = ['labDip', 'strikeOff', 'handloom', 'ppSample'];
-  const bulkApprovals = ['quality', 'price'];
-  const approvalTypes = orderStatus === 'running' ? runningApprovals : bulkApprovals;
+  // Determine which approval gates to show based on LINE status (not order status)
+  const getApprovalGatesForStatus = (status: string): string[] => {
+    switch (status) {
+      case 'upcoming':
+      case 'in_development':
+        return ['price', 'quality'];
+      case 'running':
+        return ['labDip', 'strikeOff', 'handloom', 'ppSample'];
+      case 'bulk':
+      case 'completed':
+        return []; // No approval gates for bulk/completed
+      default:
+        return ['price', 'quality'];
+    }
+  };
+
+  const approvalTypes = getApprovalGatesForStatus(line.status || 'upcoming');
+
+  // Check if all required approvals for current stage are approved, then auto-advance
+  const checkAndAutoAdvanceStatus = async (currentApprovals: Record<string, string>) => {
+    if (!onStatusChange) return;
+    
+    const currentStatus = line.status || 'upcoming';
+    const requiredGates = getApprovalGatesForStatus(currentStatus);
+    
+    // Check if all required gates are approved
+    const allApproved = requiredGates.every(gate => currentApprovals[gate] === 'approved');
+    
+    if (allApproved && requiredGates.length > 0) {
+      // Auto-advance to next status
+      let nextStatus = '';
+      if (currentStatus === 'upcoming' || currentStatus === 'in_development') {
+        nextStatus = 'running';
+      } else if (currentStatus === 'running') {
+        nextStatus = 'bulk';
+      }
+      
+      if (nextStatus) {
+        // Small delay to let the approval update complete
+        setTimeout(async () => {
+          await onStatusChange(line.id, nextStatus);
+        }, 500);
+      }
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -254,9 +299,16 @@ export function LineItemDetailSheet({
           )}
 
           {/* Approval Gates */}
-          {onApprovalChange && orderStatus !== 'bulk' && (
+          {onApprovalChange && approvalTypes.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Approval Gates</h3>
+              <h3 className="text-lg font-semibold">
+                Approval Gates
+                {line.status === 'upcoming' || line.status === 'in_development' ? (
+                  <span className="text-sm font-normal text-gray-600 ml-2">(Price & Quality for Running)</span>
+                ) : line.status === 'running' ? (
+                  <span className="text-sm font-normal text-gray-600 ml-2">(Sample approvals for Bulk)</span>
+                ) : null}
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {approvalTypes.map((approvalType) => (
                   <div key={approvalType} className="p-3 border rounded-lg space-y-2">
