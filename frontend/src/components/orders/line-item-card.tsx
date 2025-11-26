@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
