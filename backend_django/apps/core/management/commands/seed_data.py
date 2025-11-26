@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from apps.orders.models import Order, OrderStatus, OrderCategory, ApprovalHistory
 from apps.orders.models_style_color import OrderStyle, OrderColor
 from apps.orders.models_order_line import OrderLine
+from apps.orders.models_supplier_delivery import SupplierDelivery
 from apps.samples.models import Sample
 from apps.financials.models import ProformaInvoice, LetterOfCredit
 from apps.shipments.models import Shipment
@@ -36,6 +37,9 @@ class Command(BaseCommand):
         
         # Create approval history for order lines
         self.create_approval_history()
+        
+        # Create supplier delivery records
+        self.create_supplier_deliveries()
         
         # Create related samples
         self.create_samples()
@@ -361,8 +365,8 @@ class Command(BaseCommand):
                         color_name=color_name,
                         quantity=color_qty,
                         unit='meters',
-                        etd=order.etd,
-                        eta=order.eta,
+                        etd=order.etd + timedelta(days=random.randint(-7, 14)) if order.etd else None,
+                        eta=order.eta + timedelta(days=random.randint(-5, 10)) if order.eta else None,
                         submission_date=order.order_date,
                         mill_name=order.mill_name,
                         mill_price=order.mill_price,
@@ -390,8 +394,8 @@ class Command(BaseCommand):
                                 prova_price=order.prova_price,
                                 commission=Decimal(str(round(random.uniform(0.1, 0.5), 2))),
                                 currency='USD',
-                                etd=order.etd,
-                                eta=order.eta,
+                                etd=order.etd + timedelta(days=random.randint(-5, 10)) if order.etd else None,
+                                eta=order.eta + timedelta(days=random.randint(-3, 7)) if order.eta else None,
                                 submission_date=order.order_date,
                                 approval_status={'labDip': 'pending' if random.random() > 0.5 else 'approved'},
                                 status=order.status
@@ -411,8 +415,8 @@ class Command(BaseCommand):
                                 prova_price=order.prova_price,
                                 commission=Decimal(str(round(random.uniform(0.1, 0.5), 2))),
                                 currency='USD',
-                                etd=order.etd,
-                                eta=order.eta,
+                                etd=order.etd + timedelta(days=random.randint(-5, 10)) if order.etd else None,
+                                eta=order.eta + timedelta(days=random.randint(-3, 7)) if order.eta else None,
                                 submission_date=order.order_date,
                                 approval_status={'labDip': 'pending' if random.random() > 0.5 else 'approved'},
                                 status=order.status
@@ -665,6 +669,111 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS(
             f'\n  Created {history_count} approval history records for order lines'
+        ))
+
+    def create_supplier_deliveries(self):
+        """Create supplier delivery records for order lines with realistic dates and quantities"""
+        self.stdout.write('\nCreating supplier delivery records...')
+        
+        # Get all order lines
+        order_lines = OrderLine.objects.select_related('style__order').all()
+        if not order_lines.exists():
+            self.stdout.write(self.style.WARNING('  [WARN] No order lines found, skipping supplier deliveries'))
+            return
+        
+        # Get merchandisers for tracking
+        merchandisers = list(User.objects.filter(role='merchandiser'))
+        if not merchandisers:
+            merchandisers = [None]
+        
+        delivery_count = 0
+        
+        for line in order_lines:
+            order = line.style.order
+            
+            # Determine if this line should have deliveries based on order status
+            if order.status == OrderStatus.UPCOMING:
+                # Upcoming orders: no deliveries yet
+                continue
+            elif order.status == OrderStatus.RUNNING:
+                # Running orders: 1-3 partial deliveries (40% chance to have deliveries)
+                if random.random() > 0.4:
+                    continue
+                num_deliveries = random.randint(1, 3)
+                delivery_percentage = 0.3  # Each delivery is ~30-60% of line quantity
+            else:  # COMPLETED
+                # Completed orders: 2-5 deliveries totaling the full quantity
+                num_deliveries = random.randint(2, 5)
+                delivery_percentage = 1.0 / num_deliveries  # Split evenly
+            
+            # Start from ETD or order date
+            base_delivery_date = line.etd or order.etd or order.order_date or date.today()
+            
+            # For completed orders, adjust base date to be in the past
+            if order.status == OrderStatus.COMPLETED:
+                days_ago = random.randint(30, 120)
+                base_delivery_date = base_delivery_date - timedelta(days=days_ago)
+            
+            total_quantity = line.quantity
+            remaining_quantity = total_quantity
+            
+            for i in range(num_deliveries):
+                # Calculate delivery date (spread over time)
+                if i == 0:
+                    delivery_date = base_delivery_date
+                else:
+                    # Subsequent deliveries are 7-21 days apart
+                    days_offset = random.randint(7, 21) * i
+                    delivery_date = base_delivery_date + timedelta(days=days_offset)
+                
+                # Calculate delivery quantity
+                if i == num_deliveries - 1:
+                    # Last delivery: deliver remaining quantity
+                    delivered_qty = remaining_quantity
+                else:
+                    # Intermediate delivery: 20-50% of total, or what remains
+                    percentage = random.uniform(0.2, 0.5)
+                    delivered_qty = min(
+                        Decimal(str(round(float(total_quantity) * percentage, 2))),
+                        remaining_quantity
+                    )
+                
+                # Ensure minimum delivery quantity
+                if delivered_qty < Decimal('100'):
+                    delivered_qty = min(Decimal('100'), remaining_quantity)
+                
+                # Create delivery record
+                if delivered_qty > 0 and not SupplierDelivery.objects.filter(
+                    order_line=line,
+                    delivery_date=delivery_date
+                ).exists():
+                    delivery_record = SupplierDelivery.objects.create(
+                        order=order,
+                        order_line=line,
+                        style=line.style,
+                        delivery_date=delivery_date,
+                        delivered_quantity=delivered_qty,
+                        unit=line.unit,
+                        notes=f'Delivery {i+1}/{num_deliveries} for {line.line_label}',
+                        created_by=random.choice(merchandisers) if merchandisers[0] else None
+                    )
+                    
+                    # Manually set created_at to match delivery timeline
+                    SupplierDelivery.objects.filter(pk=delivery_record.pk).update(
+                        created_at=timezone.make_aware(
+                            timezone.datetime.combine(delivery_date, timezone.datetime.min.time())
+                        )
+                    )
+                    
+                    delivery_count += 1
+                    remaining_quantity -= delivered_qty
+                    
+                    # If nothing remains, stop creating more deliveries
+                    if remaining_quantity <= 0:
+                        break
+        
+        self.stdout.write(self.style.SUCCESS(
+            f'\n  Created {delivery_count} supplier delivery records'
         ))
 
     def create_samples(self):
