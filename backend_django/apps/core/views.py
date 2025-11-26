@@ -246,19 +246,31 @@ def dashboard_stats_view(request):
     else:
         orders = Order.objects.all()
     
-    # 1. Orders by Stage (status field)
+    # 1. Orders by Stage (aggregated from order line statuses)
     orders_by_stage = []
-    stage_counts = orders.values('status').annotate(count=Count('id')).order_by('status')
+    
+    # Import OrderLine model
+    from apps.orders.models_order_line import OrderLine
+    
+    # Get all order lines from the filtered orders
+    order_ids = list(orders.values_list('id', flat=True))
+    
+    # Count order lines by status
+    line_status_counts = OrderLine.objects.filter(
+        style__order_id__in=order_ids
+    ).values('status').annotate(count=Count('id')).order_by('status')
     
     # Map status to friendly names and ensure consistent ordering
     status_map = {
         'upcoming': 'Upcoming',
+        'in_development': 'In Development',
         'running': 'Running',
+        'bulk': 'Bulk',
         'completed': 'Completed',
         'archived': 'Archived'
     }
     
-    for item in stage_counts:
+    for item in line_status_counts:
         if item['status']:
             orders_by_stage.append({
                 'name': status_map.get(item['status'], item['status'].capitalize()),

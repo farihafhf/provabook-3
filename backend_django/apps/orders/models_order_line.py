@@ -10,7 +10,7 @@ All commercial data (quantities, prices, dates, approvals) live at the line leve
 """
 from django.db import models
 from apps.core.models import TimestampedModel
-from .models import Order
+from .models import Order, OrderStatus
 from .models_style_color import OrderStyle
 
 
@@ -128,6 +128,15 @@ class OrderLine(TimestampedModel):
         null=True,
         default=dict,
         help_text='Approval status for each gate at this line level'
+    )
+    
+    # Status (per line)
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.UPCOMING,
+        db_index=True,
+        help_text='Status of this specific order line'
     )
     
     # Notes specific to this line

@@ -375,6 +375,53 @@ class OrderViewSet(viewsets.ModelViewSet):
         response_serializer = OrderSerializer(order)
         return Response(response_serializer.data)
     
+    @action(detail=True, methods=['patch'], url_path='lines/(?P<line_id>[^/.]+)/status')
+    def update_line_status(self, request, pk=None, line_id=None):
+        """
+        PATCH /orders/{id}/lines/{line_id}/status/
+        Update order line status
+        
+        Request body:
+        {
+            "status": "running"
+        }
+        """
+        from .models_order_line import OrderLine
+        
+        order = self.get_object()
+        
+        # Get the line
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Validate status
+        new_status = request.data.get('status')
+        if not new_status:
+            return Response(
+                {'error': 'Status is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        valid_statuses = [choice[0] for choice in OrderStatus.choices]
+        if new_status not in valid_statuses:
+            return Response(
+                {'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update line status
+        line.status = new_status
+        line.save(update_fields=['status', 'updated_at'])
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data)
+    
     @action(detail=True, methods=['get'], url_path='documents')
     def get_documents(self, request, pk=None):
         """

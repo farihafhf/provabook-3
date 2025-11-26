@@ -23,7 +23,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'quantity', 'unit',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'etd', 'eta', 'submission_date', 'approval_date',
-            'approval_status', 'notes',
+            'approval_status', 'status', 'notes',
             'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
             'created_at', 'updated_at'
         ]
@@ -56,6 +56,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'submissionDate': data.get('submission_date'),
             'approvalDate': data.get('approval_date'),
             'approvalStatus': data.get('approval_status'),
+            'status': data.get('status'),
             'notes': data.get('notes'),
             'totalValue': data.get('total_value'),
             'totalCost': data.get('total_cost'),
@@ -100,7 +101,7 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'quantity', 'unit',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'etd', 'eta', 'submission_date', 'approval_date',
-            'approval_status', 'notes'
+            'approval_status', 'status', 'notes'
         ]
     
     def to_internal_value(self, data):

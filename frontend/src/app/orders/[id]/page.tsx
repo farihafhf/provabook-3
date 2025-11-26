@@ -42,6 +42,7 @@ interface OrderLine {
   submissionDate?: string;
   approvalDate?: string;
   approvalStatus?: Record<string, string>;
+  status?: string;
   notes?: string;
   totalValue?: number;
   totalCost?: number;
@@ -205,6 +206,7 @@ export default function OrderDetailPage() {
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(true);
   const [selectedStyleForApproval, setSelectedStyleForApproval] = useState<string>('all');
   const [expandedOrderLines, setExpandedOrderLines] = useState<Set<string>>(new Set()); // Track expanded lines by line.id
+  const [lineStatusSelections, setLineStatusSelections] = useState<{[key: string]: string}>({}); // Track status selection per line
   
   // Supplier Deliveries state
   const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
@@ -681,6 +683,34 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleLineStatusChange = async (lineId: string, newStatus: string) => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}/lines/${lineId}/status/`, {
+        status: newStatus,
+      });
+
+      toast({
+        title: 'Success',
+        description: `Line status updated to ${getStatusDisplayName(newStatus)}`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update line status:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update line status',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
@@ -841,13 +871,6 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Single Prominent Status Badge */}
-        <div className="flex items-center gap-3">
-          <Badge className={`text-2xl font-bold px-6 py-3 ${getStatusBadgeClass(order.status)}`}>
-            {getStatusDisplayName(order.status)}
-          </Badge>
-        </div>
-
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className={`grid w-full ${order.status === 'bulk' ? 'grid-cols-3' : 'grid-cols-4'}`}>
@@ -894,7 +917,7 @@ export default function OrderDetailPage() {
                                   <ChevronRight className="h-5 w-5 text-indigo-600 flex-shrink-0" />
                                 )}
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
+                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                                     <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
                                       {style.styleNumber}
                                     </Badge>
@@ -913,6 +936,10 @@ export default function OrderDetailPage() {
                                         Style Only
                                       </Badge>
                                     )}
+                                    {/* Status Badge */}
+                                    <Badge className={`font-semibold px-3 py-1 ${getStatusBadgeClass(line.status || 'upcoming')}`}>
+                                      {getStatusDisplayName(line.status || 'upcoming')}
+                                    </Badge>
                                   </div>
                                   {style.description && (
                                     <p className="text-xs text-gray-600">{style.description}</p>
@@ -958,6 +985,35 @@ export default function OrderDetailPage() {
                                 <p className="text-sm font-semibold text-green-600">
                                   {line.eta ? formatDate(line.eta) : '-'}
                                 </p>
+                              </div>
+                            </div>
+                              
+                            {/* Status Update Section */}
+                            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                              <p className="text-xs font-semibold text-blue-900 mb-2">Update Line Status</p>
+                              <div className="flex items-center gap-2">
+                                <Select 
+                                  value={lineStatusSelections[line.id] || line.status || 'upcoming'} 
+                                  onValueChange={(value) => setLineStatusSelections(prev => ({ ...prev, [line.id]: value }))}
+                                >
+                                  <SelectTrigger className="w-full max-w-xs bg-white">
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                                    <SelectItem value="in_development">In Development</SelectItem>
+                                    <SelectItem value="running">Running Order</SelectItem>
+                                    <SelectItem value="bulk">Bulk</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleLineStatusChange(line.id, lineStatusSelections[line.id] || line.status || 'upcoming')} 
+                                  disabled={updating || !lineStatusSelections[line.id] || lineStatusSelections[line.id] === line.status}
+                                >
+                                  {updating ? 'Updating...' : 'Update'}
+                                </Button>
                               </div>
                             </div>
                               
@@ -1056,47 +1112,6 @@ export default function OrderDetailPage() {
                           {getStatusDisplayName(order.status)}
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                  )}
-                </Card>
-
-                {/* Set Status Card */}
-                <Card className="border-l-4 border-l-blue-500">
-                  <CardHeader className="flex items-center justify-between">
-                    <CardTitle>Set Order Status</CardTitle>
-                    <button
-                      type="button"
-                      onClick={() => setIsStatusCardOpen((prev) => !prev)}
-                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100"
-                    >
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${isStatusCardOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                  </CardHeader>
-                  {isStatusCardOpen && (
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Select value={statusSelection} onValueChange={setStatusSelection}>
-                          <SelectTrigger className="w-full max-w-xs">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="upcoming">Upcoming</SelectItem>
-                            <SelectItem value="in_development">In Development</SelectItem>
-                            <SelectItem value="running">Running Order</SelectItem>
-                            <SelectItem value="bulk">Bulk</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button onClick={handleConfirmStatusChange} disabled={updating}>
-                          {updating ? 'Updating...' : 'Confirm Status'}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Status can be manually set or automatically updated when all approvals are completed.
-                      </p>
                     </div>
                   </CardContent>
                   )}
