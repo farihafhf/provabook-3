@@ -148,6 +148,44 @@ def dashboard_view(request):
         'etd': date_window_counts('etd'),
         'eta': date_window_counts('eta'),
     }
+    
+    # Get ETD alerts for the dashboard
+    ten_days_ahead = today + timedelta(days=10)
+    
+    etd_alerts_orders = orders.filter(
+        etd__isnull=False,
+        etd__lte=ten_days_ahead
+    ).exclude(
+        current_stage='Delivered'
+    ).order_by('etd')[:10]  # Limit to 10 most urgent
+    
+    etd_alerts = []
+    for order in etd_alerts_orders:
+        days_until_etd = (order.etd - today).days
+        
+        # Determine severity
+        if days_until_etd < 0:
+            severity = 'critical'
+            alert_type = 'overdue'
+        elif days_until_etd <= 5:
+            severity = 'critical'
+            alert_type = 'urgent'
+        else:
+            severity = 'warning'
+            alert_type = 'approaching'
+        
+        etd_alerts.append({
+            'id': str(order.id),
+            'orderNumber': order.order_number,
+            'customerName': order.customer_name,
+            'etd': order.etd.isoformat() if order.etd else None,
+            'daysUntilEtd': days_until_etd,
+            'severity': severity,
+            'alertType': alert_type,
+            'currentStage': order.current_stage
+        })
+    
+    stats['etdAlerts'] = etd_alerts
 
     return Response(stats)
 

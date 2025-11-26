@@ -19,6 +19,13 @@ class TimestampedModel(models.Model):
         ordering = ['-created_at']
 
 
+class NotificationSeverity(models.TextChoices):
+    """Notification severity levels for alerts"""
+    INFO = 'info', 'Info'
+    WARNING = 'warning', 'Warning'  # Yellow alert (10 days before ETD)
+    CRITICAL = 'critical', 'Critical'  # Red alert (5 days before ETD)
+
+
 class Notification(TimestampedModel):
     """
     Notification model for user notifications
@@ -31,6 +38,11 @@ class Notification(TimestampedModel):
     title = models.CharField(max_length=255)
     message = models.TextField()
     notification_type = models.CharField(max_length=50)
+    severity = models.CharField(
+        max_length=20,
+        choices=NotificationSeverity.choices,
+        default=NotificationSeverity.INFO
+    )
     related_id = models.CharField(max_length=255, blank=True, null=True)
     related_type = models.CharField(max_length=50, blank=True, null=True)
     is_read = models.BooleanField(default=False)

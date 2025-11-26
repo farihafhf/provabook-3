@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { ApprovalQueue } from '@/components/dashboard/approval-queue';
+import { EtdAlertsWidget, type EtdAlert } from '@/components/dashboard/etd-alerts-widget';
 import type { AlertsWidgetOrder } from '@/components/dashboard/alerts-widget';
 import type { ApprovalQueueOrder } from '@/components/dashboard/approval-queue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -48,6 +49,7 @@ interface ManagerDashboard {
     etd: DateWindow;
     eta: DateWindow;
   };
+  etdAlerts?: EtdAlert[];
 }
 
 interface MerchandiserDashboard {
@@ -61,6 +63,7 @@ interface MerchandiserDashboard {
     etd: DateWindow;
     eta: DateWindow;
   };
+  etdAlerts?: EtdAlert[];
 }
 
 interface ChartData {
@@ -358,8 +361,12 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <EtdAlertsWidget alerts={data.etdAlerts || []} />
             <AlertsWidget orders={upcomingEtdAlerts} />
             <ApprovalQueue orders={stuckApprovalAlerts} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <MyTasksWidget />
           </div>
 
@@ -559,8 +566,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* My Tasks */}
-          <MyTasksWidget />
+          {/* My Tasks and Alerts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <EtdAlertsWidget alerts={data.etdAlerts || []} />
+            <MyTasksWidget />
+          </div>
 
           {/* My Recent Activity */}
           <Card>

@@ -11,7 +11,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = [
-            'id', 'title', 'message', 'notification_type',
+            'id', 'title', 'message', 'notification_type', 'severity',
             'related_id', 'related_type', 'is_read',
             'created_at', 'updated_at'
         ]
@@ -25,6 +25,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'title': data['title'],
             'message': data['message'],
             'notificationType': data['notification_type'],
+            'severity': data['severity'],
             'relatedId': data['related_id'],
             'relatedType': data['related_type'],
             'isRead': data['is_read'],
