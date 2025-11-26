@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth-store';
@@ -142,6 +142,10 @@ export default function OrderDetailPage() {
   const [assigningTask, setAssigningTask] = useState(false);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
+  const [isOrderInfoOpen, setIsOrderInfoOpen] = useState(true);
+  const [isStatusCardOpen, setIsStatusCardOpen] = useState(true);
+  const [isAssignTaskOpen, setIsAssignTaskOpen] = useState(true);
+  const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(true);
   
   // Supplier Deliveries state
   const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
@@ -753,9 +757,19 @@ export default function OrderDetailPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-4 lg:col-span-2">
                 <Card>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-3 flex items-center justify-between">
                     <CardTitle className="text-lg">Order Information</CardTitle>
+                    <button
+                      type="button"
+                      onClick={() => setIsOrderInfoOpen((prev) => !prev)}
+                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100"
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isOrderInfoOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
                   </CardHeader>
+                  {isOrderInfoOpen && (
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
@@ -786,13 +800,24 @@ export default function OrderDetailPage() {
                       </div>
                     </div>
                   </CardContent>
+                  )}
                 </Card>
 
                 {/* Set Status Card */}
                 <Card className="border-l-4 border-l-blue-500">
-                  <CardHeader>
+                  <CardHeader className="flex items-center justify-between">
                     <CardTitle>Set Order Status</CardTitle>
+                    <button
+                      type="button"
+                      onClick={() => setIsStatusCardOpen((prev) => !prev)}
+                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100"
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isStatusCardOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
                   </CardHeader>
+                  {isStatusCardOpen && (
                   <CardContent>
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
@@ -816,15 +841,26 @@ export default function OrderDetailPage() {
                       </p>
                     </div>
                   </CardContent>
+                  )}
                 </Card>
 
                 {/* Assign Task Card */}
                 <Card className="border-l-4 border-l-purple-500 shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <span>Assign Task to Team Member</span>
                     </CardTitle>
+                    <button
+                      type="button"
+                      onClick={() => setIsAssignTaskOpen((prev) => !prev)}
+                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-purple-200 text-purple-600 hover:bg-purple-50"
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isAssignTaskOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
                   </CardHeader>
+                  {isAssignTaskOpen && (
                   <CardContent className="pt-6">
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -875,6 +911,7 @@ export default function OrderDetailPage() {
                       </Button>
                     </div>
                   </CardContent>
+                  )}
                 </Card>
 
                 <Card>
@@ -904,12 +941,22 @@ export default function OrderDetailPage() {
                 {/* Profit Summary Card */}
                 {(order.potentialProfit !== undefined && order.potentialProfit !== null) && (
                   <Card className="border-l-4 border-l-green-500">
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-3 flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2 text-lg">
                         <DollarSign className="h-5 w-5 text-green-600" />
                         Profit Summary
                       </CardTitle>
+                      <button
+                        type="button"
+                        onClick={() => setIsProfitSummaryOpen((prev) => !prev)}
+                        className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-green-200 text-green-700 hover:bg-green-50"
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${isProfitSummaryOpen ? 'rotate-180' : ''}`}
+                        />
+                      </button>
                     </CardHeader>
+                    {isProfitSummaryOpen && (
                     <CardContent>
                       <div className="space-y-4">
                         {/* Pricing Row - Only show if order-level prices exist */}
@@ -976,6 +1023,7 @@ export default function OrderDetailPage() {
                         )}
                       </div>
                     </CardContent>
+                    )}
                   </Card>
                 )}
 
