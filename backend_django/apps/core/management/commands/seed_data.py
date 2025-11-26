@@ -376,33 +376,49 @@ class Command(BaseCommand):
                     )
                     color_count += 1
                     
-                    # Create order line for this color (with or without CAD)
-                    # 50% chance to add CAD
-                    if random.random() > 0.5:
-                        cad_code, cad_name = random.choice(cad_pool)
-                        if not OrderLine.objects.filter(style=style, color_code=color_code, cad_code=cad_code).exists():
-                            OrderLine.objects.create(
-                                style=style,
-                                color_code=color_code,
-                                color_name=color_name,
-                                cad_code=cad_code,
-                                cad_name=cad_name,
-                                quantity=color_qty,
-                                unit='meters',
-                                mill_name=order.mill_name,
-                                mill_price=order.mill_price,
-                                prova_price=order.prova_price,
-                                commission=Decimal(str(round(random.uniform(0.1, 0.5), 2))),
-                                currency='USD',
-                                etd=order.etd + timedelta(days=random.randint(-5, 10)) if order.etd else None,
-                                eta=order.eta + timedelta(days=random.randint(-3, 7)) if order.eta else None,
-                                submission_date=order.order_date,
-                                approval_status={'labDip': 'pending' if random.random() > 0.5 else 'approved'},
-                                status=order.status
-                            )
-                            line_count += 1
+                    # Create order lines for this color - multiple CAD variations
+                    # 70% chance to have CAD variations, 30% chance color-only
+                    if random.random() > 0.3:
+                        # Create 1-3 different CAD variations for this color
+                        num_cads = random.randint(1, 3)
+                        # Randomly select unique CADs for this color
+                        selected_cads = random.sample(cad_pool, min(num_cads, len(cad_pool)))
+                        
+                        # Split color quantity among CAD variations
+                        for cad_idx, (cad_code, cad_name) in enumerate(selected_cads):
+                            # Calculate quantity for this CAD line
+                            if cad_idx == len(selected_cads) - 1:
+                                # Last CAD gets remaining quantity
+                                cad_qty = color_qty
+                            else:
+                                # Split quantity roughly equally with some variation
+                                split_percentage = (1.0 / len(selected_cads)) + random.uniform(-0.1, 0.1)
+                                cad_qty = Decimal(str(round(float(color_qty) * split_percentage, 2)))
+                                color_qty -= cad_qty
+                            
+                            if not OrderLine.objects.filter(style=style, color_code=color_code, cad_code=cad_code).exists():
+                                OrderLine.objects.create(
+                                    style=style,
+                                    color_code=color_code,
+                                    color_name=color_name,
+                                    cad_code=cad_code,
+                                    cad_name=cad_name,
+                                    quantity=cad_qty,
+                                    unit='meters',
+                                    mill_name=order.mill_name,
+                                    mill_price=order.mill_price,
+                                    prova_price=order.prova_price,
+                                    commission=Decimal(str(round(random.uniform(0.1, 0.5), 2))),
+                                    currency='USD',
+                                    etd=order.etd + timedelta(days=random.randint(-5, 10)) if order.etd else None,
+                                    eta=order.eta + timedelta(days=random.randint(-3, 7)) if order.eta else None,
+                                    submission_date=order.order_date,
+                                    approval_status={'labDip': 'pending' if random.random() > 0.5 else 'approved'},
+                                    status=order.status
+                                )
+                                line_count += 1
                     else:
-                        # Color-only line (no CAD)
+                        # Color-only line (no CAD) - less common scenario
                         if not OrderLine.objects.filter(style=style, color_code=color_code, cad_code=None).exists():
                             OrderLine.objects.create(
                                 style=style,
