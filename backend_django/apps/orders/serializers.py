@@ -2,7 +2,7 @@
 Orders serializers
 """
 from rest_framework import serializers
-from .models import Order, OrderStatus, OrderCategory, Document
+from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
 from apps.authentication.serializers import UserSerializer
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
 
@@ -21,6 +21,7 @@ class OrderSerializer(serializers.ModelSerializer):
     realized_value = serializers.ReadOnlyField()
     timeline_events = serializers.SerializerMethodField()
     styles = OrderStyleSerializer(many=True, read_only=True)
+    approval_history_data = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -35,7 +36,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
-            'created_at', 'updated_at', 'timeline_events', 'styles'
+            'created_at', 'updated_at', 'timeline_events', 'styles', 'approval_history_data'
         ]
         read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value', 
                            'total_delivered_quantity', 'shortage_excess_quantity', 
@@ -103,7 +104,14 @@ class OrderSerializer(serializers.ModelSerializer):
             'updatedAt': data['updated_at'],
             'timelineEvents': data.get('timeline_events', []),
             'styles': data.get('styles', []),
+            'approvalHistoryData': data.get('approval_history_data', []),
         }
+    
+    def get_approval_history_data(self, obj):
+        """Get approval history for this order"""
+        history = obj.approval_history.all().order_by('created_at')
+        serializer = ApprovalHistorySerializer(history, many=True)
+        return serializer.data
     
     def get_timeline_events(self, obj):
         """Build timeline events for order details"""
@@ -143,26 +151,31 @@ class OrderSerializer(serializers.ModelSerializer):
             description=f"Order #{obj.order_number} created",
         )
 
-        # Approvals
-        approval_data = obj.approval_status or {}
-        if isinstance(approval_data, dict) and approval_data:
-            approval_values = {str(value).lower() for value in approval_data.values()}
-            approval_status = None
-            if 'approved' in approval_values:
-                approval_status = 'completed'
-            elif 'pending' in approval_values:
-                approval_status = 'current'
-            elif 'rejected' in approval_values:
-                # Treat fully rejected approvals as completed step
-                approval_status = 'completed'
-
-            if approval_status:
-                add_event(
-                    title='Approvals Completed' if approval_status == 'completed' else 'Approvals',
-                    date_value=obj.updated_at,
-                    status=approval_status,
-                    description=f"Approval status updated for order #{obj.order_number}",
-                )
+        # Approval History - show all approval events
+        approval_history = obj.approval_history.all().order_by('created_at')
+        approval_type_names = {
+            'labDip': 'Lab Dip',
+            'strikeOff': 'Strike Off',
+            'handloom': 'Handloom',
+            'ppSample': 'PP Sample',
+            'quality': 'Quality',
+            'price': 'Price',
+        }
+        
+        for history in approval_history:
+            type_name = approval_type_names.get(history.approval_type, history.approval_type)
+            status_display = history.status.title()
+            changed_by = f" by {history.changed_by.full_name}" if history.changed_by else ""
+            
+            # Determine event status based on approval status
+            event_status = 'completed' if history.status == 'approved' else 'current'
+            
+            add_event(
+                title=f"{type_name}: {status_display}",
+                date_value=history.created_at,
+                status=event_status,
+                description=f"{type_name} marked as {status_display}{changed_by}",
+            )
 
         # Production - inferred from current_stage
         current_stage = obj.current_stage or ''
@@ -214,6 +227,18 @@ class OrderSerializer(serializers.ModelSerializer):
 
         # Ensure events are sorted by date (oldest first)
         events.sort(key=lambda item: item['date'] or '9999-12-31')
+        
+        # Set status for timeline events
+        # Mark all events except the last one as completed, and the last as current
+        if events:
+            for i in range(len(events) - 1):
+                events[i]['status'] = 'completed'
+            # Last event is current if order is not delivered/completed
+            if obj.status != 'completed' and obj.current_stage != 'Delivered':
+                events[-1]['status'] = 'current'
+            else:
+                events[-1]['status'] = 'completed'
+        
         return events
     
     def validate_quantity(self, value):
@@ -508,10 +533,10 @@ class ApprovalUpdateSerializer(serializers.Serializer):
     Accepts camelCase from frontend
     """
     approval_type = serializers.ChoiceField(
-        choices=['labDip', 'strikeOff', 'aop', 'qualityTest', 'quality', 'bulkSwatch', 'price', 'ppSample']
+        choices=['labDip', 'strikeOff', 'handloom', 'aop', 'qualityTest', 'quality', 'bulkSwatch', 'price', 'ppSample']
     )
     status = serializers.ChoiceField(
-        choices=['pending', 'approved', 'rejected']
+        choices=['submission', 'resubmission', 'approved', 'rejected']
     )
     
     def to_internal_value(self, data):
@@ -578,6 +603,40 @@ class DocumentSerializer(serializers.ModelSerializer):
             'description': data.get('description'),
             'uploadedBy': str(data['uploaded_by']) if data.get('uploaded_by') else None,
             'uploadedByName': data.get('uploaded_by_name'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }
+
+
+class ApprovalHistorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for ApprovalHistory model
+    Returns camelCase for frontend
+    """
+    changed_by_name = serializers.CharField(source='changed_by.full_name', read_only=True)
+    changed_by_email = serializers.CharField(source='changed_by.email', read_only=True)
+    
+    class Meta:
+        model = ApprovalHistory
+        fields = [
+            'id', 'order', 'approval_type', 'status', 
+            'changed_by', 'changed_by_name', 'changed_by_email',
+            'notes', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Convert to camelCase for frontend"""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'orderId': str(data['order']),
+            'approvalType': data['approval_type'],
+            'status': data['status'],
+            'changedBy': str(data['changed_by']) if data.get('changed_by') else None,
+            'changedByName': data.get('changed_by_name'),
+            'changedByEmail': data.get('changed_by_email'),
+            'notes': data.get('notes'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }

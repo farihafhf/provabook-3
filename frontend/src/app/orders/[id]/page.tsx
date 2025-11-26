@@ -111,6 +111,7 @@ interface Order {
   approvalStatus?: {
     labDip?: string;
     strikeOff?: string;
+    handloom?: string;
     aop?: string;
     qualityTest?: string;
     quality?: string;
@@ -118,6 +119,14 @@ interface Order {
     price?: string;
     ppSample?: string;
   };
+  approvalHistoryData?: Array<{
+    id: string;
+    approvalType: string;
+    status: string;
+    changedByName?: string;
+    changedByEmail?: string;
+    createdAt: string;
+  }>;
   styles?: OrderStyle[];
   merchandiser?: string;
   merchandiserDetails?: {
@@ -611,6 +620,7 @@ export default function OrderDetailPage() {
   const getApprovalIcon = (status: string) => {
     if (status === 'approved') return <CheckCircle2 className="h-5 w-5 text-green-600" />;
     if (status === 'rejected') return <XCircle className="h-5 w-5 text-red-600" />;
+    if (status === 'submission' || status === 'resubmission') return <Clock className="h-5 w-5 text-blue-500" />;
     return <Clock className="h-5 w-5 text-gray-400" />;
   };
 
@@ -619,10 +629,11 @@ export default function OrderDetailPage() {
     const isRunning = order.status === 'running';
     
     if (isRunning) {
-      // Running Order: Lab Dip, AOP/Strike Off, PP Sample
+      // Running Order: Lab Dip, Strike Off, Handloom, PP Sample
       const statuses = [
         order.approvalStatus.labDip,
-        order.approvalStatus.aop || order.approvalStatus.strikeOff,
+        order.approvalStatus.strikeOff,
+        order.approvalStatus.handloom,
         order.approvalStatus.ppSample,
       ];
       return statuses.filter(s => s === 'approved').length;
@@ -638,15 +649,15 @@ export default function OrderDetailPage() {
 
   const getTotalApprovals = () => {
     const isRunning = order?.status === 'running';
-    return isRunning ? 3 : 2; // Running: 3 approvals, Upcoming/In Dev: 2 approvals
+    return isRunning ? 4 : 2; // Running: 4 approvals (Lab Dip, Strike Off, Handloom, PP Sample), Upcoming/In Dev: 2 approvals
   };
 
   const allRunningApproved = () => {
     if (!order?.approvalStatus) return false;
-    const aopApproved = order.approvalStatus.aop === 'approved' || order.approvalStatus.strikeOff === 'approved';
     return (
       order.approvalStatus.labDip === 'approved' &&
-      aopApproved &&
+      order.approvalStatus.strikeOff === 'approved' &&
+      order.approvalStatus.handloom === 'approved' &&
       order.approvalStatus.ppSample === 'approved'
     );
   };
@@ -1313,7 +1324,7 @@ export default function OrderDetailPage() {
             </div>
             <p className="text-sm text-gray-500 mt-2">
               {order.status === 'running' 
-                ? 'Running Order approvals: Lab Dip, Strike Off/AOP, PP Sample' 
+                ? 'Running Order approvals: Lab Dip, Strike Off, Handloom, PP Sample' 
                 : 'Early stage approvals: Quality, Price'}
             </p>
           </CardHeader>
@@ -1322,17 +1333,17 @@ export default function OrderDetailPage() {
               {/* Dynamic Approvals based on Order Status */}
               {order.status === 'running' ? (
                 <>
-                  {/* Running Order Approvals: Lab Dip, AOP/Strike Off, PP Sample */}
+                  {/* Running Order Approvals: Lab Dip, Strike Off, Handloom, PP Sample */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.labDip || 'pending')}
+                          {getApprovalIcon(order.approvalStatus?.labDip || 'submission')}
                           <span className="font-medium">Lab Dip</span>
                         </div>
                       </div>
                       <Select
-                        value={order.approvalStatus?.labDip || 'pending'}
+                        value={order.approvalStatus?.labDip || 'submission'}
                         onValueChange={(value) => handleApprovalChange('labDip', value)}
                         disabled={updating}
                       >
@@ -1340,7 +1351,8 @@ export default function OrderDetailPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -1350,20 +1362,21 @@ export default function OrderDetailPage() {
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.aop || order.approvalStatus?.strikeOff || 'pending')}
-                          <span className="font-medium">Strike Off / AOP</span>
+                          {getApprovalIcon(order.approvalStatus?.strikeOff || 'submission')}
+                          <span className="font-medium">Strike Off</span>
                         </div>
                       </div>
                       <Select
-                        value={order.approvalStatus?.aop || order.approvalStatus?.strikeOff || 'pending'}
-                        onValueChange={(value) => handleApprovalChange('aop', value)}
+                        value={order.approvalStatus?.strikeOff || 'submission'}
+                        onValueChange={(value) => handleApprovalChange('strikeOff', value)}
                         disabled={updating}
                       >
                         <SelectTrigger className="w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -1373,12 +1386,36 @@ export default function OrderDetailPage() {
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.ppSample || 'pending')}
+                          {getApprovalIcon(order.approvalStatus?.handloom || 'submission')}
+                          <span className="font-medium">Handloom</span>
+                        </div>
+                      </div>
+                      <Select
+                        value={order.approvalStatus?.handloom || 'submission'}
+                        onValueChange={(value) => handleApprovalChange('handloom', value)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getApprovalIcon(order.approvalStatus?.ppSample || 'submission')}
                           <span className="font-medium">PP Sample</span>
                         </div>
                       </div>
                       <Select
-                        value={order.approvalStatus?.ppSample || 'pending'}
+                        value={order.approvalStatus?.ppSample || 'submission'}
                         onValueChange={(value) => handleApprovalChange('ppSample', value)}
                         disabled={updating}
                       >
@@ -1386,7 +1423,8 @@ export default function OrderDetailPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -1410,12 +1448,12 @@ export default function OrderDetailPage() {
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'pending')}
+                          {getApprovalIcon(order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'submission')}
                           <span className="font-medium">Quality</span>
                         </div>
                       </div>
                       <Select
-                        value={order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'pending'}
+                        value={order.approvalStatus?.quality || order.approvalStatus?.qualityTest || 'submission'}
                         onValueChange={(value) => handleApprovalChange('quality', value)}
                         disabled={updating}
                       >
@@ -1423,7 +1461,8 @@ export default function OrderDetailPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
@@ -1433,12 +1472,12 @@ export default function OrderDetailPage() {
                     <div className="border rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          {getApprovalIcon(order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'pending')}
+                          {getApprovalIcon(order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'submission')}
                           <span className="font-medium">Price</span>
                         </div>
                       </div>
                       <Select
-                        value={order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'pending'}
+                        value={order.approvalStatus?.price || order.approvalStatus?.bulkSwatch || 'submission'}
                         onValueChange={(value) => handleApprovalChange('price', value)}
                         disabled={updating}
                       >
@@ -1446,7 +1485,8 @@ export default function OrderDetailPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="submission">Submission</SelectItem>
+                          <SelectItem value="resubmission">Re-submission</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>

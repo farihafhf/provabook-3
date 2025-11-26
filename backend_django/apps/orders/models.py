@@ -302,3 +302,55 @@ class Order(TimestampedModel):
             self.save(update_fields=['current_stage', 'status', 'category', 'actual_delivery_date', 'updated_at'])
         else:
             self.save(update_fields=['current_stage', 'updated_at'])
+
+
+class ApprovalHistory(TimestampedModel):
+    """
+    Approval History model - Tracks all approval changes for an order
+    Stores multiple submission/resubmission dates and approval status changes
+    """
+    
+    APPROVAL_TYPE_CHOICES = [
+        ('labDip', 'Lab Dip'),
+        ('strikeOff', 'Strike-Off'),
+        ('handloom', 'Handloom'),
+        ('ppSample', 'PP Sample'),
+        ('quality', 'Quality'),
+        ('price', 'Price'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('submission', 'Submission'),
+        ('resubmission', 'Re-submission'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='approval_history'
+    )
+    approval_type = models.CharField(max_length=20, choices=APPROVAL_TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approval_changes'
+    )
+    notes = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'approval_history'
+        ordering = ['-created_at']
+        verbose_name = 'Approval History'
+        verbose_name_plural = 'Approval Histories'
+        indexes = [
+            models.Index(fields=['order', 'approval_type']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.order.order_number} - {self.get_approval_type_display()} - {self.get_status_display()}"

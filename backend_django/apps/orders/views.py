@@ -12,7 +12,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.http import HttpResponse, FileResponse
-from .models import Order, OrderStatus, OrderCategory, Document
+from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
     OrderListSerializer, OrderAlertSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
@@ -237,17 +237,25 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Update approval status
         order.update_approval_status(approval_type, approval_status)
+        
+        # Create approval history record
+        ApprovalHistory.objects.create(
+            order=order,
+            approval_type=approval_type,
+            status=approval_status,
+            changed_by=request.user if request.user.is_authenticated else None
+        )
 
         # Auto-progress logic based on order status
         approvals = order.approval_status or {}
         
-        # If Running Order: check if all running approvals (Lab Dip, AOP/Strike Off, PP Sample) are approved → auto-advance to Bulk
+        # If Running Order: check if all running approvals (Lab Dip, Strike Off, Handloom, PP Sample) are approved → auto-advance to Bulk
         if order.status == OrderStatus.RUNNING:
-            running_approvals = ['labDip', 'ppSample']
-            # Check either 'aop' or 'strikeOff' for AOP/Strike Off approval
-            aop_approved = approvals.get('aop') == 'approved' or approvals.get('strikeOff') == 'approved'
+            running_approvals = ['labDip', 'ppSample', 'handloom']
+            # Check 'strikeOff' for Strike Off approval
+            strike_off_approved = approvals.get('strikeOff') == 'approved'
             
-            if aop_approved and all(approvals.get(g) == 'approved' for g in running_approvals):
+            if strike_off_approved and all(approvals.get(g) == 'approved' for g in running_approvals):
                 order.status = OrderStatus.BULK
                 order.save(update_fields=['status', 'updated_at'])
         
