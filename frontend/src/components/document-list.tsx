@@ -18,6 +18,8 @@ interface Document {
   category: string;
   subcategory?: string;
   description?: string;
+  orderLine?: string;
+  orderLineLabel?: string;
   uploadedByName: string;
   createdAt: string;
 }
@@ -46,6 +48,7 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
 export function DocumentList({ documents, onDelete }: DocumentListProps) {
   const { toast } = useToast();
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterOrderLine, setFilterOrderLine] = useState<string>('all');
   const [deletingId, setDeletingId] = useState<string>('');
   const [viewingDocument, setViewingDocument] = useState<{ 
     id: string; 
@@ -60,9 +63,16 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     return bTime - aTime;
   });
 
-  const filteredDocuments = filterCategory === 'all'
-    ? sortedDocuments
-    : sortedDocuments.filter(doc => doc.category === filterCategory);
+  // Get unique order lines for filtering
+  const uniqueOrderLines = Array.from(
+    new Set(documents.filter(doc => doc.orderLineLabel).map(doc => doc.orderLineLabel))
+  ).sort();
+
+  const filteredDocuments = sortedDocuments.filter(doc => {
+    const categoryMatch = filterCategory === 'all' || doc.category === filterCategory;
+    const orderLineMatch = filterOrderLine === 'all' || doc.orderLineLabel === filterOrderLine;
+    return categoryMatch && orderLineMatch;
+  });
 
   const getCategoryBadgeClass = (category: string) => {
     const classes: Record<string, string> = {
@@ -166,15 +176,15 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filter */}
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Documents</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="sample">Sample Photos</SelectItem>
               <SelectItem value="lc">LC Documents</SelectItem>
               <SelectItem value="pi">PI Documents</SelectItem>
@@ -183,7 +193,24 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
             </SelectContent>
           </Select>
         </div>
-        <div className="text-sm text-gray-500">
+        {uniqueOrderLines.length > 0 && (
+          <div>
+            <Select value={filterOrderLine} onValueChange={setFilterOrderLine}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by order line" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Order Lines</SelectItem>
+                {uniqueOrderLines.map((lineLabel) => (
+                  <SelectItem key={lineLabel} value={lineLabel!}>
+                    {lineLabel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="text-sm text-gray-500 ml-auto">
           {filteredDocuments.length} document{filteredDocuments.length !== 1 ? 's' : ''}
         </div>
       </div>
@@ -227,13 +254,18 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900 truncate">{doc.fileName}</h4>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <Badge className={`${getCategoryBadgeClass(doc.category)} border`}>
                           {CATEGORY_LABELS[doc.category]}
                         </Badge>
                         {doc.subcategory && (
                           <Badge variant="outline" className="text-xs">
                             {SUBCATEGORY_LABELS[doc.subcategory]}
+                          </Badge>
+                        )}
+                        {doc.orderLineLabel && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            {doc.orderLineLabel}
                           </Badge>
                         )}
                       </div>
