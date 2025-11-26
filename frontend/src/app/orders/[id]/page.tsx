@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth-store';
@@ -204,6 +204,7 @@ export default function OrderDetailPage() {
   const [isAssignTaskOpen, setIsAssignTaskOpen] = useState(true);
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(true);
   const [selectedStyleForApproval, setSelectedStyleForApproval] = useState<string>('all');
+  const [expandedOrderLines, setExpandedOrderLines] = useState<Set<string>>(new Set()); // Track expanded lines by line.id
   
   // Supplier Deliveries state
   const [deliveries, setDeliveries] = useState<SupplierDelivery[]>([]);
@@ -217,6 +218,16 @@ export default function OrderDetailPage() {
     notes: ''
   });
   const [savingDelivery, setSavingDelivery] = useState(false);
+
+  const toggleOrderLineExpanded = (lineId: string) => {
+    const newExpanded = new Set(expandedOrderLines);
+    if (newExpanded.has(lineId)) {
+      newExpanded.delete(lineId);
+    } else {
+      newExpanded.add(lineId);
+    }
+    setExpandedOrderLines(newExpanded);
+  };
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -871,32 +882,42 @@ export default function OrderDetailPage() {
                     {order.styles.map((style) => 
                       style.lines && style.lines.length > 0 ? style.lines.map((line) => (
                         <Card key={line.id} className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-all">
-                          <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
+                          <CardHeader 
+                            className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50 cursor-pointer hover:bg-indigo-100 transition-colors"
+                            onClick={() => toggleOrderLineExpanded(line.id)}
+                          >
                             <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
-                                    {style.styleNumber}
-                                  </Badge>
-                                  {line.colorCode && (
-                                    <Badge className="bg-blue-100 text-blue-800 font-mono px-3 py-1">
-                                      {line.colorCode}
+                              <div className="flex-1 flex items-center gap-2">
+                                {expandedOrderLines.has(line.id) ? (
+                                  <ChevronDown className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-5 w-5 text-indigo-600 flex-shrink-0" />
+                                )}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
+                                      {style.styleNumber}
                                     </Badge>
-                                  )}
-                                  {line.cadCode && (
-                                    <Badge className="bg-purple-100 text-purple-800 font-mono px-3 py-1">
-                                      {line.cadCode}
-                                    </Badge>
-                                  )}
-                                  {!line.colorCode && !line.cadCode && (
-                                    <Badge className="bg-gray-100 text-gray-600 px-3 py-1">
-                                      Style Only
-                                    </Badge>
+                                    {line.colorCode && (
+                                      <Badge className="bg-blue-100 text-blue-800 font-mono px-3 py-1">
+                                        {line.colorCode}
+                                      </Badge>
+                                    )}
+                                    {line.cadCode && (
+                                      <Badge className="bg-purple-100 text-purple-800 font-mono px-3 py-1">
+                                        {line.cadCode}
+                                      </Badge>
+                                    )}
+                                    {!line.colorCode && !line.cadCode && (
+                                      <Badge className="bg-gray-100 text-gray-600 px-3 py-1">
+                                        Style Only
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {style.description && (
+                                    <p className="text-xs text-gray-600">{style.description}</p>
                                   )}
                                 </div>
-                                {style.description && (
-                                  <p className="text-xs text-gray-600">{style.description}</p>
-                                )}
                               </div>
                               <div className="text-right">
                                 <div className="text-lg font-bold text-indigo-700">
@@ -910,7 +931,8 @@ export default function OrderDetailPage() {
                               </div>
                             </div>
                           </CardHeader>
-                          <CardContent className="pt-4">
+                          {expandedOrderLines.has(line.id) && (
+                            <CardContent className="pt-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                               {/* Commercial Data */}
                               <div className="space-y-1">
@@ -974,6 +996,7 @@ export default function OrderDetailPage() {
                               </div>
                             )}
                           </CardContent>
+                          )}
                         </Card>
                       )) : null
                     )}
@@ -1287,7 +1310,7 @@ export default function OrderDetailPage() {
                   <CardContent>
                     <OrderTimeline events={
                       (order.approvalHistoryData ?? [])
-                        .filter(h => !h.orderLineId) // Only order-level approvals
+                        .filter(h => h.orderLineId === null || h.orderLineId === undefined) // Only order-level approvals
                         .map(history => ({
                           title: `${history.approvalType} → ${history.status}`,
                           date: history.createdAt,

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar, Copy } from 'lucide-react';
+import { Plus, Trash2, Calendar, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -89,6 +89,18 @@ export function CreateOrderDialog({
     },
   ]);
 
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set([0])); // First line expanded by default
+
+  const toggleLineExpanded = (index: number) => {
+    const newExpanded = new Set(expandedLines);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedLines(newExpanded);
+  };
+
   const addOrderLine = () => {
     setOrderLines([
       ...orderLines,
@@ -111,6 +123,45 @@ export function CreateOrderDialog({
     const newLines = [...orderLines];
     newLines[index] = { ...newLines[index], [field]: value };
     setOrderLines(newLines);
+  };
+
+  const copyCommercialDataToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        millName: sourceLine.millName,
+        millPrice: sourceLine.millPrice,
+        provaPrice: sourceLine.provaPrice,
+        commission: sourceLine.commission,
+        currency: sourceLine.currency,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Commercial Data Copied',
+      description: `Commercial data from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyDatesToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        etd: sourceLine.etd,
+        eta: sourceLine.eta,
+        submissionDate: sourceLine.submissionDate,
+        approvalDate: sourceLine.approvalDate,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Dates Copied',
+      description: `Dates from Line ${sourceIndex + 1} copied to all other lines`,
+    });
   };
 
   const validateForm = () => {
@@ -362,8 +413,16 @@ export function CreateOrderDialog({
           {/* Order Lines */}
           {orderLines.map((line, lineIndex) => (
             <Card key={lineIndex} className="relative border-l-4 border-l-indigo-500">
-              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
+              <CardHeader 
+                className="flex flex-row items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 cursor-pointer hover:bg-indigo-100 transition-colors"
+                onClick={() => toggleLineExpanded(lineIndex)}
+              >
                 <CardTitle className="text-lg flex items-center gap-2">
+                  {expandedLines.has(lineIndex) ? (
+                    <ChevronDown className="h-5 w-5 text-indigo-600" />
+                  ) : (
+                    <ChevronRight className="h-5 w-5 text-indigo-600" />
+                  )}
                   <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
                     Line {lineIndex + 1}
                   </span>
@@ -377,18 +436,24 @@ export function CreateOrderDialog({
                     <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">📐 {line.cadCode}</span>
                   )}
                 </CardTitle>
-                {orderLines.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeOrderLine(lineIndex)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {orderLines.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeOrderLine(lineIndex);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-4">
+              {expandedLines.has(lineIndex) && (
+                <CardContent className="space-y-4 pt-4">
                 {/* Required Fields */}
                 <div className="border-b pb-4">
                   <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Required Information</Label>
@@ -555,8 +620,24 @@ export function CreateOrderDialog({
 
                 {/* Optional: Commercial Data */}
                 <details>
-                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
-                    Commercial Data (Optional)
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center justify-between">
+                    <span>Commercial Data (Optional)</span>
+                    {orderLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyCommercialDataToAll(lineIndex);
+                        }}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy to All Lines
+                      </Button>
+                    )}
                   </summary>
                   <div className="grid grid-cols-3 gap-3 mt-2">
                     <div>
@@ -611,9 +692,27 @@ export function CreateOrderDialog({
 
                 {/* Optional: Dates */}
                 <details>
-                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Delivery & Approval Dates (Optional)
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Delivery & Approval Dates (Optional)
+                    </span>
+                    {orderLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyDatesToAll(lineIndex);
+                        }}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy to All Lines
+                      </Button>
+                    )}
                   </summary>
                   <div className="grid grid-cols-4 gap-3 mt-2">
                     <div>
@@ -667,6 +766,7 @@ export function CreateOrderDialog({
                   />
                 </div>
               </CardContent>
+              )}
             </Card>
           ))}
 
