@@ -37,7 +37,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     - PATCH /orders/{id}/approvals/ - Update approval status
     - POST /orders/{id}/change_stage/ - Change order stage
     """
-    queryset = Order.objects.select_related('merchandiser').all()
+    queryset = Order.objects.select_related('merchandiser').prefetch_related(
+        'styles__lines',
+        'styles__colors'
+    ).all()
     permission_classes = [permissions.IsAuthenticated, IsMerchandiser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = OrderFilter

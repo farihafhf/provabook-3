@@ -851,6 +851,132 @@ export default function OrderDetailPage() {
 
           {/* Info Tab */}
           <TabsContent value="info" className="space-y-6">
+            {/* Order Lines Section - Moved to Top */}
+            {order.styles && order.styles.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Order Lines ({order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} lines)
+                  </CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Each line represents a unique Style + Color + CAD combination</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-3">
+                    {order.styles.map((style) => 
+                      style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                        <Card key={line.id} className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-all">
+                          <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
+                                    {style.styleNumber}
+                                  </Badge>
+                                  {line.colorCode && (
+                                    <Badge className="bg-blue-100 text-blue-800 font-mono px-3 py-1">
+                                      {line.colorCode}
+                                    </Badge>
+                                  )}
+                                  {line.cadCode && (
+                                    <Badge className="bg-purple-100 text-purple-800 font-mono px-3 py-1">
+                                      {line.cadCode}
+                                    </Badge>
+                                  )}
+                                  {!line.colorCode && !line.cadCode && (
+                                    <Badge className="bg-gray-100 text-gray-600 px-3 py-1">
+                                      Style Only
+                                    </Badge>
+                                  )}
+                                </div>
+                                {style.description && (
+                                  <p className="text-xs text-gray-600">{style.description}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="text-lg font-bold text-indigo-700">
+                                  {line.quantity.toLocaleString()} <span className="text-sm font-normal text-gray-600">{line.unit}</span>
+                                </div>
+                                {line.provaPrice && (
+                                  <div className="text-sm font-semibold text-green-700">
+                                    ${line.provaPrice.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              {/* Commercial Data */}
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 font-medium">Mill Price</p>
+                                <p className="text-sm font-semibold">
+                                  {line.millPrice ? `${line.currency || 'USD'} ${line.millPrice.toFixed(2)}` : '-'}
+                                </p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 font-medium">Commission</p>
+                                <p className="text-sm font-semibold text-orange-700">
+                                  {line.commission ? `${line.commission.toFixed(2)}%` : '-'}
+                                </p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 font-medium">ETD</p>
+                                <p className="text-sm font-semibold text-blue-600">
+                                  {line.etd ? formatDate(line.etd) : '-'}
+                                </p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500 font-medium">ETA</p>
+                                <p className="text-sm font-semibold text-green-600">
+                                  {line.eta ? formatDate(line.eta) : '-'}
+                                </p>
+                              </div>
+                            </div>
+                              
+                            {/* Style Technical Details - Collapsed by default */}
+                            {(style.fabricType || style.gsm || style.construction) && (
+                              <details className="mt-3 p-2 bg-gray-50 rounded border">
+                                <summary className="text-xs font-semibold text-gray-700 cursor-pointer">
+                                  Technical Details
+                                </summary>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-xs">
+                                  {style.fabricType && (
+                                    <div>
+                                      <p className="text-gray-500">Fabric</p>
+                                      <p className="font-medium">{style.fabricType}</p>
+                                    </div>
+                                  )}
+                                  {style.gsm && (
+                                    <div>
+                                      <p className="text-gray-500">GSM</p>
+                                      <p className="font-medium">{style.gsm}</p>
+                                    </div>
+                                  )}
+                                  {style.construction && (
+                                    <div>
+                                      <p className="text-gray-500">Construction</p>
+                                      <p className="font-medium">{style.construction}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </details>
+                            )}
+
+                            {line.notes && (
+                              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                                <p className="text-yellow-700 font-medium">Note: {line.notes}</p>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )) : null
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-4 lg:col-span-2">
                 <Card>
@@ -1128,132 +1254,6 @@ export default function OrderDetailPage() {
                       </div>
                     </CardContent>
                     )}
-                  </Card>
-                )}
-
-                {/* Styles and Colors Section */}
-                {order.styles && order.styles.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5" />
-                        Order Lines ({order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} lines)
-                      </CardTitle>
-                      <p className="text-sm text-gray-500 mt-1">Each line represents a unique Style + Color + CAD combination</p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 gap-3">
-                        {order.styles.map((style) => 
-                          style.lines && style.lines.length > 0 ? style.lines.map((line) => (
-                            <Card key={line.id} className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-all">
-                              <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <Badge className="bg-indigo-600 text-white font-semibold px-3 py-1">
-                                        {style.styleNumber}
-                                      </Badge>
-                                      {line.colorCode && (
-                                        <Badge className="bg-blue-100 text-blue-800 font-mono px-3 py-1">
-                                          {line.colorCode}
-                                        </Badge>
-                                      )}
-                                      {line.cadCode && (
-                                        <Badge className="bg-purple-100 text-purple-800 font-mono px-3 py-1">
-                                          {line.cadCode}
-                                        </Badge>
-                                      )}
-                                      {!line.colorCode && !line.cadCode && (
-                                        <Badge className="bg-gray-100 text-gray-600 px-3 py-1">
-                                          Style Only
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {style.description && (
-                                      <p className="text-xs text-gray-600">{style.description}</p>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-lg font-bold text-indigo-700">
-                                      {line.quantity.toLocaleString()} <span className="text-sm font-normal text-gray-600">{line.unit}</span>
-                                    </div>
-                                    {line.provaPrice && (
-                                      <div className="text-sm font-semibold text-green-700">
-                                        ${line.provaPrice.toFixed(2)}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pt-4">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                  {/* Commercial Data */}
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 font-medium">Mill Price</p>
-                                    <p className="text-sm font-semibold">
-                                      {line.millPrice ? `${line.currency || 'USD'} ${line.millPrice.toFixed(2)}` : '-'}
-                                    </p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 font-medium">Commission</p>
-                                    <p className="text-sm font-semibold text-orange-700">
-                                      {line.commission ? `${line.commission.toFixed(2)}%` : '-'}
-                                    </p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 font-medium">ETD</p>
-                                    <p className="text-sm font-semibold text-blue-600">
-                                      {line.etd ? formatDate(line.etd) : '-'}
-                                    </p>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <p className="text-xs text-gray-500 font-medium">ETA</p>
-                                    <p className="text-sm font-semibold text-green-600">
-                                      {line.eta ? formatDate(line.eta) : '-'}
-                                    </p>
-                                  </div>
-                                </div>
-                                  
-                                {/* Style Technical Details - Collapsed by default */}
-                                {(style.fabricType || style.gsm || style.construction) && (
-                                  <details className="mt-3 p-2 bg-gray-50 rounded border">
-                                    <summary className="text-xs font-semibold text-gray-700 cursor-pointer">
-                                      Technical Details
-                                    </summary>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 text-xs">
-                                      {style.fabricType && (
-                                        <div>
-                                          <p className="text-gray-500">Fabric</p>
-                                          <p className="font-medium">{style.fabricType}</p>
-                                        </div>
-                                      )}
-                                      {style.gsm && (
-                                        <div>
-                                          <p className="text-gray-500">GSM</p>
-                                          <p className="font-medium">{style.gsm}</p>
-                                        </div>
-                                      )}
-                                      {style.construction && (
-                                        <div>
-                                          <p className="text-gray-500">Construction</p>
-                                          <p className="font-medium">{style.construction}</p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </details>
-                                )}
-
-                                {line.notes && (
-                                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                                    <p className="text-yellow-700 font-medium">Note: {line.notes}</p>
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          )) : null
-                        )}
-                      </div>
-                    </CardContent>
                   </Card>
                 )}
 
