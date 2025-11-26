@@ -16,7 +16,8 @@ interface FileUploadProps {
 
 const CATEGORY_OPTIONS = [
   { value: 'sample', label: 'Sample Photo' },
-  { value: 'test_report', label: 'Test Report' },
+  { value: 'lc', label: 'LC Document' },
+  { value: 'pi', label: 'PI Document' },
   { value: 'email', label: 'Email/Communication' },
   { value: 'other', label: 'Other' },
 ];

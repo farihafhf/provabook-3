@@ -31,7 +31,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   sample: 'Sample Photo',
   lc: 'LC Document',
   pi: 'PI Document',
-  test_report: 'Test Report',
   email: 'Email',
   other: 'Other',
 };
@@ -64,7 +63,6 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
       sample: 'bg-purple-100 text-purple-700 border-purple-200',
       lc: 'bg-blue-100 text-blue-700 border-blue-200',
       pi: 'bg-green-100 text-green-700 border-green-200',
-      test_report: 'bg-orange-100 text-orange-700 border-orange-200',
       email: 'bg-gray-100 text-gray-700 border-gray-200',
       other: 'bg-slate-100 text-slate-700 border-slate-200',
     };
@@ -174,7 +172,6 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
               <SelectItem value="sample">Sample Photos</SelectItem>
               <SelectItem value="lc">LC Documents</SelectItem>
               <SelectItem value="pi">PI Documents</SelectItem>
-              <SelectItem value="test_report">Test Reports</SelectItem>
               <SelectItem value="email">Emails</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>

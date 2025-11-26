@@ -26,7 +26,6 @@ class Document(TimestampedModel):
         SAMPLE = 'sample', 'Sample Photo'
         LC = 'lc', 'LC Document'
         PI = 'pi', 'PI Document'
-        TEST_REPORT = 'test_report', 'Test Report'
         EMAIL = 'email', 'Email'
         OTHER = 'other', 'Other'
     
