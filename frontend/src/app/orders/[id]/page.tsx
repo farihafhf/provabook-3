@@ -1670,7 +1670,7 @@ export default function OrderDetailPage() {
                 {editingDelivery ? 'Edit Delivery Record' : 'Record Supplier Delivery'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="delivery-date">Delivery Date *</Label>
                 <Input
@@ -1686,15 +1686,21 @@ export default function OrderDetailPage() {
               {order?.styles && order.styles.length > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="delivery-style">Style (Optional)</Label>
-                  <Select 
-                    value={deliveryFormData.style} 
-                    onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, style: value, color: '' })}
+                  <Select
+                    value={deliveryFormData.style || "all-styles"}
+                    onValueChange={(value) =>
+                      setDeliveryFormData({
+                        ...deliveryFormData,
+                        style: value === "all-styles" ? "" : value,
+                        color: "",
+                      })
+                    }
                   >
                     <SelectTrigger id="delivery-style">
                       <SelectValue placeholder="Select a style or leave blank for all" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Styles</SelectItem>
+                      <SelectItem value="all-styles">All Styles</SelectItem>
                       {order.styles.map((style) => (
                         <SelectItem key={style.id} value={style.id}>
                           {style.styleNumber}
@@ -1709,15 +1715,20 @@ export default function OrderDetailPage() {
               {deliveryFormData.style && order?.styles && (
                 <div className="space-y-2">
                   <Label htmlFor="delivery-color">Color (Optional)</Label>
-                  <Select 
-                    value={deliveryFormData.color} 
-                    onValueChange={(value) => setDeliveryFormData({ ...deliveryFormData, color: value })}
+                  <Select
+                    value={deliveryFormData.color || "all-colors"}
+                    onValueChange={(value) =>
+                      setDeliveryFormData({
+                        ...deliveryFormData,
+                        color: value === "all-colors" ? "" : value,
+                      })
+                    }
                   >
                     <SelectTrigger id="delivery-color">
                       <SelectValue placeholder="Select a color or leave blank for all" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Colors</SelectItem>
+                      <SelectItem value="all-colors">All Colors</SelectItem>
                       {order.styles
                         .find((s) => s.id === deliveryFormData.style)
                         ?.colors.map((color) => (
