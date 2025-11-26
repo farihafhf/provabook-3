@@ -100,6 +100,9 @@ interface SupplierDelivery {
   color?: string;
   colorCode?: string;
   colorName?: string;
+  cad?: string;
+  cadCode?: string;
+  cadName?: string;
   deliveryDate: string;
   deliveredQuantity: number;
   unit: string;
@@ -222,6 +225,7 @@ export default function OrderDetailPage() {
     orderLine: '',
     style: '',
     color: '',
+    cad: '',
     deliveryDate: '',
     deliveredQuantity: '',
     notes: ''
@@ -308,6 +312,7 @@ export default function OrderDetailPage() {
       orderLine: '',
       style: '',
       color: '',
+      cad: '',
       deliveryDate: order?.etd || new Date().toISOString().split('T')[0],
       deliveredQuantity: '',
       notes: ''
@@ -321,6 +326,7 @@ export default function OrderDetailPage() {
       orderLine: delivery.orderLine || '',
       style: delivery.style || '',
       color: delivery.color || '',
+      cad: delivery.cad || '',
       deliveryDate: delivery.deliveryDate,
       deliveredQuantity: delivery.deliveredQuantity.toString(),
       notes: delivery.notes || ''
@@ -345,6 +351,7 @@ export default function OrderDetailPage() {
         orderLine: deliveryFormData.orderLine || undefined,
         style: deliveryFormData.style || undefined,
         color: deliveryFormData.color || undefined,
+        cad: deliveryFormData.cad || undefined,
         deliveryDate: deliveryFormData.deliveryDate,
         deliveredQuantity: parseFloat(deliveryFormData.deliveredQuantity),
         unit: order?.unit || 'meters',
@@ -814,6 +821,53 @@ export default function OrderDetailPage() {
     return statusMap[status.toLowerCase()] || status;
   };
 
+  // Calculate aggregated order status based on line items
+  const getAggregatedOrderStatus = (): { status: string; display: string } => {
+    if (!order?.styles || order.styles.length === 0) {
+      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming') };
+    }
+
+    const allLines: OrderLine[] = [];
+    order.styles.forEach(style => {
+      if (style.lines && style.lines.length > 0) {
+        allLines.push(...style.lines);
+      }
+    });
+
+    if (allLines.length === 0) {
+      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming') };
+    }
+
+    // If ANY line is running, order is running
+    const hasRunning = allLines.some(line => line.status === 'running');
+    if (hasRunning) {
+      return { status: 'running', display: 'Running Order' };
+    }
+
+    // If ALL lines are completed or bulk, order is completed
+    const allCompleted = allLines.every(line => 
+      line.status === 'completed' || line.status === 'bulk'
+    );
+    if (allCompleted) {
+      return { status: 'completed', display: 'Completed' };
+    }
+
+    // If ANY line is bulk, order is bulk
+    const hasBulk = allLines.some(line => line.status === 'bulk');
+    if (hasBulk) {
+      return { status: 'bulk', display: 'Bulk' };
+    }
+
+    // If ANY line is in_development, order is in_development
+    const hasInDev = allLines.some(line => line.status === 'in_development');
+    if (hasInDev) {
+      return { status: 'in_development', display: 'In Development' };
+    }
+
+    // Default to upcoming
+    return { status: 'upcoming', display: 'Upcoming' };
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -850,7 +904,12 @@ export default function OrderDetailPage() {
               Back to Orders
             </Button>
             <h1 className="text-3xl font-bold">PO #{order.poNumber}</h1>
-            <p className="text-gray-500 mt-2">{order.customerName}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <p className="text-gray-500">{order.customerName}</p>
+              <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
+                {getAggregatedOrderStatus().display}
+              </Badge>
+            </div>
           </div>
           <div className="flex gap-2">
             <Button
@@ -2055,6 +2114,7 @@ export default function OrderDetailPage() {
                       setDeliveryFormData({
                         ...deliveryFormData,
                         color: value === "all-colors" ? "" : value,
+                        cad: "",
                       })
                     }
                   >
@@ -2068,6 +2128,40 @@ export default function OrderDetailPage() {
                         ?.colors.map((color) => (
                           <SelectItem key={color.id} value={color.id}>
                             {color.colorCode} {color.colorName && `(${color.colorName})`}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* CAD Selection - only show if color is selected */}
+              {deliveryFormData.color && order?.styles && (
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-cad">CAD (Optional)</Label>
+                  <Select
+                    value={deliveryFormData.cad || "all-cads"}
+                    onValueChange={(value) =>
+                      setDeliveryFormData({
+                        ...deliveryFormData,
+                        cad: value === "all-cads" ? "" : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="delivery-cad">
+                      <SelectValue placeholder="Select a CAD or leave blank for all" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all-cads">All CADs</SelectItem>
+                      {order.styles
+                        .find((s) => s.id === deliveryFormData.style)
+                        ?.lines?.filter((line) => line.colorCode === order.styles
+                          .find((s) => s.id === deliveryFormData.style)
+                          ?.colors.find((c) => c.id === deliveryFormData.color)?.colorCode)
+                        .filter((line) => line.cadCode)
+                        .map((line) => (
+                          <SelectItem key={line.id} value={line.id}>
+                            {line.cadCode} {line.cadName && `(${line.cadName})`}
                           </SelectItem>
                         ))}
                     </SelectContent>
