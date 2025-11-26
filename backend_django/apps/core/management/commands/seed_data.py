@@ -4,7 +4,7 @@ Usage: python manage.py seed_data
 """
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from apps.orders.models import Order, OrderStatus, OrderCategory
+from apps.orders.models import Order, OrderStatus, OrderCategory, ApprovalHistory
 from apps.orders.models_style_color import OrderStyle, OrderColor
 from apps.orders.models_order_line import OrderLine
 from apps.samples.models import Sample
@@ -33,6 +33,9 @@ class Command(BaseCommand):
         
         # Create order styles, colors, and lines
         self.create_order_lines()
+        
+        # Create approval history for order lines
+        self.create_approval_history()
         
         # Create related samples
         self.create_samples()
@@ -418,6 +421,250 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS(
             f'\n  Created {style_count} styles, {color_count} colors, and {line_count} order lines'
+        ))
+
+    def create_approval_history(self):
+        """Create comprehensive approval history for order lines with realistic timelines"""
+        self.stdout.write('\nCreating approval history records...')
+        
+        # Get all order lines
+        order_lines = OrderLine.objects.select_related('style__order').all()
+        if not order_lines.exists():
+            self.stdout.write(self.style.WARNING('  [WARN] No order lines found, skipping approval history'))
+            return
+        
+        # Get merchandisers to assign as approvers
+        merchandisers = list(User.objects.filter(role='merchandiser'))
+        if not merchandisers:
+            self.stdout.write(self.style.WARNING('  [WARN] No merchandisers found, skipping approval history'))
+            return
+        
+        # Define approval gates and their typical progression
+        approval_gates = [
+            ('labDip', 'Lab Dip'),
+            ('strikeOff', 'Strike-Off'),
+            ('handloom', 'Handloom'),
+            ('ppSample', 'PP Sample'),
+            ('aop', 'AOP'),
+            ('qualityTest', 'Quality Test'),
+            ('bulkSwatch', 'Bulk Swatch'),
+            ('price', 'Price'),
+            ('quality', 'Quality'),
+        ]
+        
+        history_count = 0
+        
+        for line in order_lines:
+            order = line.style.order
+            
+            # Determine how many approval gates to create based on order status
+            if order.status == OrderStatus.COMPLETED:
+                # Completed orders: full approval history (5-7 gates)
+                num_gates = random.randint(5, 7)
+                gates_to_use = approval_gates[:num_gates]
+            elif order.status == OrderStatus.RUNNING:
+                # Running orders: partial approval history (3-5 gates)
+                num_gates = random.randint(3, 5)
+                gates_to_use = approval_gates[:num_gates]
+            else:
+                # Upcoming orders: minimal approval history (1-3 gates)
+                num_gates = random.randint(1, 3)
+                gates_to_use = approval_gates[:num_gates]
+            
+            # Start date: order submission date
+            base_date = order.order_date or date.today()
+            current_date = base_date
+            
+            for gate_idx, (gate_type, gate_name) in enumerate(gates_to_use):
+                # Determine the approval flow for this gate
+                # 70% chance of direct approval, 20% chance of resubmission, 10% chance still pending
+                flow_type = random.choices(
+                    ['direct_approval', 'resubmission', 'pending'],
+                    weights=[0.7, 0.2, 0.1]
+                )[0]
+                
+                approver = random.choice(merchandisers)
+                
+                # For the last gate on non-completed orders, more likely to be pending
+                if gate_idx == len(gates_to_use) - 1 and order.status != OrderStatus.COMPLETED:
+                    flow_type = random.choices(
+                        ['direct_approval', 'pending'],
+                        weights=[0.3, 0.7]
+                    )[0]
+                
+                if flow_type == 'direct_approval':
+                    # Initial submission
+                    submission_date = current_date + timedelta(days=random.randint(1, 3))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='submission'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='submission',
+                            changed_by=approver,
+                            notes=f'Initial {gate_name} submission for {line.line_label}'
+                        )
+                        # Manually set created_at to match timeline
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(submission_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    # Approval after 3-7 days
+                    approval_date = submission_date + timedelta(days=random.randint(3, 7))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='approved'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='approved',
+                            changed_by=approver,
+                            notes=f'{gate_name} approved for {line.line_label}'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(approval_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    current_date = approval_date
+                
+                elif flow_type == 'resubmission':
+                    # Initial submission
+                    submission_date = current_date + timedelta(days=random.randint(1, 3))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='submission'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='submission',
+                            changed_by=approver,
+                            notes=f'Initial {gate_name} submission for {line.line_label}'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(submission_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    # Rejection after 2-4 days
+                    rejection_date = submission_date + timedelta(days=random.randint(2, 4))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='rejected'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='rejected',
+                            changed_by=approver,
+                            notes=f'{gate_name} rejected - color shade mismatch. Resubmission required.'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(rejection_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    # Resubmission after 5-8 days
+                    resubmission_date = rejection_date + timedelta(days=random.randint(5, 8))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='resubmission'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='resubmission',
+                            changed_by=approver,
+                            notes=f'{gate_name} resubmitted with corrections for {line.line_label}'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(resubmission_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    # Final approval after 3-5 days
+                    final_approval_date = resubmission_date + timedelta(days=random.randint(3, 5))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='approved'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='approved',
+                            changed_by=approver,
+                            notes=f'{gate_name} approved after resubmission for {line.line_label}'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(final_approval_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    current_date = final_approval_date
+                
+                else:  # pending
+                    # Initial submission only
+                    submission_date = current_date + timedelta(days=random.randint(1, 3))
+                    if not ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line=line,
+                        approval_type=gate_type,
+                        status='submission'
+                    ).exists():
+                        approval_record = ApprovalHistory.objects.create(
+                            order=order,
+                            order_line=line,
+                            approval_type=gate_type,
+                            status='submission',
+                            changed_by=approver,
+                            notes=f'{gate_name} submitted - awaiting buyer feedback for {line.line_label}'
+                        )
+                        ApprovalHistory.objects.filter(pk=approval_record.pk).update(
+                            created_at=timezone.make_aware(
+                                timezone.datetime.combine(submission_date, timezone.datetime.min.time())
+                            )
+                        )
+                        history_count += 1
+                    
+                    current_date = submission_date
+        
+        self.stdout.write(self.style.SUCCESS(
+            f'\n  Created {history_count} approval history records for order lines'
         ))
 
     def create_samples(self):
