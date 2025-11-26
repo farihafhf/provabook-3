@@ -480,7 +480,16 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        workbook = generate_orders_excel(queryset)
+        
+        # Extract filters for filename generation
+        filters = {
+            'status': request.query_params.get('status'),
+            'category': request.query_params.get('category'),
+            'merchandiser': request.query_params.get('merchandiserId'),
+            'search': request.query_params.get('search'),
+        }
+        
+        workbook, filename = generate_orders_excel(queryset, filters)
 
         output = BytesIO()
         workbook.save(output)
@@ -490,5 +499,5 @@ class OrderViewSet(viewsets.ModelViewSet):
             output.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = 'attachment; filename="orders_export.xlsx"'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response

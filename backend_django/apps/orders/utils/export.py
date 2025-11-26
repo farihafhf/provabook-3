@@ -1,53 +1,435 @@
 from typing import Iterable
 from datetime import datetime
+import pytz
 
 from openpyxl import Workbook
-from openpyxl.styles import Font
+from openpyxl.styles import Font, Alignment
+from openpyxl.utils import get_column_letter
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 
-def generate_orders_excel(queryset: Iterable) -> Workbook:
-    """Generate an Excel workbook for the given orders queryset."""
+def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
+    """
+    Generate an Excel workbook for the given orders queryset.
+    Returns (workbook, filename) tuple.
+    
+    Args:
+        queryset: QuerySet of Order objects
+        filters: Dictionary of applied filters for filename generation
+    """
+    from apps.orders.models_style_color import OrderStyle
+    from apps.orders.models_order_line import OrderLine
+    from apps.orders.models_supplier_delivery import SupplierDelivery
+    from apps.orders.models_document import Document
+    from apps.orders.models import ApprovalHistory
+    
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = "Orders"
-
-    # Header row
+    worksheet.title = "Orders Export"
+    
+    # Get unique approval types across all orders for dynamic columns
+    approval_types = set()
+    for order in queryset:
+        if order.approval_status:
+            approval_types.update(order.approval_status.keys())
+        # Also check approval history for all approval types
+        for history in ApprovalHistory.objects.filter(order=order):
+            approval_types.add(history.approval_type)
+    
+    # Sort approval types for consistent column order
+    approval_types = sorted(list(approval_types))
+    
+    # Build header row
     headers = [
-        "Order ID",
-        "Customer",
-        "Style",
-        "Stage",
-        "Quantity",
-        "ETD",
-        "Created At",
+        "ID",
+        "Order No.",
+        "Style Number",
+        "Color",
+        "CAD",
+        "Description",
+        "Buyer",
+        "Supplier",
+        "Assigned To",
+        "Quantity Expected",
+        "Unit",
+        "Mill Price",
+        "LC Open Price",
+        "Profit per Unit",
+        "Original Profit",
+        "ETD Date",
+        "ETA Date",
+        "ETD Quantity",
+        "ETD Total Quantity",
+        "Delivery Excess/Shortage",
     ]
+    
+    # Add dynamic approval stage columns
+    for approval_type in approval_types:
+        headers.append(f"approval_stage_{approval_type}_date")
+    
+    headers.extend([
+        "Order Status",
+        "Bulk Start Date",
+        "Latest PI Sent Date",
+        "LC Received Date",
+        "LC ID",
+        "Total Commission",
+        "Adjusted Profit",
+        "Reduced Profit",
+        "Supplier Delivery History",
+        "Created By",
+        "Created At",
+        "Last Updated By",
+        "Last Updated At",
+    ])
+    
     worksheet.append(headers)
-
-    # Make header row bold
+    
+    # Format header row
     for cell in worksheet[1]:
         cell.font = Font(bold=True)
-
-    # Data rows
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    
+    # Freeze header row
+    worksheet.freeze_panes = 'A2'
+    
+    # Process each order
+    dhaka_tz = pytz.timezone('Asia/Dhaka')
+    
     for order in queryset:
-        created_at = getattr(order, "created_at", None)
-        if isinstance(created_at, datetime) and created_at.tzinfo is not None:
-            # Excel does not support timezone-aware datetimes
-            created_at = created_at.replace(tzinfo=None)
+        # Get all styles for this order
+        styles = OrderStyle.objects.filter(order=order).prefetch_related('lines')
+        
+        if not styles.exists():
+            # No styles - export order-level data only
+            row_data = _build_order_row(
+                order, None, None, approval_types, dhaka_tz
+            )
+            worksheet.append(row_data)
+        else:
+            # Export each order line
+            for style in styles:
+                lines = style.lines.all()
+                
+                if not lines.exists():
+                    # Style has no lines - export style-level data
+                    row_data = _build_order_row(
+                        order, style, None, approval_types, dhaka_tz
+                    )
+                    worksheet.append(row_data)
+                else:
+                    # Export each line
+                    for line in lines:
+                        row_data = _build_order_row(
+                            order, style, line, approval_types, dhaka_tz
+                        )
+                        worksheet.append(row_data)
+    
+    # Auto-size columns
+    for idx, column in enumerate(worksheet.columns, start=1):
+        max_length = 0
+        column_letter = get_column_letter(idx)
+        
+        for cell in column:
+            try:
+                if cell.value:
+                    max_length = max(max_length, len(str(cell.value)))
+            except:
+                pass
+        
+        adjusted_width = min(max_length + 2, 50)
+        worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # Generate filename
+    filename = _generate_filename(filters, dhaka_tz)
+    
+    return workbook, filename
 
-        worksheet.append([
-            getattr(order, "order_number", "") or "",
-            getattr(order, "customer_name", "") or "",
-            getattr(order, "style_number", "") or "",
-            getattr(order, "current_stage", "") or "",
-            getattr(order, "quantity", None),
-            getattr(order, "etd", None),
-            created_at,
-        ])
 
-    return workbook
+def _build_order_row(order, style, line, approval_types, dhaka_tz):
+    """Build a single row of data for Excel export."""
+    from apps.orders.models_supplier_delivery import SupplierDelivery
+    from apps.orders.models_document import Document
+    from apps.orders.models import ApprovalHistory
+    
+    # Helper function to format datetime
+    def format_datetime(dt):
+        if dt is None:
+            return ""
+        if isinstance(dt, datetime):
+            if dt.tzinfo is None:
+                dt = pytz.utc.localize(dt)
+            dt = dt.astimezone(dhaka_tz)
+            return dt.strftime("%Y-%m-%d %I:%M %p")
+        else:
+            # Date only
+            return dt.strftime("%Y-%m-%d")
+    
+    # Determine data source (line > style > order)
+    data_source = line if line else (style if style else order)
+    
+    # ID
+    id_value = order.order_number
+    
+    # Order No.
+    order_no = order.order_number
+    
+    # Style Number
+    style_number = style.style_number if style else (order.style_number or "")
+    
+    # Color
+    color = ""
+    if line and line.color_code:
+        color = f"{line.color_code}"
+        if line.color_name:
+            color += f" ({line.color_name})"
+    
+    # CAD
+    cad = ""
+    if line and line.cad_code:
+        cad = f"{line.cad_code}"
+        if line.cad_name:
+            cad += f" ({line.cad_name})"
+    elif order.cad:
+        cad = order.cad
+    
+    # Description
+    description_parts = []
+    fabric_type = getattr(style, 'fabric_type', None) or order.fabric_type
+    if fabric_type:
+        description_parts.append(f"**Fabric Type** {fabric_type}")
+    
+    composition = getattr(style, 'fabric_composition', None) or order.fabric_composition
+    if composition:
+        description_parts.append(f"Composition: {composition}")
+    
+    gsm = getattr(style, 'gsm', None) or order.gsm
+    if gsm:
+        description_parts.append(f"GSM: {gsm}")
+    
+    finish_type = getattr(style, 'finish_type', None) or order.finish_type
+    if finish_type:
+        description_parts.append(f"Finish Type: {finish_type}")
+    
+    construction = getattr(style, 'construction', None) or order.construction
+    if construction:
+        description_parts.append(f"Construction: {construction}")
+    
+    description = "\n".join(description_parts)
+    
+    # Buyer
+    buyer = order.buyer_name or order.customer_name
+    
+    # Supplier
+    supplier = getattr(data_source, 'mill_name', None) or order.mill_name or ""
+    
+    # Assigned To
+    assigned_to = order.merchandiser.full_name if order.merchandiser else ""
+    
+    # Quantity Expected
+    quantity_expected = float(data_source.quantity) if hasattr(data_source, 'quantity') else 0
+    
+    # Unit
+    unit = getattr(data_source, 'unit', 'meters')
+    
+    # Mill Price
+    mill_price = float(data_source.mill_price) if hasattr(data_source, 'mill_price') and data_source.mill_price else 0
+    
+    # LC Open Price (Prova Price)
+    lc_open_price = float(data_source.prova_price) if hasattr(data_source, 'prova_price') and data_source.prova_price else 0
+    
+    # Profit per Unit
+    profit_per_unit = lc_open_price - mill_price
+    
+    # Original Profit
+    original_profit = profit_per_unit * quantity_expected
+    
+    # ETD Date
+    etd_date = format_datetime(getattr(data_source, 'etd', None) or order.etd)
+    
+    # ETA Date
+    eta_date = format_datetime(getattr(data_source, 'eta', None) or order.eta)
+    
+    # ETD Quantity & ETD Total Quantity
+    # Get deliveries for this order
+    deliveries = SupplierDelivery.objects.filter(order=order)
+    if style:
+        deliveries = deliveries.filter(style=style)
+    
+    etd_quantity = sum(float(d.delivered_quantity) for d in deliveries)
+    etd_total_quantity = float(order.total_delivered_quantity)
+    
+    # Delivery Excess/Shortage
+    delivery_excess_shortage = etd_quantity - quantity_expected
+    
+    # Approval stage dates (dynamic columns)
+    approval_dates = []
+    for approval_type in approval_types:
+        # Get the latest approved date for this approval type
+        approval_date = ""
+        
+        # Check line-level approval history first
+        if line:
+            history = ApprovalHistory.objects.filter(
+                order=order,
+                order_line=line,
+                approval_type=approval_type,
+                status='approved'
+            ).order_by('-created_at').first()
+            
+            if history:
+                approval_date = format_datetime(history.created_at)
+        
+        # Fallback to order-level approval history
+        if not approval_date:
+            history = ApprovalHistory.objects.filter(
+                order=order,
+                order_line__isnull=True,
+                approval_type=approval_type,
+                status='approved'
+            ).order_by('-created_at').first()
+            
+            if history:
+                approval_date = format_datetime(history.created_at)
+        
+        approval_dates.append(approval_date)
+    
+    # Order Status
+    order_status = order.get_status_display()
+    
+    # Bulk Start Date
+    bulk_start_date = ""
+    if order.status == 'bulk':
+        # Try to find when status changed to bulk
+        # This would require status change tracking - for now use updated_at
+        bulk_start_date = format_datetime(order.updated_at)
+    
+    # Latest PI Sent Date
+    pi_sent_date = ""
+    pi_docs = Document.objects.filter(order=order, category='pi').order_by('-created_at').first()
+    if pi_docs:
+        pi_sent_date = format_datetime(pi_docs.created_at)
+    
+    # LC Received Date
+    lc_received_date = ""
+    lc_docs = Document.objects.filter(order=order, category='lc').order_by('-created_at').first()
+    if lc_docs:
+        lc_received_date = format_datetime(lc_docs.created_at)
+    
+    # LC ID
+    lc_id = ""
+    if lc_docs and lc_docs.description:
+        lc_id = lc_docs.description
+    
+    # Total Commission
+    commission = getattr(data_source, 'commission', None)
+    total_commission = float(commission) * quantity_expected if commission else 0
+    
+    # Adjusted Profit (based on delivered quantity)
+    if etd_total_quantity > 0:
+        delivery_ratio = min(1.0, etd_total_quantity / float(order.quantity))
+    else:
+        delivery_ratio = 0.0
+    adjusted_profit = original_profit * delivery_ratio
+    
+    # Reduced Profit
+    reduced_profit = adjusted_profit - original_profit
+    
+    # Supplier Delivery History
+    delivery_history_parts = []
+    for delivery in deliveries.order_by('delivery_date'):
+        delivery_history_parts.append(
+            f"{delivery.delivery_date.strftime('%Y-%m-%d')}:{delivery.delivered_quantity}"
+        )
+    supplier_delivery_history = "; ".join(delivery_history_parts)
+    
+    # Created By
+    created_by = order.merchandiser.full_name if order.merchandiser else ""
+    
+    # Created At
+    created_at = format_datetime(order.created_at)
+    
+    # Last Updated By
+    # Note: We don't track who updated, so we'll use merchandiser
+    last_updated_by = order.merchandiser.full_name if order.merchandiser else ""
+    
+    # Last Updated At
+    last_updated_at = format_datetime(order.updated_at)
+    
+    # Build row
+    row = [
+        id_value,
+        order_no,
+        style_number,
+        color,
+        cad,
+        description,
+        buyer,
+        supplier,
+        assigned_to,
+        quantity_expected,
+        unit,
+        mill_price,
+        lc_open_price,
+        profit_per_unit,
+        original_profit,
+        etd_date,
+        eta_date,
+        etd_quantity,
+        etd_total_quantity,
+        delivery_excess_shortage,
+    ]
+    
+    # Add approval dates
+    row.extend(approval_dates)
+    
+    # Add remaining columns
+    row.extend([
+        order_status,
+        bulk_start_date,
+        pi_sent_date,
+        lc_received_date,
+        lc_id,
+        total_commission,
+        adjusted_profit,
+        reduced_profit,
+        supplier_delivery_history,
+        created_by,
+        created_at,
+        last_updated_by,
+        last_updated_at,
+    ])
+    
+    return row
+
+
+def _generate_filename(filters, dhaka_tz):
+    """Generate filename based on filters and current timestamp."""
+    # Build filter description
+    filter_parts = []
+    
+    if filters:
+        if filters.get('status'):
+            filter_parts.append(filters['status'])
+        if filters.get('category'):
+            filter_parts.append(filters['category'])
+        if filters.get('merchandiser'):
+            filter_parts.append('merchandiser')
+        if filters.get('search'):
+            filter_parts.append('search')
+    
+    filter_desc = "_".join(filter_parts) if filter_parts else "all"
+    
+    # Get current timestamp in Asia/Dhaka timezone
+    now = datetime.now(dhaka_tz)
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%I%M%p")
+    
+    filename = f"prova_orders_export_{filter_desc}_{date_str}_{time_str}.xlsx"
+    
+    return filename
 
 
 def generate_purchase_order_pdf(order, buffer):
