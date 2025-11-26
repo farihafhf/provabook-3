@@ -20,17 +20,42 @@ import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
 interface OrderLineFormData {
+  // Required
   styleNumber: string;
   quantity: string;
   unit: string;
+  
+  // Optional Color
   colorCode?: string;
+  colorName?: string;
+  
+  // Optional CAD
   cadCode?: string;
+  cadName?: string;
+  
+  // Optional Style Technical Details
+  description?: string;
+  fabricType?: string;
+  fabricComposition?: string;
+  gsm?: string;
+  finishType?: string;
+  construction?: string;
+  cuttableWidth?: string;
+  
+  // Optional Commercial Data
+  millName?: string;
   millPrice?: string;
   provaPrice?: string;
   commission?: string;
   currency?: string;
+  
+  // Optional Dates
   etd?: string;
   eta?: string;
+  submissionDate?: string;
+  approvalDate?: string;
+  
+  // Optional Notes
   notes?: string;
 }
 
@@ -179,18 +204,32 @@ export function CreateOrderDialog({
           const firstLine = lines[0];
           return {
             styleNumber: styleNumber,
-            fabricType: formData.fabricType,
+            description: firstLine.description || undefined,
+            fabricType: firstLine.fabricType || formData.fabricType,
+            fabricComposition: firstLine.fabricComposition || undefined,
+            gsm: firstLine.gsm ? parseFloat(firstLine.gsm) : undefined,
+            finishType: firstLine.finishType || undefined,
+            construction: firstLine.construction || undefined,
+            cuttableWidth: firstLine.cuttableWidth || undefined,
+            etd: firstLine.etd || undefined,
+            eta: firstLine.eta || undefined,
+            submissionDate: firstLine.submissionDate || undefined,
             lines: lines.map((line) => ({
               colorCode: line.colorCode || undefined,
+              colorName: line.colorName || undefined,
               cadCode: line.cadCode || undefined,
+              cadName: line.cadName || undefined,
               quantity: parseFloat(line.quantity),
               unit: line.unit,
+              millName: line.millName || undefined,
               millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
               provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
               commission: line.commission ? parseFloat(line.commission) : undefined,
               currency: line.currency || undefined,
               etd: line.etd || undefined,
               eta: line.eta || undefined,
+              submissionDate: line.submissionDate || undefined,
+              approvalDate: line.approvalDate || undefined,
               notes: line.notes || undefined,
             })),
           };
@@ -403,7 +442,7 @@ export function CreateOrderDialog({
                 {/* Optional: Color & CAD */}
                 <div className="border-b pb-4">
                   <Label className="text-sm font-semibold text-blue-700 mb-2 block">Color & CAD (Optional)</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <div>
                       <Label htmlFor={`line-${lineIndex}-colorCode`}>Color Code</Label>
                       <Input
@@ -411,6 +450,15 @@ export function CreateOrderDialog({
                         value={line.colorCode || ''}
                         onChange={(e) => updateOrderLine(lineIndex, 'colorCode', e.target.value)}
                         placeholder="e.g., RED-01"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-colorName`}>Color Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-colorName`}
+                        value={line.colorName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'colorName', e.target.value)}
+                        placeholder="e.g., Crimson Red"
                       />
                     </div>
                     <div>
@@ -422,8 +470,88 @@ export function CreateOrderDialog({
                         placeholder="e.g., CAD-001"
                       />
                     </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cadName`}>CAD Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-cadName`}
+                        value={line.cadName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cadName', e.target.value)}
+                        placeholder="e.g., Floral Pattern"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Optional: Style Technical Details */}
+                <details className="border-b pb-4">
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
+                    Style Technical Details (Optional)
+                  </summary>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="col-span-2">
+                      <Label htmlFor={`line-${lineIndex}-description`}>Description</Label>
+                      <Textarea
+                        id={`line-${lineIndex}-description`}
+                        value={line.description || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'description', e.target.value)}
+                        placeholder="Style description"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-fabricType`}>Fabric Type</Label>
+                      <Input
+                        id={`line-${lineIndex}-fabricType`}
+                        value={line.fabricType || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'fabricType', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-fabricComposition`}>Fabric Composition</Label>
+                      <Input
+                        id={`line-${lineIndex}-fabricComposition`}
+                        value={line.fabricComposition || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'fabricComposition', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-gsm`}>GSM</Label>
+                      <Input
+                        id={`line-${lineIndex}-gsm`}
+                        type="number"
+                        value={line.gsm || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'gsm', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-finishType`}>Finish Type</Label>
+                      <Input
+                        id={`line-${lineIndex}-finishType`}
+                        value={line.finishType || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'finishType', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-cuttableWidth`}>Cuttable Width</Label>
+                      <Input
+                        id={`line-${lineIndex}-cuttableWidth`}
+                        value={line.cuttableWidth || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'cuttableWidth', e.target.value)}
+                        placeholder="e.g., 60 inches"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor={`line-${lineIndex}-construction`}>Construction</Label>
+                      <Textarea
+                        id={`line-${lineIndex}-construction`}
+                        value={line.construction || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'construction', e.target.value)}
+                        placeholder="Construction details"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </details>
 
                 {/* Optional: Commercial Data */}
                 <details>
@@ -431,6 +559,14 @@ export function CreateOrderDialog({
                     Commercial Data (Optional)
                   </summary>
                   <div className="grid grid-cols-3 gap-3 mt-2">
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-millName`}>Mill Name</Label>
+                      <Input
+                        id={`line-${lineIndex}-millName`}
+                        value={line.millName || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'millName', e.target.value)}
+                      />
+                    </div>
                     <div>
                       <Label htmlFor={`line-${lineIndex}-millPrice`}>Mill Price</Label>
                       <Input
@@ -461,6 +597,15 @@ export function CreateOrderDialog({
                         onChange={(e) => updateOrderLine(lineIndex, 'commission', e.target.value)}
                       />
                     </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-currency`}>Currency</Label>
+                      <Input
+                        id={`line-${lineIndex}-currency`}
+                        value={line.currency || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'currency', e.target.value)}
+                        placeholder="e.g., USD"
+                      />
+                    </div>
                   </div>
                 </details>
 
@@ -468,9 +613,9 @@ export function CreateOrderDialog({
                 <details>
                   <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Delivery Dates (Optional)
+                    Delivery & Approval Dates (Optional)
                   </summary>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="grid grid-cols-4 gap-3 mt-2">
                     <div>
                       <Label htmlFor={`line-${lineIndex}-etd`}>ETD</Label>
                       <Input
@@ -487,6 +632,24 @@ export function CreateOrderDialog({
                         type="date"
                         value={line.eta || ''}
                         onChange={(e) => updateOrderLine(lineIndex, 'eta', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-submissionDate`}>Submission Date</Label>
+                      <Input
+                        id={`line-${lineIndex}-submissionDate`}
+                        type="date"
+                        value={line.submissionDate || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'submissionDate', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-approvalDate`}>Approval Date</Label>
+                      <Input
+                        id={`line-${lineIndex}-approvalDate`}
+                        type="date"
+                        value={line.approvalDate || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'approvalDate', e.target.value)}
                       />
                     </div>
                   </div>

@@ -154,6 +154,11 @@ interface Order {
     changedByName?: string;
     changedByEmail?: string;
     createdAt: string;
+    orderLineId?: string;
+    lineLabel?: string;
+    styleNumber?: string;
+    colorCode?: string;
+    cadCode?: string;
   }>;
   styles?: OrderStyle[];
   merchandiser?: string;
@@ -1269,13 +1274,62 @@ export default function OrderDetailPage() {
                 )}
               </div>
 
-              <div>
+              <div className="space-y-4">
+                {/* Order-Level Approval Timeline */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Tracking Timeline</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <span>Order-Level Approval History</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Aggregated</span>
+                    </CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">Timeline of order-wide approval changes</p>
                   </CardHeader>
                   <CardContent>
-                    <OrderTimeline events={order.timelineEvents ?? []} />
+                    <OrderTimeline events={
+                      (order.approvalHistoryData ?? [])
+                        .filter(h => !h.orderLineId) // Only order-level approvals
+                        .map(history => ({
+                          title: `${history.approvalType} → ${history.status}`,
+                          date: history.createdAt,
+                          status: history.status === 'approved' ? 'completed' as const : 
+                                  history.status === 'rejected' ? 'pending' as const : 
+                                  'current' as const,
+                          description: history.changedByName ? `Changed by ${history.changedByName}` : ''
+                        }))
+                    } />
+                  </CardContent>
+                </Card>
+
+                {/* Line-Level Approval Timeline */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span>Line-Level Approval History</span>
+                      <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Per Line</span>
+                    </CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">Timeline of approvals for individual order lines</p>
+                  </CardHeader>
+                  <CardContent>
+                    <OrderTimeline events={
+                      (order.approvalHistoryData ?? [])
+                        .filter(h => h.orderLineId) // Only line-level approvals
+                        .map(history => {
+                          const lineIdentifier = [
+                            history.styleNumber,
+                            history.colorCode && `🎨 ${history.colorCode}`,
+                            history.cadCode && `📐 ${history.cadCode}`
+                          ].filter(Boolean).join(' ');
+                          
+                          return {
+                            title: `${history.approvalType} → ${history.status}`,
+                            date: history.createdAt,
+                            status: history.status === 'approved' ? 'completed' as const : 
+                                    history.status === 'rejected' ? 'pending' as const : 
+                                    'current' as const,
+                            description: `${lineIdentifier}${history.changedByName ? ` • Changed by ${history.changedByName}` : ''}`
+                          };
+                        })
+                    } />
                   </CardContent>
                 </Card>
               </div>
