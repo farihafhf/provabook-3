@@ -110,9 +110,10 @@ export function TaskAssignment({ orderId }: TaskAssignmentProps) {
     setSubmitting(true);
 
     try {
+      const normalizedTitle = formData.title.trim() || 'Order task';
       const taskData = {
         order: orderId,
-        title: formData.title,
+        title: normalizedTitle,
         description: formData.description || undefined,
         assignedTo: formData.assignedTo || undefined,
         priority: formData.priority,
@@ -260,10 +261,9 @@ export function TaskAssignment({ orderId }: TaskAssignmentProps) {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Task Title *</Label>
+                <Label htmlFor="title">Task Title (optional)</Label>
                 <Input
                   id="title"
-                  required
                   placeholder="e.g., Review Lab Dip"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}

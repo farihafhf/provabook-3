@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { ApprovalQueue } from '@/components/dashboard/approval-queue';
-import { EtdAlertsWidget, type EtdAlert } from '@/components/dashboard/etd-alerts-widget';
 import type { AlertsWidgetOrder } from '@/components/dashboard/alerts-widget';
 import type { ApprovalQueueOrder } from '@/components/dashboard/approval-queue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -49,7 +48,6 @@ interface ManagerDashboard {
     etd: DateWindow;
     eta: DateWindow;
   };
-  etdAlerts?: EtdAlert[];
 }
 
 interface MerchandiserDashboard {
@@ -63,7 +61,6 @@ interface MerchandiserDashboard {
     etd: DateWindow;
     eta: DateWindow;
   };
-  etdAlerts?: EtdAlert[];
 }
 
 interface ChartData {
@@ -281,16 +278,16 @@ export default function DashboardPage() {
                         ETD (Estimated Time of Dispatch)
                       </h4>
                       <div className="space-y-3">
-                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <span className="text-sm text-gray-600">Next 7 days</span>
-                          <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next7}</span>
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                          <span className="text-sm text-gray-600">0-5 days (High risk)</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.etd.next7}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <span className="text-sm text-gray-600">6-10 days (Medium risk)</span>
+                          <span className="text-xl font-bold text-amber-600">{data.upcoming.etd.next14}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <span className="text-sm text-gray-600">Next 14 days</span>
-                          <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next14}</span>
-                        </div>
-                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <span className="text-sm text-gray-600">Next 30 days</span>
+                          <span className="text-sm text-gray-600">11-30 days</span>
                           <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next30}</span>
                         </div>
                         {data.upcoming.etd.overdue > 0 && (
@@ -308,15 +305,15 @@ export default function DashboardPage() {
                       </h4>
                       <div className="space-y-3">
                         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                          <span className="text-sm text-gray-600">Next 7 days</span>
+                          <span className="text-sm text-gray-600">0-5 days</span>
                           <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next7}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                          <span className="text-sm text-gray-600">Next 14 days</span>
+                          <span className="text-sm text-gray-600">6-10 days</span>
                           <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next14}</span>
                         </div>
                         <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                          <span className="text-sm text-gray-600">Next 30 days</span>
+                          <span className="text-sm text-gray-600">11-30 days</span>
                           <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next30}</span>
                         </div>
                         {data.upcoming.eta.overdue > 0 && (
@@ -361,12 +358,8 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <EtdAlertsWidget alerts={data.etdAlerts || []} />
             <AlertsWidget orders={upcomingEtdAlerts} />
             <ApprovalQueue orders={stuckApprovalAlerts} />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <MyTasksWidget />
           </div>
 
@@ -504,16 +497,16 @@ export default function DashboardPage() {
                       ETD (Estimated Time of Dispatch)
                     </h4>
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <span className="text-sm text-gray-600">Next 7 days</span>
-                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next7}</span>
+                      <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                        <span className="text-sm text-gray-600">0-5 days (High risk)</span>
+                        <span className="text-xl font-bold text-red-600">{data.upcoming.etd.next7}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <span className="text-sm text-gray-600">6-10 days (Medium risk)</span>
+                        <span className="text-xl font-bold text-amber-600">{data.upcoming.etd.next14}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <span className="text-sm text-gray-600">Next 14 days</span>
-                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next14}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <span className="text-sm text-gray-600">Next 30 days</span>
+                        <span className="text-sm text-gray-600">11-30 days</span>
                         <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next30}</span>
                       </div>
                       {data.upcoming.etd.overdue > 0 && (
@@ -531,15 +524,15 @@ export default function DashboardPage() {
                     </h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                        <span className="text-sm text-gray-600">Next 7 days</span>
+                        <span className="text-sm text-gray-600">0-5 days</span>
                         <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next7}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                        <span className="text-sm text-gray-600">Next 14 days</span>
+                        <span className="text-sm text-gray-600">6-10 days</span>
                         <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next14}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                        <span className="text-sm text-gray-600">Next 30 days</span>
+                        <span className="text-sm text-gray-600">11-30 days</span>
                         <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next30}</span>
                       </div>
                       {data.upcoming.eta.overdue > 0 && (
@@ -566,11 +559,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* My Tasks and Alerts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EtdAlertsWidget alerts={data.etdAlerts || []} />
-            <MyTasksWidget />
-          </div>
+          {/* My Tasks */}
+          <MyTasksWidget />
 
           {/* My Recent Activity */}
           <Card>

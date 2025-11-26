@@ -125,67 +125,105 @@ def dashboard_view(request):
             'recentActivities': recent_activities
         }
     
+    # Build effective ETD/ETA per order using order-level, style-level and color-level dates
+    order_rows = list(orders.values_list('id', 'etd', 'eta', 'status', 'category'))
+    order_ids = [row[0] for row in order_rows]
+
+    etd_sources = {}
+    eta_sources = {}
+    status_map = {}
+    category_map = {}
+
+    for order_id, order_etd, order_eta, status, category in order_rows:
+        status_map[order_id] = status
+        category_map[order_id] = category
+        if order_etd:
+            etd_sources.setdefault(order_id, []).append(order_etd)
+        if order_eta:
+            eta_sources.setdefault(order_id, []).append(order_eta)
+
+    if order_ids:
+        # Import here to avoid circular imports at module load time
+        from apps.orders.models_style_color import OrderStyle, OrderColor
+
+        # Style-level dates
+        style_rows = OrderStyle.objects.filter(order_id__in=order_ids).values_list('order_id', 'etd', 'eta')
+        for order_id, style_etd, style_eta in style_rows:
+            if style_etd:
+                etd_sources.setdefault(order_id, []).append(style_etd)
+            if style_eta:
+                eta_sources.setdefault(order_id, []).append(style_eta)
+
+        # Color-level dates
+        color_rows = OrderColor.objects.filter(style__order_id__in=order_ids).values_list('style__order_id', 'etd', 'eta')
+        for order_id, color_etd, color_eta in color_rows:
+            if color_etd:
+                etd_sources.setdefault(order_id, []).append(color_etd)
+            if color_eta:
+                eta_sources.setdefault(order_id, []).append(color_eta)
+
+    effective_etd = {}
+    effective_eta = {}
+
+    for order_id in order_ids:
+        etd_dates = etd_sources.get(order_id)
+        if etd_dates:
+            effective_etd[order_id] = min(etd_dates)
+        eta_dates = eta_sources.get(order_id)
+        if eta_dates:
+            effective_eta[order_id] = min(eta_dates)
+
     # Common additions: Orders by current stage and upcoming ETD/ETA windows
     stage_counts = orders.values('current_stage').annotate(count=Count('id')).order_by()
     by_stage = {item['current_stage'] or 'Unknown': item['count'] for item in stage_counts}
 
     today = date.today()
-    in_7 = today + timedelta(days=7)
-    in_14 = today + timedelta(days=14)
-    in_30 = today + timedelta(days=30)
 
-    def date_window_counts(field_name):
-        # Exclusive windows: 0-7, 8-14, 15-30 days
-        return {
-            'next7': orders.filter(**{f"{field_name}__gte": today, f"{field_name}__lte": in_7}).count(),
-            'next14': orders.filter(**{f"{field_name}__gt": in_7, f"{field_name}__lte": in_14}).count(),
-            'next30': orders.filter(**{f"{field_name}__gt": in_14, f"{field_name}__lte": in_30}).count(),
-            'overdue': orders.filter(**{f"{field_name}__lt": today}).count(),
+    def build_window_counts(effective_dates):
+        """Build upcoming buckets based on earliest date per order.
+
+        Buckets are interpreted on the frontend as:
+          - next7  -> within 5 days (high risk)
+          - next14 -> within 10 days (medium risk)
+          - next30 -> within 30 days
+        Completed and archived orders are excluded from upcoming buckets.
+        """
+        in_5 = today + timedelta(days=5)
+        in_10 = today + timedelta(days=10)
+        in_30 = today + timedelta(days=30)
+
+        counts = {
+            'next7': 0,
+            'next14': 0,
+            'next30': 0,
+            'overdue': 0,
         }
+
+        for order_id, event_date in effective_dates.items():
+            # Skip archived/completed orders from upcoming risk buckets
+            if category_map.get(order_id) == OrderCategory.ARCHIVED:
+                continue
+            if status_map.get(order_id) == OrderStatus.COMPLETED:
+                continue
+
+            diff_days = (event_date - today).days
+
+            if diff_days < 0:
+                counts['overdue'] += 1
+            elif diff_days <= 5:
+                counts['next7'] += 1
+            elif diff_days <= 10:
+                counts['next14'] += 1
+            elif diff_days <= 30:
+                counts['next30'] += 1
+
+        return counts
 
     stats['byStage'] = by_stage
     stats['upcoming'] = {
-        'etd': date_window_counts('etd'),
-        'eta': date_window_counts('eta'),
+        'etd': build_window_counts(effective_etd),
+        'eta': build_window_counts(effective_eta),
     }
-    
-    # Get ETD alerts for the dashboard
-    ten_days_ahead = today + timedelta(days=10)
-    
-    etd_alerts_orders = orders.filter(
-        etd__isnull=False,
-        etd__lte=ten_days_ahead
-    ).exclude(
-        current_stage='Delivered'
-    ).order_by('etd')[:10]  # Limit to 10 most urgent
-    
-    etd_alerts = []
-    for order in etd_alerts_orders:
-        days_until_etd = (order.etd - today).days
-        
-        # Determine severity
-        if days_until_etd < 0:
-            severity = 'critical'
-            alert_type = 'overdue'
-        elif days_until_etd <= 5:
-            severity = 'critical'
-            alert_type = 'urgent'
-        else:
-            severity = 'warning'
-            alert_type = 'approaching'
-        
-        etd_alerts.append({
-            'id': str(order.id),
-            'orderNumber': order.order_number,
-            'customerName': order.customer_name,
-            'etd': order.etd.isoformat() if order.etd else None,
-            'daysUntilEtd': days_until_etd,
-            'severity': severity,
-            'alertType': alert_type,
-            'currentStage': order.current_stage
-        })
-    
-    stats['etdAlerts'] = etd_alerts
 
     return Response(stats)
 

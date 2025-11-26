@@ -31,6 +31,7 @@ interface Order {
   currency?: string;
   potentialProfit?: number;
   realizedProfit?: number;
+  merchandiserName?: string;
 }
 
 interface OrdersFilterParams {
@@ -291,6 +292,7 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">Potential Profit</th>
                       <th className="pb-3 font-medium">Realized Profit</th>
+                      <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
                       <th className="pb-3 font-medium">Actions</th>
@@ -321,6 +323,13 @@ function OrdersPageContent() {
                             <span className="font-medium text-green-700">
                               {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-4">
+                          {order.merchandiserName ? (
+                            <span className="text-gray-700">{order.merchandiserName}</span>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}

@@ -16,7 +16,6 @@ interface Notification {
   title: string;
   message: string;
   notificationType: string;
-  severity: 'info' | 'warning' | 'critical';
   relatedId?: string;
   relatedType?: string;
   isRead: boolean;
@@ -73,16 +72,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const getNotificationIcon = (type: string, severity: string) => {
-    // ETD alerts use severity-based coloring
-    if (type === 'etd_alert') {
-      if (severity === 'critical') {
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      } else if (severity === 'warning') {
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
-      }
-    }
-    
+  const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'task_assigned':
         return <AlertCircle className="h-5 w-5 text-purple-600" />;
@@ -94,6 +84,10 @@ export default function NotificationsPage() {
         return <CheckCircle className="h-5 w-5 text-blue-600" />;
       case 'etd_reminder':
         return <Clock className="h-5 w-5 text-red-600" />;
+      case 'eta_alert_high':
+        return <Clock className="h-5 w-5 text-red-600" />;
+      case 'eta_alert_medium':
+        return <Clock className="h-5 w-5 text-amber-500" />;
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;
     }
@@ -110,35 +104,6 @@ export default function NotificationsPage() {
       router.push(`/orders/${notification.relatedId}`);
       return;
     }
-  };
-
-  const getNotificationBgColor = (notification: Notification) => {
-    if (notification.isRead) {
-      return 'bg-white hover:bg-gray-50 border-gray-200';
-    }
-    
-    // Use severity-based colors for unread notifications
-    if (notification.severity === 'critical') {
-      return 'bg-red-50 hover:bg-red-100 border-red-200 shadow-sm';
-    } else if (notification.severity === 'warning') {
-      return 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200 shadow-sm';
-    }
-    
-    return 'bg-purple-50 hover:bg-purple-100 border-purple-200 shadow-sm';
-  };
-
-  const getNotificationTextColor = (notification: Notification) => {
-    if (notification.isRead) {
-      return { title: 'text-gray-900', message: 'text-gray-600' };
-    }
-    
-    if (notification.severity === 'critical') {
-      return { title: 'text-red-900', message: 'text-red-700' };
-    } else if (notification.severity === 'warning') {
-      return { title: 'text-yellow-900', message: 'text-yellow-700' };
-    }
-    
-    return { title: 'text-purple-900', message: 'text-purple-700' };
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -186,28 +151,28 @@ export default function NotificationsPage() {
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 rounded-lg border transition-all cursor-pointer ${getNotificationBgColor(notification)}`}
+                    className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                      notification.isRead
+                        ? 'bg-white hover:bg-gray-50 border-gray-200'
+                        : 'bg-purple-50 hover:bg-purple-100 border-purple-200 shadow-sm'
+                    }`}
                   >
                     <div className="flex items-start gap-4">
                       <div className="mt-0.5">
-                        {getNotificationIcon(notification.notificationType, notification.severity)}
+                        {getNotificationIcon(notification.notificationType)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1">
-                            <h3 className={`font-semibold ${getNotificationTextColor(notification).title}`}>
+                            <h3 className={`font-semibold ${!notification.isRead ? 'text-purple-900' : 'text-gray-900'}`}>
                               {notification.title}
                             </h3>
-                            <p className={`text-sm mt-1 ${getNotificationTextColor(notification).message}`}>
+                            <p className={`text-sm mt-1 ${!notification.isRead ? 'text-purple-700' : 'text-gray-600'}`}>
                               {notification.message}
                             </p>
                           </div>
                           {!notification.isRead && (
-                            <Badge className={
-                              notification.severity === 'critical' ? 'bg-red-600 hover:bg-red-700' :
-                              notification.severity === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700' :
-                              'bg-purple-600 hover:bg-purple-700'
-                            }>New</Badge>
+                            <Badge className="bg-purple-600 hover:bg-purple-700">New</Badge>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">

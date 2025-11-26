@@ -30,16 +30,16 @@ function getEtdRiskBadge(etd?: string | null) {
   const diffMs = etdDate.getTime() - now.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0 || diffDays <= 3) {
+  if (diffDays < 0 || diffDays <= 5) {
     return {
-      label: diffDays < 0 ? 'Overdue' : '0-3 days',
+      label: diffDays < 0 ? 'Overdue' : '0-5 days',
       className: 'bg-red-100 text-red-700 border border-red-200',
     };
   }
 
-  if (diffDays <= 7) {
+  if (diffDays <= 10) {
     return {
-      label: '4-7 days',
+      label: '6-10 days',
       className: 'bg-amber-100 text-amber-700 border border-amber-200',
     };
   }

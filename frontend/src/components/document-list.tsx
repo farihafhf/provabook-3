@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileIcon, Download, Trash2, Eye, Image as ImageIcon, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 interface Document {
   id: string;
@@ -54,9 +54,15 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     signedUrl: string;
   } | null>(null);
 
+  const sortedDocuments = [...documents].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return bTime - aTime;
+  });
+
   const filteredDocuments = filterCategory === 'all'
-    ? documents
-    : documents.filter(doc => doc.category === filterCategory);
+    ? sortedDocuments
+    : sortedDocuments.filter(doc => doc.category === filterCategory);
 
   const getCategoryBadgeClass = (category: string) => {
     const classes: Record<string, string> = {
@@ -270,7 +276,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                     <span>•</span>
                     <span>Uploaded by {doc.uploadedByName}</span>
                     <span>•</span>
-                    <span>{formatDate(doc.createdAt)}</span>
+                    <span>{formatDateTime(doc.createdAt)}</span>
                   </div>
                 </div>
               </div>

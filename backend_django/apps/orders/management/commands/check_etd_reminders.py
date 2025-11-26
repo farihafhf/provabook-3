@@ -55,7 +55,8 @@ class Command(BaseCommand):
                     message=f'Order {order.order_number} ({order.customer_name}) has passed its ETD ({order.etd}) by {days_overdue} day(s) but no delivery has been recorded yet.',
                     notification_type='etd_reminder',
                     related_id=str(order.id),
-                    related_type='order'
+                    related_type='order',
+                    severity='critical'
                 )
                 reminder_count += 1
                 self.stdout.write(

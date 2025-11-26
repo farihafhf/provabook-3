@@ -119,6 +119,15 @@ interface Order {
     ppSample?: string;
   };
   styles?: OrderStyle[];
+  merchandiser?: string;
+  merchandiserDetails?: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+    phone?: string;
+    department?: string;
+  };
   // Delivery and profit metrics
   totalDeliveredQuantity?: number;
   shortageExcessQuantity?: number;
@@ -340,20 +349,24 @@ export default function OrderDetailPage() {
   };
 
   const handleAssignTask = async () => {
-    if (!taskTitle.trim() || !selectedUser) {
+    if (!selectedUser) {
       toast({
         title: 'Error',
-        description: 'Please enter task title and select a user',
+        description: 'Please select a user to assign the task',
         variant: 'destructive',
       });
       return;
     }
 
+    const normalizedTitle =
+      taskTitle.trim() ||
+      (order?.poNumber ? `Order task for PO ${order.poNumber}` : 'Order task');
+
     setAssigningTask(true);
     try {
       await api.post('/orders/tasks', {
         order: order?.id,
-        title: taskTitle,
+        title: normalizedTitle,
         assignedTo: selectedUser,
         priority: 'medium',
       });
@@ -800,6 +813,13 @@ export default function OrderDetailPage() {
                           <p className="font-medium">{order.buyerName}</p>
                         </div>
                       )}
+                      {order.merchandiserDetails && (
+                        <div>
+                          <p className="text-xs text-gray-500">Assigned Merchandiser</p>
+                          <p className="font-medium">{order.merchandiserDetails.fullName}</p>
+                          <p className="text-xs text-gray-400">({order.merchandiserDetails.role})</p>
+                        </div>
+                      )}
                       {order.orderDate && (
                         <div>
                           <p className="text-xs text-gray-500">Order Date</p>
@@ -879,7 +899,7 @@ export default function OrderDetailPage() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="task-title" className="text-sm font-medium">
-                          Task Title *
+                          Task Title (optional)
                         </Label>
                         <Input
                           id="task-title"
@@ -917,7 +937,7 @@ export default function OrderDetailPage() {
                       </div>
                       <Button 
                         onClick={handleAssignTask} 
-                        disabled={assigningTask || !taskTitle.trim() || !selectedUser}
+                        disabled={assigningTask || !selectedUser}
                         className="w-full"
                         size="lg"
                       >
