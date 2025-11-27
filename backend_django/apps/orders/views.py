@@ -470,7 +470,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order_line_id and order_line_id != 'none':
             try:
                 from apps.orders.models_order_line import OrderLine
-                order_line = OrderLine.objects.get(id=order_line_id, order=order)
+                order_line = OrderLine.objects.get(id=order_line_id, style__order=order)
             except OrderLine.DoesNotExist:
                 return Response({
                     'error': 'Invalid order line'

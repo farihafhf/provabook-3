@@ -253,19 +253,21 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <h4 className="font-medium text-gray-900 truncate">{doc.fileName}</h4>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-medium text-gray-900 truncate">{doc.fileName}</h4>
+                        {doc.orderLineLabel && (
+                          <Badge className="bg-blue-600 text-white border-blue-700 font-semibold px-3 py-1">
+                            📦 {doc.orderLineLabel}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <Badge className={`${getCategoryBadgeClass(doc.category)} border`}>
                           {CATEGORY_LABELS[doc.category]}
                         </Badge>
                         {doc.subcategory && (
                           <Badge variant="outline" className="text-xs">
                             {SUBCATEGORY_LABELS[doc.subcategory]}
-                          </Badge>
-                        )}
-                        {doc.orderLineLabel && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                            {doc.orderLineLabel}
                           </Badge>
                         )}
                       </div>
