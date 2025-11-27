@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -113,6 +113,19 @@ export function LineItemDetailSheet({
 }: LineItemDetailSheetProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedApprovals, setSelectedApprovals] = useState<Record<string, string>>({});
+
+  // Reset local selection state when the sheet opens for a new line
+  useEffect(() => {
+    if (!line) return;
+
+    if (open) {
+      setSelectedStatus(line.status || '');
+      setSelectedApprovals(line.approvalStatus || {});
+    } else {
+      setSelectedStatus('');
+      setSelectedApprovals({});
+    }
+  }, [open, line?.id]);
 
   if (!line) return null;
 
@@ -339,6 +352,35 @@ export function LineItemDetailSheet({
                   </div>
                 ))}
               </div>
+
+              {/* Go to Next Stage button for applicable statuses */}
+              {['upcoming', 'in_development', 'running'].includes(line.status || 'upcoming') && onStatusChange && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    disabled={updating}
+                    onClick={async () => {
+                      const currentStatus = line.status || 'upcoming';
+                      let nextStatus = '';
+
+                      if (currentStatus === 'upcoming') {
+                        nextStatus = 'in_development';
+                      } else if (currentStatus === 'in_development') {
+                        nextStatus = 'running';
+                      } else if (currentStatus === 'running') {
+                        nextStatus = 'bulk';
+                      }
+
+                      if (!nextStatus) return;
+
+                      await onStatusChange(line.id, nextStatus);
+                    }}
+                  >
+                    {updating ? 'Moving to next stage...' : 'Go to Next Stage'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

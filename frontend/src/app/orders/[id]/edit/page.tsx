@@ -286,6 +286,10 @@ export default function OrderEditPage() {
     );
   }
 
+  const flattenedLines = styles.flatMap((style, styleIndex) =>
+    style.colors.map((_, colorIndex) => ({ styleIndex, colorIndex }))
+  );
+
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6 pb-8">
@@ -376,224 +380,246 @@ export default function OrderEditPage() {
           {/* Styles */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Styles</h2>
+              <h2 className="text-xl font-semibold">Order Lines</h2>
               <Button type="button" variant="outline" onClick={addStyle}>
                 <Plus className="h-4 w-4 mr-1" />
                 Add Style
               </Button>
             </div>
 
-            {styles.map((style, styleIndex) => (
-              <Card key={styleIndex} className="border-l-4 border-l-blue-500">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg">
-                      Style {styleIndex + 1}
-                      {formData.baseStyleNumber && ` (${formData.baseStyleNumber}-${String(styleIndex + 1).padStart(2, '0')})`}
-                    </CardTitle>
-                    {styles.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeStyle(styleIndex)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Style Details */}
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="col-span-4">
-                      <Label className="text-sm">Description</Label>
-                      <Textarea
-                        value={style.description || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'description', e.target.value)}
-                        placeholder="Style description"
-                        rows={2}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Fabric Composition</Label>
-                      <Input
-                        value={style.fabricComposition || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'fabricComposition', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">GSM</Label>
-                      <Input
-                        type="number"
-                        value={style.gsm || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Finish Type</Label>
-                      <Input
-                        value={style.finishType || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'finishType', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Cuttable Width</Label>
-                      <Input
-                        value={style.cuttableWidth || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'cuttableWidth', e.target.value)}
-                        placeholder="e.g., 60 inches"
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="col-span-4">
-                      <Label className="text-sm">Construction</Label>
-                      <Textarea
-                        value={style.construction || ''}
-                        onChange={(e) => updateStyle(styleIndex, 'construction', e.target.value)}
-                        placeholder="Construction details"
-                        rows={2}
-                        className="text-sm"
-                      />
-                    </div>
-                  </div>
+            {flattenedLines.map(({ styleIndex, colorIndex }, lineIndex) => {
+              const style = styles[styleIndex];
+              const color = style.colors[colorIndex];
 
-                  {/* Style Dates */}
-                  <div className="border-t pt-3">
-                    <Label className="text-sm font-semibold flex items-center gap-2 mb-2">
-                      <Calendar className="h-4 w-4" />
-                      Delivery Dates
-                    </Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs">ETD</Label>
-                        <Input
-                          type="date"
-                          value={style.etd || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
+              return (
+                <Card
+                  key={`${styleIndex}-${colorIndex}`}
+                  className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all"
+                >
+                  <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                        <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
+                          Line {lineIndex + 1}
+                        </span>
+                        {formData.baseStyleNumber && (
+                          <span className="text-sm text-gray-700">
+                            {formData.baseStyleNumber}-{String(styleIndex + 1).padStart(2, '0')}
+                          </span>
+                        )}
+                        {color.colorCode && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
+                            {color.colorCode}
+                          </span>
+                        )}
+                      </CardTitle>
+                      <div className="flex items-center gap-1">
+                        {style.colors.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeColor(styleIndex, colorIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {styles.length > 1 && style.colors.length === 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeStyle(styleIndex)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Style Details */}
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="col-span-4">
+                        <Label className="text-sm">Description</Label>
+                        <Textarea
+                          value={style.description || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'description', e.target.value)}
+                          placeholder="Style description"
+                          rows={2}
                           className="text-sm"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">ETA</Label>
+                        <Label className="text-sm">Fabric Composition</Label>
                         <Input
-                          type="date"
-                          value={style.eta || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
+                          value={style.fabricComposition || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'fabricComposition', e.target.value)}
                           className="text-sm"
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Submission Date</Label>
+                        <Label className="text-sm">GSM</Label>
                         <Input
-                          type="date"
-                          value={style.submissionDate || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
+                          type="number"
+                          value={style.gsm || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Finish Type</Label>
+                        <Input
+                          value={style.finishType || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'finishType', e.target.value)}
+                          className="text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Cuttable Width</Label>
+                        <Input
+                          value={style.cuttableWidth || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'cuttableWidth', e.target.value)}
+                          placeholder="e.g., 60 inches"
+                          className="text-sm"
+                        />
+                      </div>
+                      <div className="col-span-4">
+                        <Label className="text-sm">Construction</Label>
+                        <Textarea
+                          value={style.construction || ''}
+                          onChange={(e) => updateStyle(styleIndex, 'construction', e.target.value)}
+                          placeholder="Construction details"
+                          rows={2}
                           className="text-sm"
                         />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Colors */}
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between items-center mb-3">
-                      <Label className="text-sm font-semibold">Color Variants</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => addColor(styleIndex)}>
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Color
-                      </Button>
-                    </div>
-                    <div className="space-y-3">
-                      {style.colors.map((color, colorIndex) => (
-                        <div key={colorIndex} className="border rounded p-3 bg-gray-50 space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-medium text-gray-600">Color {colorIndex + 1}</span>
-                            {style.colors.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeColor(styleIndex, colorIndex)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-6 gap-2">
-                            <div>
-                              <Label className="text-xs">Color Code *</Label>
-                              <Input
-                                value={color.colorCode}
-                                onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
-                                required
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Quantity *</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={color.quantity}
-                                onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
-                                required
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Unit</Label>
-                              <Select
-                                value={color.unit}
-                                onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
-                              >
-                                <SelectTrigger className="text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="meters">Meters</SelectItem>
-                                  <SelectItem value="yards">Yards</SelectItem>
-                                  <SelectItem value="kg">Kilograms</SelectItem>
-                                  <SelectItem value="lbs">Pounds</SelectItem>
-                                  <SelectItem value="pieces">Pieces</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Mill Price</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={color.millPrice || ''}
-                                onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Prova Price</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={color.provaPrice || ''}
-                                onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
-                                className="text-sm"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Currency</Label>
-                              <Input
-                                value={color.currency}
-                                onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
-                                className="text-sm"
-                              />
-                            </div>
-                          </div>
+                    {/* Style Dates */}
+                    <div className="border-t pt-3">
+                      <Label className="text-sm font-semibold flex items-center gap-2 mb-2">
+                        <Calendar className="h-4 w-4" />
+                        Delivery Dates
+                      </Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">ETD</Label>
+                          <Input
+                            type="date"
+                            value={style.etd || ''}
+                            onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
+                            className="text-sm"
+                          />
                         </div>
-                      ))}
+                        <div>
+                          <Label className="text-xs">ETA</Label>
+                          <Input
+                            type="date"
+                            value={style.eta || ''}
+                            onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Submission Date</Label>
+                          <Input
+                            type="date"
+                            value={style.submissionDate || ''}
+                            onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    {/* Colors */}
+                    <div className="border-t pt-3">
+                      <div className="flex justify-between items-center mb-3">
+                        <Label className="text-sm font-semibold">Line Details</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addColor(styleIndex)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Line to Style
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-6 gap-2">
+                        <div>
+                          <Label className="text-xs">Color Code *</Label>
+                          <Input
+                            value={color.colorCode}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
+                            required
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Quantity *</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={color.quantity}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
+                            required
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Unit</Label>
+                          <Select
+                            value={color.unit}
+                            onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
+                          >
+                            <SelectTrigger className="text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="meters">Meters</SelectItem>
+                              <SelectItem value="yards">Yards</SelectItem>
+                              <SelectItem value="kg">Kilograms</SelectItem>
+                              <SelectItem value="lbs">Pounds</SelectItem>
+                              <SelectItem value="pieces">Pieces</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label className="text-xs">Mill Price</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={color.millPrice || ''}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Prova Price</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={color.provaPrice || ''}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Currency</Label>
+                          <Input
+                            value={color.currency}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Submit Button */}
