@@ -72,6 +72,7 @@ interface DashboardStats {
   orders_by_stage: ChartData[];
   orders_by_merchandiser: ChartData[];
   orders_trend: ChartData[];
+  total_orders: number;
 }
 
 export default function DashboardPage() {
@@ -225,7 +226,15 @@ export default function DashboardPage() {
                       <p className="text-gray-500 text-sm">Loading chart...</p>
                     </div>
                   ) : (
-                    <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    <>
+                      <div className="mb-3 text-xs text-gray-500 text-center">
+                        Total parent orders:{' '}
+                        <span className="font-semibold text-gray-700">
+                          {chartData?.total_orders ?? 0}
+                        </span>
+                      </div>
+                      <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -446,7 +455,15 @@ export default function DashboardPage() {
                       <p className="text-gray-500 text-sm">Loading chart...</p>
                     </div>
                   ) : (
-                    <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    <>
+                      <div className="mb-3 text-xs text-gray-500 text-center">
+                        Total parent orders:{' '}
+                        <span className="font-semibold text-gray-700">
+                          {chartData?.total_orders ?? 0}
+                        </span>
+                      </div>
+                      <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    </>
                   )}
                 </CardContent>
               </Card>

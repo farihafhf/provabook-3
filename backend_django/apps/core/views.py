@@ -246,35 +246,28 @@ def dashboard_stats_view(request):
     else:
         orders = Order.objects.all()
     
-    # 1. Orders by Stage (aggregated from order line statuses)
+    # 1. Orders by Stage (aggregated from parent order status)
     orders_by_stage = []
-    
-    # Import OrderLine model
-    from apps.orders.models_order_line import OrderLine
-    
-    # Get all order lines from the filtered orders
-    order_ids = list(orders.values_list('id', flat=True))
-    
-    # Count order lines by status
-    line_status_counts = OrderLine.objects.filter(
-        style__order_id__in=order_ids
-    ).values('status').annotate(count=Count('id')).order_by('status')
-    
-    # Map status to friendly names and ensure consistent ordering
+
+    # Count parent orders by status within the filtered queryset
+    status_counts = orders.values('status').annotate(count=Count('id')).order_by('status')
+
+    # Map status to friendly names and ensure consistent naming
     status_map = {
         'upcoming': 'Upcoming',
         'in_development': 'In Development',
         'running': 'Running',
         'bulk': 'Bulk',
         'completed': 'Completed',
-        'archived': 'Archived'
+        'archived': 'Archived',
     }
-    
-    for item in line_status_counts:
-        if item['status']:
+
+    for item in status_counts:
+        status = item['status']
+        if status:
             orders_by_stage.append({
-                'name': status_map.get(item['status'], item['status'].capitalize()),
-                'value': item['count']
+                'name': status_map.get(status, status.replace('_', ' ').title()),
+                'value': item['count'],
             })
     
     # 2. Orders by Merchandiser (only for admin/manager)
@@ -340,7 +333,8 @@ def dashboard_stats_view(request):
     return Response({
         'orders_by_stage': orders_by_stage,
         'orders_by_merchandiser': orders_by_merchandiser,
-        'orders_trend': orders_trend
+        'orders_trend': orders_trend,
+        'total_orders': orders.count(),
     })
 
 

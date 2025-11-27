@@ -10,7 +10,9 @@ interface OrdersByStageChartProps {
 // Define colors for each stage
 const COLORS: Record<string, string> = {
   Upcoming: "#3b82f6", // Blue
+  "In Development": "#6366f1", // Indigo
   Running: "#f59e0b", // Amber
+  Bulk: "#a855f7", // Purple
   Completed: "#10b981", // Green
   Archived: "#6b7280", // Gray
 };
@@ -39,7 +41,9 @@ export default function OrdersByStageChart({ data }: OrdersByStageChartProps) {
     // Map the stage name to status for filtering
     const statusMap: Record<string, string> = {
       'Upcoming': 'upcoming',
+      'In Development': 'in_development',
       'Running': 'running',
+      'Bulk': 'bulk',
       'Completed': 'completed',
       'Archived': 'archived',
     };
