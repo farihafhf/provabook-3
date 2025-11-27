@@ -535,7 +535,11 @@ export default function OrderDetailPage() {
 
   const handleCancelAssignTask = () => {
     setShowAssignConfirmDialog(false);
-    setSelectedUser('');
+    if (currentAssignedTask && currentAssignedTask.assignedTo) {
+      setSelectedUser(currentAssignedTask.assignedTo);
+    } else {
+      setSelectedUser('');
+    }
   };
 
   const handleDeleteDocument = async (documentId: string) => {
@@ -974,15 +978,6 @@ export default function OrderDetailPage() {
               <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
                 {getAggregatedOrderStatus().display}
               </Badge>
-              {currentAssignedTask?.assignedToDetails?.fullName ? (
-                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-2 border-purple-600 shadow-lg font-semibold px-3 py-1.5">
-                  👤 {currentAssignedTask.assignedToDetails.fullName}
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-gray-500 border-gray-300 px-3 py-1.5">
-                  Unassigned
-                </Badge>
-              )}
             </div>
           </div>
           <div className="flex gap-2 items-center">
