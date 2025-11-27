@@ -15,6 +15,7 @@ APPROVAL_HEADER_LABELS = {
     'labDip': 'Lab Dip Approval Date',
     'ppSample': 'PP Sample Approval Date',
     'price': 'Price Approval Date',
+    'quality': 'Quality Approval Date',
 }
 
 
@@ -67,7 +68,7 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         "Quantity Expected",
         "Unit",
         "Mill Price",
-        "LC Open Price",
+        "Prova Price",
         "Profit per Unit",
         "ETD Date",
         "ETA Date",
