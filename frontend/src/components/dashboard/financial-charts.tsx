@@ -5,7 +5,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { DollarSign } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface FinancialData {
   potential: number;
@@ -34,7 +33,6 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function FinancialCharts() {
-  const router = useRouter();
   const [data, setData] = useState<FinancialData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,14 +95,14 @@ export function FinancialCharts() {
 
   const chartData = [
     {
-      name: 'Potential Value',
+      name: 'Potential Profit',
       value: data.potential,
       fill: '#3b82f6' // Blue for potential
     },
     {
-      name: 'Secured Value',
+      name: 'Realized Profit',
       value: data.secured,
-      fill: '#10b981' // Green for secured
+      fill: '#10b981' // Green for realized
     }
   ];
 
@@ -121,24 +119,23 @@ export function FinancialCharts() {
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-600 font-medium mb-1">Potential Value</p>
+              <p className="text-sm text-blue-600 font-medium mb-1">Potential Profit</p>
               <p className="text-2xl font-bold text-blue-700">
                 ${data.potential.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-blue-500 mt-1">Upcoming orders</p>
+              <p className="text-xs text-blue-500 mt-1">Expected profit from all orders</p>
             </div>
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-              <p className="text-sm text-emerald-600 font-medium mb-1">Secured Value</p>
+              <p className="text-sm text-emerald-600 font-medium mb-1">Realized Profit</p>
               <p className="text-2xl font-bold text-emerald-700">
                 ${data.secured.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-emerald-500 mt-1">Running/Completed + Confirmed LCs</p>
+              <p className="text-xs text-emerald-500 mt-1">Actual profit based on deliveries</p>
             </div>
           </div>
 
           {/* Bar Chart */}
           <div className="relative">
-            <p className="text-xs text-gray-500 mb-2 text-center">Click on a bar to view financials page</p>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -158,8 +155,6 @@ export function FinancialCharts() {
                   dataKey="value" 
                   fill="#8884d8" 
                   radius={[8, 8, 0, 0]}
-                  onClick={() => router.push('/financials')}
-                  cursor="pointer"
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -170,15 +165,15 @@ export function FinancialCharts() {
             <p className="text-xs font-medium text-gray-600 mb-2">Breakdown:</p>
             <div className="space-y-1 text-xs text-gray-600">
               <div className="flex justify-between">
-                <span>Potential (Upcoming orders):</span>
+                <span>Potential Profit (All orders):</span>
                 <span className="font-medium">${data.metrics.potential_orders_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between">
-                <span>Secured (Running/Completed orders):</span>
+                <span>Realized Profit (Based on deliveries):</span>
                 <span className="font-medium">${data.metrics.secured_orders_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between">
-                <span>Confirmed LCs:</span>
+                <span>Confirmed LCs Value:</span>
                 <span className="font-medium">${data.metrics.confirmed_lcs_value.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>

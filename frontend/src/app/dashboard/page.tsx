@@ -2,10 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { AlertsWidget } from '@/components/dashboard/alerts-widget';
-import { ApprovalQueue } from '@/components/dashboard/approval-queue';
-import type { AlertsWidgetOrder } from '@/components/dashboard/alerts-widget';
-import type { ApprovalQueueOrder } from '@/components/dashboard/approval-queue';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { api } from '@/lib/api';
@@ -16,7 +12,6 @@ import OrdersByStageChart from '@/components/dashboard/charts/OrdersByStageChart
 import MerchandiserWorkloadChart from '@/components/dashboard/charts/MerchandiserWorkloadChart';
 import MonthlyTrendsChart from '@/components/dashboard/charts/MonthlyTrendsChart';
 import { FinancialCharts } from '@/components/dashboard/financial-charts';
-import { PendingLCs } from '@/components/dashboard/pending-lcs';
 import { MyTasksWidget } from '@/components/dashboard/my-tasks-widget';
 
 interface DashboardActivity {
@@ -81,8 +76,6 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<ManagerDashboard | MerchandiserDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [isManager, setIsManager] = useState(false);
-  const [upcomingEtdAlerts, setUpcomingEtdAlerts] = useState<AlertsWidgetOrder[]>([]);
-  const [stuckApprovalAlerts, setStuckApprovalAlerts] = useState<ApprovalQueueOrder[]>([]);
   const [chartData, setChartData] = useState<DashboardStats | null>(null);
   const [chartLoading, setChartLoading] = useState(true);
 
@@ -93,7 +86,6 @@ export default function DashboardPage() {
     }
 
     fetchDashboard();
-    fetchAlertData();
     fetchChartData();
   }, [isAuthenticated, router]);
 
@@ -123,46 +115,6 @@ export default function DashboardPage() {
     }
   };
 
-  const fetchAlertData = async () => {
-    try {
-      const [upcomingResult, stuckResult] = await Promise.allSettled([
-        api.get('/orders/alerts/upcoming-etd'),
-        api.get('/orders/alerts/stuck-approvals'),
-      ]);
-
-      if (upcomingResult.status === 'fulfilled') {
-        const raw = upcomingResult.value.data as any[];
-        const mapped: AlertsWidgetOrder[] = raw.map((order) => ({
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          etd: order.etd ?? null,
-        }));
-        setUpcomingEtdAlerts(mapped);
-      } else {
-        console.error('Failed to fetch upcoming ETD alerts:', upcomingResult.reason);
-        setUpcomingEtdAlerts([]);
-      }
-
-      if (stuckResult.status === 'fulfilled') {
-        const raw = stuckResult.value.data as any[];
-        const mapped: ApprovalQueueOrder[] = raw.map((order) => ({
-          id: order.id,
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          stage: order.currentStage ?? null,
-        }));
-        setStuckApprovalAlerts(mapped);
-      } else {
-        console.error('Failed to fetch stuck approvals alerts:', stuckResult.reason);
-        setStuckApprovalAlerts([]);
-      }
-    } catch (error) {
-      console.error('Unexpected error while fetching alerts:', error);
-      setUpcomingEtdAlerts([]);
-      setStuckApprovalAlerts([]);
-    }
-  };
 
   const fetchChartData = async () => {
     try {
@@ -271,7 +223,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Timeline & Workload - Second Row */}
+          {/* Timeline, Workload & My Tasks - Second Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Upcoming ETD/ETA Timeline */}
             {data.upcoming && (
@@ -353,24 +305,14 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          </div>
 
-
-          {/* Financial Analytics & Pending LCs - Responsive Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <FinancialCharts />
-            </div>
-            <div className="lg:col-span-1">
-              <PendingLCs />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <AlertsWidget orders={upcomingEtdAlerts} />
-            <ApprovalQueue orders={stuckApprovalAlerts} />
+            {/* My Tasks */}
             <MyTasksWidget />
           </div>
+
+
+          {/* Financial Analytics */}
+          <FinancialCharts />
 
           {/* Recent Activity Feed */}
           <Card>
@@ -500,9 +442,11 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Timeline Overview - Second Row */}
-          {data.upcoming && (
-            <Card className="shadow-md">
+          {/* Timeline Overview & My Tasks - Second Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming Timeline */}
+            {data.upcoming && (
+            <Card className="lg:col-span-2 shadow-md">
               <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
                 <CardTitle className="text-lg">My Upcoming Delivery Timeline</CardTitle>
               </CardHeader>
@@ -563,21 +507,15 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+            )}
 
-
-          {/* My Financial Analytics & Pending LCs - Responsive Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <FinancialCharts />
-            </div>
-            <div className="lg:col-span-1">
-              <PendingLCs />
-            </div>
+            {/* My Tasks */}
+            <MyTasksWidget />
           </div>
 
-          {/* My Tasks */}
-          <MyTasksWidget />
+
+          {/* My Financial Analytics */}
+          <FinancialCharts />
 
           {/* My Recent Activity */}
           <Card>

@@ -131,8 +131,8 @@ class FinancialAnalyticsView(APIView):
     def get(self, request):
         """
         Calculate financial metrics:
-        - Potential Value: Sum of (prova_price * quantity) for Upcoming orders
-        - Secured Value: Sum of (prova_price * quantity) for Running/Completed orders + confirmed LCs
+        - Potential Profit: Sum of potential_profit for all orders
+        - Realized Profit: Sum of realized_profit for all orders
         - Pending LCs: List of pending letters of credit
         """
         user = request.user
@@ -145,36 +145,21 @@ class FinancialAnalyticsView(APIView):
             orders_qs = Order.objects.all()
             lcs_qs = LetterOfCredit.objects.all()
         
-        # Calculate Potential Value (Upcoming orders)
-        potential_value = orders_qs.filter(
-            status='upcoming'
-        ).aggregate(
-            total=Coalesce(
-                Sum(F('prova_price') * F('quantity'), output_field=DecimalField()),
-                0,
-                output_field=DecimalField()
-            )
-        )['total']
+        # Calculate Potential Profit (aggregated from all orders)
+        # Sum of (prova_price - mill_price) * quantity for all orders
+        all_orders = orders_qs.all()
+        potential_profit = sum(order.potential_profit for order in all_orders)
         
-        # Calculate Secured Value (Running, Bulk, Completed orders)
-        secured_orders_value = orders_qs.filter(
-            Q(status='running') | Q(status='bulk') | Q(status='completed')
-        ).aggregate(
-            total=Coalesce(
-                Sum(F('prova_price') * F('quantity'), output_field=DecimalField()),
-                0,
-                output_field=DecimalField()
-            )
-        )['total']
+        # Calculate Realized Profit (aggregated from all orders)
+        # Sum of realized_profit (adjusted for delivered quantity) for all orders
+        realized_profit = sum(order.realized_profit for order in all_orders)
         
-        # Add confirmed LCs to secured value
+        # Get confirmed LCs value for reference
         confirmed_lcs_value = lcs_qs.filter(
             status='confirmed'
         ).aggregate(
             total=Coalesce(Sum('amount'), 0, output_field=DecimalField())
         )['total']
-        
-        secured_value = float(secured_orders_value) + float(confirmed_lcs_value)
         
         # Get Pending LCs
         pending_lcs = lcs_qs.filter(status='pending').select_related('order')
@@ -193,12 +178,12 @@ class FinancialAnalyticsView(APIView):
         ]
         
         return Response({
-            'potential': float(potential_value),
-            'secured': float(secured_value),
+            'potential': float(potential_profit),
+            'secured': float(realized_profit),
             'pending_lcs': pending_lcs_data,
             'metrics': {
-                'potential_orders_value': float(potential_value),
-                'secured_orders_value': float(secured_orders_value),
+                'potential_orders_value': float(potential_profit),
+                'secured_orders_value': float(realized_profit),
                 'confirmed_lcs_value': float(confirmed_lcs_value),
             }
         })
