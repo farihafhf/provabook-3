@@ -17,11 +17,15 @@ import { useToast } from '@/components/ui/use-toast';
 interface ColorFormData {
   id?: string;
   colorCode: string;
+  colorName?: string;
+  cadCode?: string;
+  cadName?: string;
   quantity: string;
   unit: string;
   millName?: string;
   millPrice?: string;
   provaPrice?: string;
+  commission?: string;
   currency: string;
   etd?: string;
   eta?: string;
@@ -112,11 +116,15 @@ export default function OrderEditPage() {
               colors: lineItems.map((item: any) => ({
                 id: item.id,
                 colorCode: item.colorCode || '',
+                colorName: item.colorName || '',
+                cadCode: item.cadCode || '',
+                cadName: item.cadName || '',
                 quantity: item.quantity ? item.quantity.toString() : '',
                 unit: item.unit || 'meters',
                 millName: item.millName || '',
                 millPrice: item.millPrice ? item.millPrice.toString() : '',
                 provaPrice: item.provaPrice ? item.provaPrice.toString() : '',
+                commission: item.commission ? item.commission.toString() : '',
                 currency: item.currency || 'USD',
                 etd: item.etd || '',
                 eta: item.eta || '',
@@ -138,9 +146,20 @@ export default function OrderEditPage() {
             colors: [
               {
                 colorCode: '',
+                colorName: '',
+                cadCode: '',
+                cadName: '',
                 quantity: order.quantity ? order.quantity.toString() : '',
                 unit: order.unit || 'meters',
-                currency: order.currency || 'USD',
+                millName: '',
+                millPrice: '',
+                provaPrice: '',
+                commission: '',
+                currency: 'USD',
+                etd: '',
+                eta: '',
+                submissionDate: '',
+                notes: '',
               },
             ],
           },
@@ -197,11 +216,15 @@ export default function OrderEditPage() {
           colors: style.colors.map((color) => ({
             id: color.id,
             colorCode: color.colorCode,
+            colorName: color.colorName || undefined,
+            cadCode: color.cadCode || undefined,
+            cadName: color.cadName || undefined,
             quantity: parseFloat(color.quantity),
             unit: color.unit,
             millName: color.millName || undefined,
             millPrice: color.millPrice ? parseFloat(color.millPrice) : undefined,
             provaPrice: color.provaPrice ? parseFloat(color.provaPrice) : undefined,
+            commission: color.commission ? parseFloat(color.commission) : undefined,
             currency: color.currency,
             etd: color.etd || undefined,
             eta: color.eta || undefined,
@@ -250,9 +273,20 @@ export default function OrderEditPage() {
     const newStyles = [...styles];
     newStyles[styleIndex].colors.push({
       colorCode: '',
+      colorName: '',
+      cadCode: '',
+      cadName: '',
       quantity: '',
       unit: 'meters',
+      millName: '',
+      millPrice: '',
+      provaPrice: '',
+      commission: '',
       currency: 'USD',
+      etd: '',
+      eta: '',
+      submissionDate: '',
+      notes: '',
     });
     setStyles(newStyles);
   };
@@ -269,7 +303,23 @@ export default function OrderEditPage() {
     setStyles([
       ...styles,
       {
-        colors: [{ colorCode: '', quantity: '', unit: 'meters', currency: 'USD' }],
+        colors: [{ 
+          colorCode: '', 
+          colorName: '',
+          cadCode: '',
+          cadName: '',
+          quantity: '', 
+          unit: 'meters', 
+          millName: '',
+          millPrice: '',
+          provaPrice: '',
+          commission: '',
+          currency: 'USD',
+          etd: '',
+          eta: '',
+          submissionDate: '',
+          notes: ''
+        }],
       },
     ]);
   };
@@ -414,7 +464,12 @@ export default function OrderEditPage() {
                         )}
                         {color.colorCode && (
                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
-                            {color.colorCode}
+                            Color: {color.colorCode}
+                          </span>
+                        )}
+                        {color.cadCode && (
+                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-mono">
+                            CAD: {color.cadCode}
                           </span>
                         )}
                       </CardTitle>
@@ -538,7 +593,7 @@ export default function OrderEditPage() {
                       </div>
                     </div>
 
-                    {/* Colors */}
+                    {/* Colors/Lines */}
                     <div className="border-t pt-3">
                       <div className="flex justify-between items-center mb-3">
                         <Label className="text-sm font-semibold">Line Details</Label>
@@ -552,70 +607,167 @@ export default function OrderEditPage() {
                           Add Line to Style
                         </Button>
                       </div>
-                      <div className="grid grid-cols-6 gap-2">
-                        <div>
-                          <Label className="text-xs">Color Code *</Label>
-                          <Input
-                            value={color.colorCode}
-                            onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
-                            required
-                            className="text-sm"
-                          />
+                      <div className="space-y-3">
+                        {/* Row 1: Color and CAD */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <Label className="text-xs">Color Code</Label>
+                            <Input
+                              value={color.colorCode}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
+                              placeholder="e.g., C001"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Color Name</Label>
+                            <Input
+                              value={color.colorName || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'colorName', e.target.value)}
+                              placeholder="e.g., Navy Blue"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">CAD Code</Label>
+                            <Input
+                              value={color.cadCode || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'cadCode', e.target.value)}
+                              placeholder="e.g., CAD001"
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">CAD Name</Label>
+                            <Input
+                              value={color.cadName || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'cadName', e.target.value)}
+                              placeholder="e.g., Stripe Pattern"
+                              className="text-sm"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Quantity *</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={color.quantity}
-                            onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
-                            required
-                            className="text-sm"
-                          />
+                        {/* Row 2: Quantity, Unit, Mill Name */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <Label className="text-xs">Quantity *</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={color.quantity}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
+                              required
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Unit</Label>
+                            <Select
+                              value={color.unit}
+                              onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
+                            >
+                              <SelectTrigger className="text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="meters">Meters</SelectItem>
+                                <SelectItem value="yards">Yards</SelectItem>
+                                <SelectItem value="kg">Kilograms</SelectItem>
+                                <SelectItem value="lbs">Pounds</SelectItem>
+                                <SelectItem value="pieces">Pieces</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-2">
+                            <Label className="text-xs">Mill Name</Label>
+                            <Input
+                              value={color.millName || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'millName', e.target.value)}
+                              placeholder="e.g., ABC Textiles"
+                              className="text-sm"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Unit</Label>
-                          <Select
-                            value={color.unit}
-                            onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
-                          >
-                            <SelectTrigger className="text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="meters">Meters</SelectItem>
-                              <SelectItem value="yards">Yards</SelectItem>
-                              <SelectItem value="kg">Kilograms</SelectItem>
-                              <SelectItem value="lbs">Pounds</SelectItem>
-                              <SelectItem value="pieces">Pieces</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        {/* Row 3: Pricing */}
+                        <div className="grid grid-cols-4 gap-2">
+                          <div>
+                            <Label className="text-xs">Mill Price</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={color.millPrice || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Prova Price</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={color.provaPrice || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Commission</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={color.commission || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'commission', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Currency</Label>
+                            <Input
+                              value={color.currency}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
+                              placeholder="USD"
+                              className="text-sm"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <Label className="text-xs">Mill Price</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={color.millPrice || ''}
-                            onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
-                            className="text-sm"
-                          />
+                        {/* Row 4: Dates */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label className="text-xs">ETD</Label>
+                            <Input
+                              type="date"
+                              value={color.etd || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'etd', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">ETA</Label>
+                            <Input
+                              type="date"
+                              value={color.eta || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'eta', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Submission Date</Label>
+                            <Input
+                              type="date"
+                              value={color.submissionDate || ''}
+                              onChange={(e) => updateColor(styleIndex, colorIndex, 'submissionDate', e.target.value)}
+                              className="text-sm"
+                            />
+                          </div>
                         </div>
+                        {/* Row 5: Notes */}
                         <div>
-                          <Label className="text-xs">Prova Price</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={color.provaPrice || ''}
-                            onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
-                            className="text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Currency</Label>
-                          <Input
-                            value={color.currency}
-                            onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
+                          <Label className="text-xs">Line Notes</Label>
+                          <Textarea
+                            value={color.notes || ''}
+                            onChange={(e) => updateColor(styleIndex, colorIndex, 'notes', e.target.value)}
+                            placeholder="Additional notes for this line..."
+                            rows={2}
                             className="text-sm"
                           />
                         </div>

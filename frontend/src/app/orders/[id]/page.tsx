@@ -205,6 +205,9 @@ export default function OrderDetailPage() {
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [taskTitle, setTaskTitle] = useState<string>('');
   const [assigningTask, setAssigningTask] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedMerchandiser, setSelectedMerchandiser] = useState<string>('');
+  const [assigningOrder, setAssigningOrder] = useState(false);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
   const [isOrderInfoOpen, setIsOrderInfoOpen] = useState(true);
@@ -726,6 +729,37 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleAssignOrder = async () => {
+    if (!order || !selectedMerchandiser) return;
+    
+    setAssigningOrder(true);
+    try {
+      await api.patch(`/orders/${order.id}/`, { 
+        merchandiser: selectedMerchandiser 
+      });
+
+      const assignedUser = users.find(u => u.id === selectedMerchandiser);
+      
+      toast({
+        title: 'Success',
+        description: `Order assigned to ${assignedUser?.fullName || 'merchandiser'}`,
+      });
+
+      setAssignDialogOpen(false);
+      setSelectedMerchandiser('');
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to assign order:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to assign order',
+        variant: 'destructive',
+      });
+    } finally {
+      setAssigningOrder(false);
+    }
+  };
+
   const handleLineStatusChange = async (lineId: string, newStatus: string) => {
     if (!order) return;
     
@@ -1244,16 +1278,16 @@ export default function OrderDetailPage() {
                   )}
                 </Card>
 
-                {/* Assign Task Card */}
-                <Card className="border-l-4 border-l-purple-500 shadow-md">
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-between">
+                {/* Assign Order Card */}
+                <Card className="border-l-4 border-l-indigo-500 shadow-md">
+                  <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
-                      <span>Assign Task to Team Member</span>
+                      <span>Assign Order to Merchandiser</span>
                     </CardTitle>
                     <button
                       type="button"
                       onClick={() => setIsAssignTaskOpen((prev) => !prev)}
-                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-purple-200 text-purple-600 hover:bg-purple-50"
+                      className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-indigo-200 text-indigo-600 hover:bg-indigo-50"
                     >
                       <ChevronDown
                         className={`h-4 w-4 transition-transform ${isAssignTaskOpen ? 'rotate-180' : ''}`}
@@ -1264,24 +1298,18 @@ export default function OrderDetailPage() {
                   <CardContent className="pt-6">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="task-title" className="text-sm font-medium">
-                          Task Title (optional)
+                        <Label htmlFor="assign-merchandiser" className="text-sm font-medium">
+                          Select Merchandiser *
                         </Label>
-                        <Input
-                          id="task-title"
-                          placeholder="e.g., Review fabric specifications, Check pricing..."
-                          value={taskTitle}
-                          onChange={(e) => setTaskTitle(e.target.value)}
-                          className="w-full"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="assign-user" className="text-sm font-medium">
-                          Assign To *
-                        </Label>
-                        <Select value={selectedUser} onValueChange={setSelectedUser}>
-                          <SelectTrigger id="assign-user" className="w-full">
-                            <SelectValue placeholder="Select team member to assign task" />
+                        <Select 
+                          value={selectedMerchandiser} 
+                          onValueChange={(value) => {
+                            setSelectedMerchandiser(value);
+                            setAssignDialogOpen(true);
+                          }}
+                        >
+                          <SelectTrigger id="assign-merchandiser" className="w-full">
+                            <SelectValue placeholder="Select merchandiser to assign this order" />
                           </SelectTrigger>
                           <SelectContent>
                             {users && Array.isArray(users) && users.map((user) => (
@@ -1295,20 +1323,19 @@ export default function OrderDetailPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      {order.merchandiserDetails && (
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-sm text-green-800">
+                            <strong>Currently assigned to:</strong> {order.merchandiserDetails.fullName}
+                          </p>
+                        </div>
+                      )}
                       <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
                         <span className="text-blue-600 text-sm">ℹ️</span>
                         <p className="text-xs text-blue-700">
-                          The assigned team member will receive an instant notification and can view this task on their dashboard.
+                          The assigned merchandiser will receive a notification and this order will appear on their dashboard.
                         </p>
                       </div>
-                      <Button 
-                        onClick={handleAssignTask} 
-                        disabled={assigningTask || !selectedUser}
-                        className="w-full"
-                        size="lg"
-                      >
-                        {assigningTask ? 'Assigning Task...' : 'Assign Task'}
-                      </Button>
                     </div>
                   </CardContent>
                   )}
@@ -2214,11 +2241,49 @@ export default function OrderDetailPage() {
             setShowLineItemSheet(false);
             setSelectedLineItem(null);
           }}
-          orderStatus={order.status}
+          orderStatus={order?.status}
           onStatusChange={handleLineStatusChange}
-          onApprovalChange={handleLineApprovalChange}
+          onApprovalChange={handleApprovalStatusChange}
           updating={updating}
         />
+        
+        {/* Assignment Confirmation Dialog */}
+        <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Order Assignment</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Are you sure you want to assign this order to{' '}
+                <strong>{users.find(u => u.id === selectedMerchandiser)?.fullName}</strong>?
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-700">
+                  The merchandiser will receive a notification about this assignment.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAssignDialogOpen(false);
+                  setSelectedMerchandiser('');
+                }}
+                disabled={assigningOrder}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAssignOrder}
+                disabled={assigningOrder}
+              >
+                {assigningOrder ? 'Assigning...' : 'Assign'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
