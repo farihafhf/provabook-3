@@ -203,14 +203,13 @@ export default function OrderDetailPage() {
   const [downloadingPO, setDownloadingPO] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>('');
-  const [taskTitle, setTaskTitle] = useState<string>('');
   const [assigningTask, setAssigningTask] = useState(false);
   const [showAssignConfirmDialog, setShowAssignConfirmDialog] = useState(false);
+  const [currentAssignedTask, setCurrentAssignedTask] = useState<any>(null);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
   const [isOrderInfoOpen, setIsOrderInfoOpen] = useState(true);
   const [isStatusCardOpen, setIsStatusCardOpen] = useState(true);
-  const [isAssignTaskOpen, setIsAssignTaskOpen] = useState(true);
   const [isProfitSummaryOpen, setIsProfitSummaryOpen] = useState(true);
   const [selectedStyleForApproval, setSelectedStyleForApproval] = useState<string>('all');
   const [expandedOrderLines, setExpandedOrderLines] = useState<Set<string>>(new Set()); // Track expanded lines by line.id
@@ -252,6 +251,7 @@ export default function OrderDetailPage() {
     fetchDocuments();
     fetchUsers();
     fetchDeliveries();
+    fetchCurrentTask();
   }, [isAuthenticated, router, params.id]);
 
   const fetchOrder = async () => {
@@ -288,6 +288,23 @@ export default function OrderDetailPage() {
       setUsers(usersArray);
     } catch (error) {
       console.error('Failed to fetch users:', error);
+    }
+  };
+
+  const fetchCurrentTask = async () => {
+    try {
+      const response = await api.get('/orders/tasks/', {
+        params: { order_id: params.id, status: 'pending' }
+      });
+      const tasks = Array.isArray(response.data) ? response.data : response.data?.results || [];
+      // Get the most recent pending task
+      if (tasks.length > 0) {
+        setCurrentAssignedTask(tasks[0]);
+      } else {
+        setCurrentAssignedTask(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch current task:', error);
     }
   };
 
@@ -470,9 +487,7 @@ export default function OrderDetailPage() {
       return;
     }
 
-    const normalizedTitle =
-      taskTitle.trim() ||
-      (order?.poNumber ? `Order task for PO ${order.poNumber}` : 'Order task');
+    const normalizedTitle = order?.poNumber ? `Order task for PO ${order.poNumber}` : 'Order task';
 
     setAssigningTask(true);
     try {
@@ -489,8 +504,8 @@ export default function OrderDetailPage() {
       });
 
       setShowAssignConfirmDialog(false);
-      setTaskTitle('');
       setSelectedUser('');
+      await fetchCurrentTask();
     } catch (error: any) {
       console.error('Error assigning task:', error);
       toast({
@@ -939,14 +954,40 @@ export default function OrderDetailPage() {
               Back to Orders
             </Button>
             <h1 className="text-3xl font-bold">PO #{order.poNumber}</h1>
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
               <p className="text-gray-500">{order.customerName}</p>
               <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
                 {getAggregatedOrderStatus().display}
               </Badge>
+              {currentAssignedTask && currentAssignedTask.assignedToDetails && (
+                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-2 border-purple-600 shadow-lg font-semibold px-3 py-1.5">
+                  👤 {currentAssignedTask.assignedToDetails.fullName}
+                </Badge>
+              )}
+              {!currentAssignedTask && (
+                <Badge variant="outline" className="text-gray-500 border-gray-300 px-3 py-1.5">
+                  Unassigned
+                </Badge>
+              )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {/* Quick Task Assignment Dropdown */}
+            <div className="flex items-center gap-2">
+              <Label className="text-sm text-gray-600">Assign to:</Label>
+              <Select value={selectedUser} onValueChange={handleUserSelect}>
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Select user" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users && Array.isArray(users) && users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      <span className="font-medium">{user.fullName}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               variant="outline"
               onClick={() => router.push(`/orders/${order.id}/edit`)}
@@ -974,68 +1015,6 @@ export default function OrderDetailPage() {
             )}
           </div>
         </div>
-
-        {/* Assign Task Card - Always Visible */}
-        <Card className="border-l-4 border-l-purple-500 shadow-md">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <span>Assign Task to Team Member</span>
-            </CardTitle>
-            <button
-              type="button"
-              onClick={() => setIsAssignTaskOpen((prev) => !prev)}
-              className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full border border-purple-200 text-purple-600 hover:bg-purple-50"
-            >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${isAssignTaskOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CardHeader>
-          {isAssignTaskOpen && (
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="task-title" className="text-sm font-medium">
-                  Task Title (optional)
-                </Label>
-                <Input
-                  id="task-title"
-                  placeholder="e.g., Review fabric specifications, Check pricing..."
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="assign-user" className="text-sm font-medium">
-                  Assign To *
-                </Label>
-                <Select value={selectedUser} onValueChange={handleUserSelect}>
-                  <SelectTrigger id="assign-user" className="w-full">
-                    <SelectValue placeholder="Select team member to assign task" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users && Array.isArray(users) && users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{user.fullName}</span>
-                          <span className="text-xs text-gray-500">({user.role})</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-600 text-sm">ℹ️</span>
-                <p className="text-xs text-blue-700">
-                  Select a team member from the dropdown above. A confirmation dialog will appear before assigning the task.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-          )}
-        </Card>
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -2229,22 +2208,18 @@ export default function OrderDetailPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <p className="text-sm text-gray-600">
-                Are you sure you want to assign this task to{' '}
-                <span className="font-semibold text-gray-900">
+                Assign order <span className="font-semibold">PO #{order?.poNumber}</span> to{' '}
+                <span className="font-semibold text-purple-700">
                   {users.find(u => u.id === selectedUser)?.fullName}
-                </span>
-                ?
+                </span>?
               </p>
-              {taskTitle && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Task Title:</p>
-                  <p className="text-sm text-gray-900">{taskTitle}</p>
+              {currentAssignedTask && currentAssignedTask.assignedToDetails && (
+                <div className="p-3 bg-yellow-50 border border-yellow-300 rounded">
+                  <p className="text-xs text-yellow-700 font-medium mb-1">⚠️ Current Assignment:</p>
+                  <p className="text-sm text-gray-900">Currently assigned to {currentAssignedTask.assignedToDetails.fullName}</p>
+                  <p className="text-xs text-gray-600 mt-1">This will reassign the order to the new person.</p>
                 </div>
               )}
-              <div className="p-3 bg-purple-50 border border-purple-200 rounded">
-                <p className="text-xs text-purple-600 font-medium mb-1">Order:</p>
-                <p className="text-sm text-gray-900">PO #{order?.poNumber}</p>
-              </div>
               <p className="text-xs text-gray-500">
                 The assigned team member will receive an instant notification and can view this task on their dashboard.
               </p>
