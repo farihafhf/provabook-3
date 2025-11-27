@@ -521,6 +521,7 @@ export default function OrderDetailPage() {
       setShowAssignConfirmDialog(false);
       setSelectedUser('');
       await fetchCurrentTask();
+      await fetchOrder(); // Refresh order to update merchandiser badge
     } catch (error: any) {
       console.error('Error assigning task:', error);
       toast({

@@ -85,10 +85,15 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.save(assigned_by=self.request.user)
     
     def create(self, request, *args, **kwargs):
-        """Create task with custom response"""
+        """Create task with custom response and update order merchandiser"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         task = serializer.save(assigned_by=request.user)
+        
+        # Update the order's merchandiser field to match the task assignee
+        if task.assigned_to and task.order:
+            task.order.merchandiser = task.assigned_to
+            task.order.save(update_fields=['merchandiser'])
         
         # Create notification for assigned user
         if task.assigned_to:
