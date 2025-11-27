@@ -47,16 +47,23 @@ class TaskViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Filter tasks based on query parameters and user role
+        By default, returns only tasks assigned to the current user
         """
         queryset = super().get_queryset()
         user = self.request.user
+        
+        # By default, show only tasks assigned to current user
+        # Managers/Admins can see all tasks by passing ?show_all=true
+        show_all = self.request.query_params.get('show_all', 'false').lower() == 'true'
+        if not show_all:
+            queryset = queryset.filter(assigned_to=user)
         
         # Filter by order_id if provided
         order_id = self.request.query_params.get('order_id')
         if order_id:
             queryset = queryset.filter(order_id=order_id)
         
-        # Filter by assigned_to if provided
+        # Filter by assigned_to if provided (for managers viewing specific user's tasks)
         assigned_to = self.request.query_params.get('assigned_to')
         if assigned_to:
             queryset = queryset.filter(assigned_to_id=assigned_to)

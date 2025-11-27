@@ -589,7 +589,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     Lightweight serializer for listing orders
     Returns camelCase for frontend
     """
-    merchandiser_name = serializers.CharField(source='merchandiser.full_name', read_only=True)
+    merchandiser_name = serializers.SerializerMethodField()
     potential_profit = serializers.ReadOnlyField()
     realized_profit = serializers.ReadOnlyField()
     
@@ -602,6 +602,10 @@ class OrderListSerializer(serializers.ModelSerializer):
             'potential_profit', 'realized_profit',
             'merchandiser', 'merchandiser_name', 'created_at'
         ]
+    
+    def get_merchandiser_name(self, obj):
+        """Safely get merchandiser full name, return None if no merchandiser assigned"""
+        return obj.merchandiser.full_name if obj.merchandiser else None
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -621,7 +625,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'orderDate': data['order_date'],
             'expectedDeliveryDate': data['expected_delivery_date'],
             'merchandiser': str(data['merchandiser']) if data['merchandiser'] else None,
-            'merchandiserName': data['merchandiser_name'],
+            'merchandiserName': data.get('merchandiser_name'),
             'createdAt': data['created_at'],
         }
 

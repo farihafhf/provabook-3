@@ -978,6 +978,11 @@ export default function OrderDetailPage() {
               <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
                 {getAggregatedOrderStatus().display}
               </Badge>
+              {order.merchandiserDetails && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 font-semibold px-3 py-1.5">
+                  👤 {order.merchandiserDetails.fullName}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex gap-2 items-center">
