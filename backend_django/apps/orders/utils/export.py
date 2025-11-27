@@ -9,6 +9,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+APPROVAL_HEADER_LABELS = {
+    'aop': 'AOP Approval Date',
+    'handloom': 'Handloom Approval Date',
+    'labDip': 'Lab Dip Approval Date',
+    'ppSample': 'PP Sample Approval Date',
+    'price': 'Price Approval Date',
+}
+
 
 def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
     """
@@ -40,49 +48,50 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
     
     # Sort approval types for consistent column order
     approval_types = sorted(list(approval_types))
+
+    # Filter out approval types that should not appear as columns
+    visible_approval_types = [
+        t for t in approval_types
+        if t not in {"bulkSwatch", "qualityTest", "strikeOff"}
+    ]
     
     # Build header row
     headers = [
-        "ID",
         "Order No.",
         "Style Number",
-        "Color",
-        "CAD",
+        "Color Code",
+        "CAD Name",
         "Description",
         "Buyer",
-        "Supplier",
         "Assigned To",
         "Quantity Expected",
         "Unit",
         "Mill Price",
         "LC Open Price",
         "Profit per Unit",
-        "Original Profit",
         "ETD Date",
         "ETA Date",
         "ETD Quantity",
-        "ETD Total Quantity",
         "Delivery Excess/Shortage",
     ]
     
     # Add dynamic approval stage columns
-    for approval_type in approval_types:
-        headers.append(f"approval_stage_{approval_type}_date")
+    for approval_type in visible_approval_types:
+        header_label = APPROVAL_HEADER_LABELS.get(
+            approval_type,
+            f"approval_stage_{approval_type}_date",
+        )
+        headers.append(header_label)
     
     headers.extend([
         "Order Status",
         "Bulk Start Date",
         "Latest PI Sent Date",
         "LC Received Date",
-        "LC ID",
         "Total Commission",
         "Adjusted Profit",
         "Reduced Profit",
         "Supplier Delivery History",
-        "Created By",
-        "Created At",
-        "Last Updated By",
-        "Last Updated At",
     ])
     
     worksheet.append(headers)
@@ -105,7 +114,7 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         if not styles.exists():
             # No styles - export order-level data only
             row_data = _build_order_row(
-                order, None, None, approval_types, dhaka_tz
+                order, None, None, visible_approval_types, dhaka_tz
             )
             worksheet.append(row_data)
         else:
@@ -116,14 +125,14 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
                 if not lines.exists():
                     # Style has no lines - export style-level data
                     row_data = _build_order_row(
-                        order, style, None, approval_types, dhaka_tz
+                        order, style, None, visible_approval_types, dhaka_tz
                     )
                     worksheet.append(row_data)
                 else:
                     # Export each line
                     for line in lines:
                         row_data = _build_order_row(
-                            order, style, line, approval_types, dhaka_tz
+                            order, style, line, visible_approval_types, dhaka_tz
                         )
                         worksheet.append(row_data)
     
@@ -296,11 +305,8 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         
         approval_dates.append(approval_date)
     
-    # Order Status (use line status if available, fallback to order status)
-    if line:
-        order_status = line.get_status_display()
-    else:
-        order_status = order.get_status_display()
+    # Order Status (use order-level status)
+    order_status = order.get_status_display()
     
     # Bulk Start Date
     bulk_start_date = ""
@@ -320,11 +326,6 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
     lc_docs = Document.objects.filter(order=order, category='lc').order_by('-created_at').first()
     if lc_docs:
         lc_received_date = format_datetime(lc_docs.created_at)
-    
-    # LC ID
-    lc_id = ""
-    if lc_docs and lc_docs.description:
-        lc_id = lc_docs.description
     
     # Total Commission
     commission = getattr(data_source, 'commission', None)
@@ -348,40 +349,23 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         )
     supplier_delivery_history = "; ".join(delivery_history_parts)
     
-    # Created By
-    created_by = order.merchandiser.full_name if order.merchandiser else ""
-    
-    # Created At
-    created_at = format_datetime(order.created_at)
-    
-    # Last Updated By
-    # Note: We don't track who updated, so we'll use merchandiser
-    last_updated_by = order.merchandiser.full_name if order.merchandiser else ""
-    
-    # Last Updated At
-    last_updated_at = format_datetime(order.updated_at)
-    
     # Build row
     row = [
-        id_value,
         order_no,
         style_number,
         color,
         cad,
         description,
         buyer,
-        supplier,
         assigned_to,
         quantity_expected,
         unit,
         mill_price,
         lc_open_price,
         profit_per_unit,
-        original_profit,
         etd_date,
         eta_date,
         etd_quantity,
-        etd_total_quantity,
         delivery_excess_shortage,
     ]
     
@@ -394,15 +378,10 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         bulk_start_date,
         pi_sent_date,
         lc_received_date,
-        lc_id,
         total_commission,
         adjusted_profit,
         reduced_profit,
         supplier_delivery_history,
-        created_by,
-        created_at,
-        last_updated_by,
-        last_updated_at,
     ])
     
     return row
