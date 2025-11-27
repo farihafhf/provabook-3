@@ -788,6 +788,35 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleApprovalStatusChange = async (approvalType: string, newStatus: string, lineId: string, lineLabel: string) => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}/lines/${lineId}/approvals/`, {
+        approvalType,
+        status: newStatus,
+      });
+
+      toast({
+        title: 'Approval Updated',
+        description: `${approvalType} approval for ${lineLabel} updated to ${newStatus}`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update approval:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update approval',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
