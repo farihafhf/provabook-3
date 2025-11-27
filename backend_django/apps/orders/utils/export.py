@@ -56,20 +56,17 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         if t not in {"bulkSwatch", "qualityTest", "strikeOff"}
     ]
     
-    # Build header row
+    # Build header row - reordered with prices moved to end
     headers = [
+        "Assigned To",
+        "Buyer",
         "Order No.",
         "Style Number",
+        "Description",
         "Color Code",
         "CAD Name",
-        "Description",
-        "Buyer",
-        "Assigned To",
         "Quantity Expected",
         "Unit",
-        "Mill Price",
-        "Prova Price",
-        "Profit per Unit",
         "ETD Date",
         "ETA Date",
         "ETD Quantity",
@@ -89,10 +86,13 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         "Bulk Start Date",
         "Latest PI Sent Date",
         "LC Received Date",
+        "Mill Price",
+        "Prova Price",
+        "Profit per Unit",
         "Total Commission",
         "Adjusted Profit",
         "Reduced Profit",
-        "Supplier Delivery History",
+        "Delivery History",
     ])
     
     worksheet.append(headers)
@@ -102,8 +102,8 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         cell.font = Font(bold=True)
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     
-    # Freeze header row
-    worksheet.freeze_panes = 'A2'
+    # Freeze header row and first 3 columns (Assigned To, Buyer, Order No.)
+    worksheet.freeze_panes = 'D2'
     
     # Process each order
     dhaka_tz = pytz.timezone('Asia/Dhaka')
@@ -350,20 +350,17 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         )
     supplier_delivery_history = "; ".join(delivery_history_parts)
     
-    # Build row
+    # Build row - reordered to match new header layout
     row = [
+        assigned_to,
+        buyer,
         order_no,
         style_number,
+        description,
         color,
         cad,
-        description,
-        buyer,
-        assigned_to,
         quantity_expected,
         unit,
-        mill_price,
-        lc_open_price,
-        profit_per_unit,
         etd_date,
         eta_date,
         etd_quantity,
@@ -373,12 +370,15 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
     # Add approval dates
     row.extend(approval_dates)
     
-    # Add remaining columns
+    # Add remaining columns with prices moved before Total Commission
     row.extend([
         order_status,
         bulk_start_date,
         pi_sent_date,
         lc_received_date,
+        mill_price,
+        lc_open_price,
+        profit_per_unit,
         total_commission,
         adjusted_profit,
         reduced_profit,
