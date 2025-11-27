@@ -206,6 +206,15 @@ export default function OrderDetailPage() {
   const [assigningTask, setAssigningTask] = useState(false);
   const [showAssignConfirmDialog, setShowAssignConfirmDialog] = useState(false);
   const [currentAssignedTask, setCurrentAssignedTask] = useState<any>(null);
+
+  // Sync dropdown with current assignment
+  useEffect(() => {
+    if (currentAssignedTask && currentAssignedTask.assignedTo) {
+      setSelectedUser(currentAssignedTask.assignedTo);
+    } else {
+      setSelectedUser('');
+    }
+  }, [currentAssignedTask]);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});
   const [isOrderInfoOpen, setIsOrderInfoOpen] = useState(true);
@@ -296,15 +305,21 @@ export default function OrderDetailPage() {
       const response = await api.get('/orders/tasks/', {
         params: { order_id: params.id, status: 'pending' }
       });
+      console.log('Tasks API response:', response.data);
       const tasks = Array.isArray(response.data) ? response.data : response.data?.results || [];
+      console.log('Filtered pending tasks:', tasks);
       // Get the most recent pending task
       if (tasks.length > 0) {
-        setCurrentAssignedTask(tasks[0]);
+        const task = tasks[0];
+        console.log('Current assigned task:', task);
+        setCurrentAssignedTask(task);
       } else {
+        console.log('No pending tasks found');
         setCurrentAssignedTask(null);
       }
     } catch (error) {
       console.error('Failed to fetch current task:', error);
+      setCurrentAssignedTask(null);
     }
   };
 
@@ -959,12 +974,11 @@ export default function OrderDetailPage() {
               <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
                 {getAggregatedOrderStatus().display}
               </Badge>
-              {currentAssignedTask && currentAssignedTask.assignedToDetails && (
+              {currentAssignedTask?.assignedToDetails?.fullName ? (
                 <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-2 border-purple-600 shadow-lg font-semibold px-3 py-1.5">
                   👤 {currentAssignedTask.assignedToDetails.fullName}
                 </Badge>
-              )}
-              {!currentAssignedTask && (
+              ) : (
                 <Badge variant="outline" className="text-gray-500 border-gray-300 px-3 py-1.5">
                   Unassigned
                 </Badge>
