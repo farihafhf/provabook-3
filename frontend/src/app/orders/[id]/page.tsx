@@ -207,13 +207,9 @@ export default function OrderDetailPage() {
   const [showAssignConfirmDialog, setShowAssignConfirmDialog] = useState(false);
   const [currentAssignedTask, setCurrentAssignedTask] = useState<any>(null);
 
-  // Sync dropdown with current assignment
+  // Reset dropdown after fetching current task (don't auto-sync to avoid cache issues)
   useEffect(() => {
-    if (currentAssignedTask && currentAssignedTask.assignedTo) {
-      setSelectedUser(currentAssignedTask.assignedTo);
-    } else {
-      setSelectedUser('');
-    }
+    setSelectedUser('');
   }, [currentAssignedTask]);
   const [editingStyleId, setEditingStyleId] = useState<string | null>(null);
   const [styleDates, setStyleDates] = useState<{[key: string]: {etd: string; eta: string; submissionDate: string}}>({});

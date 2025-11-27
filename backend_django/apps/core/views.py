@@ -76,11 +76,10 @@ def dashboard_view(request):
     
     # Get orders queryset based on role
     if user.role == 'merchandiser':
-        # Include orders where this user is the merchandiser OR has tasks assigned
-        orders = Order.objects.filter(
-            Q(merchandiser=user) | Q(tasks__assigned_to=user)
-        ).distinct()
+        # Only show orders where this user is the assigned merchandiser
+        orders = Order.objects.filter(merchandiser=user)
     else:
+        # Managers see all orders
         orders = Order.objects.all()
     
     # Get recent orders and format them as activities
@@ -239,11 +238,10 @@ def dashboard_stats_view(request):
     
     # Get orders queryset based on role
     if user.role == 'merchandiser':
-        # Include orders where this user is the merchandiser OR has tasks assigned
-        orders = Order.objects.filter(
-            Q(merchandiser=user) | Q(tasks__assigned_to=user)
-        ).distinct()
+        # Only show orders where this user is the assigned merchandiser
+        orders = Order.objects.filter(merchandiser=user)
     else:
+        # Managers see all orders
         orders = Order.objects.all()
     
     # 1. Orders by Stage (aggregated from parent order status)

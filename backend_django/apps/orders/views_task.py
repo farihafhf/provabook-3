@@ -88,6 +88,17 @@ class TaskViewSet(viewsets.ModelViewSet):
         """Create task with custom response and update order merchandiser"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        
+        order_id = serializer.validated_data.get('order')
+        
+        # Cancel any existing pending/in_progress tasks for this order (to avoid duplicates)
+        if order_id:
+            from .models_task import TaskStatus
+            Task.objects.filter(
+                order=order_id,
+                status__in=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS]
+            ).update(status=TaskStatus.CANCELLED)
+        
         task = serializer.save(assigned_by=request.user)
         
         # Update the order's merchandiser field to match the task assignee

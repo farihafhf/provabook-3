@@ -96,9 +96,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # Merchandisers only see their own orders
         if user.role == 'merchandiser':
-            queryset = queryset.filter(
-                Q(merchandiser=user) | Q(tasks__assigned_to=user)
-            ).distinct()
+            queryset = queryset.filter(merchandiser=user)
         
         # Apply query parameters
         status_param = self.request.query_params.get('status')
