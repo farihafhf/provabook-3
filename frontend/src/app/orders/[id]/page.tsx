@@ -194,6 +194,7 @@ export default function OrderDetailPage() {
   const params = useParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const currentUser = useAuthStore((state) => state.user);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -516,8 +517,16 @@ export default function OrderDetailPage() {
 
       setShowAssignConfirmDialog(false);
       setSelectedUser('');
-      await fetchCurrentTask();
-      await fetchOrder(); // Refresh order to update merchandiser badge
+      
+      // If merchandiser reassigns to someone else, redirect to orders list
+      // Managers can stay on the page since they can see all orders
+      if (currentUser?.role === 'merchandiser' && selectedUser !== currentUser?.id) {
+        router.push('/orders');
+      } else {
+        // Manager or reassigning to self - refresh data
+        await fetchCurrentTask();
+        await fetchOrder();
+      }
     } catch (error: any) {
       console.error('Error assigning task:', error);
       toast({
