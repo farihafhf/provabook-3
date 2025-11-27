@@ -526,6 +526,35 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Return serialized document
         serializer = DocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['get'], url_path='lines/(?P<line_id>[^/.]+)/approval-history')
+    def get_line_approval_history(self, request, pk=None, line_id=None):
+        """
+        GET /orders/{id}/lines/{line_id}/approval-history/
+        Get approval history for a specific order line
+        """
+        from .models_order_line import OrderLine
+        from .serializers import ApprovalHistorySerializer
+        
+        order = self.get_object()
+        
+        # Get the line
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get approval history for this line
+        history = ApprovalHistory.objects.filter(
+            order=order,
+            order_line=line
+        ).order_by('created_at')
+        
+        serializer = ApprovalHistorySerializer(history, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['get'], url_path='download-po')
     def download_po(self, request, pk=None):

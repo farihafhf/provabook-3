@@ -995,6 +995,7 @@ export default function OrderDetailPage() {
                         ...line,
                         styleNumber: style.styleNumber,
                       }}
+                      orderId={order.id}
                       onClick={() => {
                         setSelectedLineItem({...line, styleNumber: style.styleNumber});
                         setShowLineItemSheet(true);

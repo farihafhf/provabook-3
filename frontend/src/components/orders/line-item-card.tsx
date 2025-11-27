@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, Clock, AlertTriangle, History } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { ApprovalTimelineDialog } from './approval-timeline-dialog';
 
 interface LineItemCardProps {
   line: {
@@ -20,6 +23,7 @@ interface LineItemCardProps {
     provaPrice?: number;
     currency?: string;
   };
+  orderId?: string;
   onClick?: () => void;
 }
 
@@ -73,10 +77,18 @@ const getETDUrgency = (etdDate?: string): { text: string; color: string; days: n
   }
 };
 
-export function LineItemCard({ line, onClick }: LineItemCardProps) {
+export function LineItemCard({ line, orderId, onClick }: LineItemCardProps) {
+  const [showApprovalTimeline, setShowApprovalTimeline] = useState(false);
   const urgency = getETDUrgency(line.etd);
   
+  const lineLabel = [
+    line.styleNumber,
+    line.colorCode && `Color: ${line.colorCode}`,
+    line.cadCode && `CAD: ${line.cadCode}`,
+  ].filter(Boolean).join(' - ');
+  
   return (
+    <>
     <Card 
       className="border-l-4 border-l-indigo-500 hover:shadow-lg transition-all cursor-pointer transform hover:-translate-y-0.5"
       onClick={onClick}
@@ -153,7 +165,37 @@ export function LineItemCard({ line, onClick }: LineItemCardProps) {
             </div>
           </div>
         </div>
+
+        {/* Approval Timeline Button */}
+        {orderId && (
+          <div className="mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowApprovalTimeline(true);
+              }}
+            >
+              <History className="h-4 w-4 mr-2" />
+              View Approval Timeline
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
+    
+    {/* Approval Timeline Dialog */}
+    {orderId && (
+      <ApprovalTimelineDialog
+        open={showApprovalTimeline}
+        onClose={() => setShowApprovalTimeline(false)}
+        orderId={orderId}
+        lineId={line.id}
+        lineLabel={lineLabel}
+      />
+    )}
+  </>
   );
 }
