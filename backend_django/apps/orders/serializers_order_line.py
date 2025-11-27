@@ -97,7 +97,7 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderLine
         fields = [
-            'color_code', 'color_name', 'cad_code', 'cad_name',
+            'id', 'color_code', 'color_name', 'cad_code', 'cad_name',
             'quantity', 'unit',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'etd', 'eta', 'submission_date', 'approval_date',

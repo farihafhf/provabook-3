@@ -422,7 +422,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
     """
     Serializer for updating orders
     Accepts both camelCase (from frontend) and snake_case
+    Supports nested styles with colors/lines updates
     """
+    styles = OrderStyleCreateUpdateSerializer(many=True, required=False)
+    
     class Meta:
         model = Order
         fields = [
@@ -432,7 +435,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'mill_name', 'mill_price', 'prova_price', 'currency',
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
-            'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser'
+            'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser', 'styles'
         ]
     
     def to_internal_value(self, data):
@@ -497,6 +500,88 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             })
         
         return data
+    
+    def update(self, instance, validated_data):
+        """Update order with nested styles and lines/colors"""
+        from .models_style_color import OrderStyle
+        from .models_order_line import OrderLine
+        
+        styles_data = validated_data.pop('styles', None)
+        
+        # Update order-level fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Update styles if provided
+        if styles_data is not None:
+            # Get existing style IDs
+            existing_style_ids = set()
+            
+            for style_data in styles_data:
+                style_id = style_data.get('id')
+                lines_data = style_data.pop('lines', [])
+                colors_data = style_data.pop('colors', [])  # Support colors for backward compatibility
+                
+                # If colors are provided instead of lines, convert them
+                if colors_data and not lines_data:
+                    lines_data = colors_data
+                
+                if style_id:
+                    # Update existing style
+                    try:
+                        style = OrderStyle.objects.get(id=style_id, order=instance)
+                        existing_style_ids.add(str(style_id))
+                        
+                        # Update style fields
+                        for attr, value in style_data.items():
+                            setattr(style, attr, value)
+                        style.save()
+                        
+                        # Handle lines updates
+                        if lines_data:
+                            existing_line_ids = set()
+                            
+                            for line_data in lines_data:
+                                line_id = line_data.pop('id', None)
+                                
+                                if line_id:
+                                    # Update existing line
+                                    try:
+                                        line = OrderLine.objects.get(id=line_id, style=style)
+                                        existing_line_ids.add(str(line_id))
+                                        
+                                        for attr, value in line_data.items():
+                                            setattr(line, attr, value)
+                                        line.save()
+                                    except OrderLine.DoesNotExist:
+                                        # Line ID provided but doesn't exist, create new one
+                                        OrderLine.objects.create(style=style, **line_data)
+                                else:
+                                    # No ID, create new line
+                                    OrderLine.objects.create(style=style, **line_data)
+                            
+                            # Delete lines that weren't in the update
+                            style.lines.exclude(id__in=existing_line_ids).delete()
+                        
+                    except OrderStyle.DoesNotExist:
+                        # Style ID provided but doesn't exist, create new one
+                        style = OrderStyle.objects.create(order=instance, **style_data)
+                        for line_data in lines_data:
+                            line_data.pop('id', None)  # Remove ID for new lines
+                            OrderLine.objects.create(style=style, **line_data)
+                else:
+                    # No ID, create new style
+                    style = OrderStyle.objects.create(order=instance, **style_data)
+                    for line_data in lines_data:
+                        line_data.pop('id', None)  # Remove ID for new lines
+                        OrderLine.objects.create(style=style, **line_data)
+                    existing_style_ids.add(str(style.id))
+            
+            # Delete styles that weren't in the update
+            instance.styles.exclude(id__in=existing_style_ids).delete()
+        
+        return instance
 
 
 class OrderListSerializer(serializers.ModelSerializer):

@@ -92,34 +92,39 @@ export default function OrderEditPage() {
       // Set styles data if available
       if (order.styles && order.styles.length > 0) {
         setStyles(
-          order.styles.map((style: any) => ({
-            id: style.id,
-            description: style.description || '',
-            fabricType: style.fabricType || '',
-            fabricComposition: style.fabricComposition || '',
-            gsm: style.gsm ? style.gsm.toString() : '',
-            finishType: style.finishType || '',
-            construction: style.construction || '',
-            cuttableWidth: style.cuttableWidth || '',
-            etd: style.etd || '',
-            eta: style.eta || '',
-            submissionDate: style.submissionDate || '',
-            notes: style.notes || '',
-            colors: style.colors?.map((color: any) => ({
-              id: color.id,
-              colorCode: color.colorCode || '',
-              quantity: color.quantity ? color.quantity.toString() : '',
-              unit: color.unit || 'meters',
-              millName: color.millName || '',
-              millPrice: color.millPrice ? color.millPrice.toString() : '',
-              provaPrice: color.provaPrice ? color.provaPrice.toString() : '',
-              currency: color.currency || 'USD',
-              etd: color.etd || '',
-              eta: color.eta || '',
-              submissionDate: color.submissionDate || '',
-              notes: color.notes || '',
-            })) || [{ colorCode: '', quantity: '', unit: 'meters', currency: 'USD' }],
-          }))
+          order.styles.map((style: any) => {
+            // Prefer lines over colors (new structure), fallback to colors for backward compatibility
+            const lineItems = style.lines || style.colors || [];
+            
+            return {
+              id: style.id,
+              description: style.description || '',
+              fabricType: style.fabricType || '',
+              fabricComposition: style.fabricComposition || '',
+              gsm: style.gsm ? style.gsm.toString() : '',
+              finishType: style.finishType || '',
+              construction: style.construction || '',
+              cuttableWidth: style.cuttableWidth || '',
+              etd: style.etd || '',
+              eta: style.eta || '',
+              submissionDate: style.submissionDate || '',
+              notes: style.notes || '',
+              colors: lineItems.map((item: any) => ({
+                id: item.id,
+                colorCode: item.colorCode || '',
+                quantity: item.quantity ? item.quantity.toString() : '',
+                unit: item.unit || 'meters',
+                millName: item.millName || '',
+                millPrice: item.millPrice ? item.millPrice.toString() : '',
+                provaPrice: item.provaPrice ? item.provaPrice.toString() : '',
+                currency: item.currency || 'USD',
+                etd: item.etd || '',
+                eta: item.eta || '',
+                submissionDate: item.submissionDate || '',
+                notes: item.notes || '',
+              })),
+            };
+          })
         );
       } else {
         // Fallback to single style with basic data

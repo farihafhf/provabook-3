@@ -166,7 +166,7 @@ class OrderColorCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderColor
         fields = [
-            'color_code', 'color_name', 'quantity', 'unit',
+            'id', 'color_code', 'color_name', 'quantity', 'unit',
             'etd', 'eta', 'submission_date', 'approval_date',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'approval_status', 'notes'
@@ -195,16 +195,17 @@ class OrderColorCreateUpdateSerializer(serializers.ModelSerializer):
 
 class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating OrderStyle with nested lines (accepts camelCase)"""
-    lines = OrderLineCreateUpdateSerializer(many=True, required=True)
+    lines = OrderLineCreateUpdateSerializer(many=True, required=False)
+    colors = OrderColorCreateUpdateSerializer(many=True, required=False)  # Backward compatibility
     
     class Meta:
         model = OrderStyle
         fields = [
-            'description',
+            'id', 'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction', 'cuttable_width',
             'etd', 'eta', 'submission_date', 'notes',
-            'lines'
+            'lines', 'colors'
         ]
     
     def to_internal_value(self, data):
@@ -226,29 +227,41 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         return super().to_internal_value(converted_data)
     
     def validate(self, data):
-        """Validate that at least one line is provided"""
+        """Validate that at least one line/color is provided"""
         from .models_order_line import OrderLine
         
         lines = data.get('lines', [])
-        if not lines:
-            raise serializers.ValidationError({
-                'lines': 'At least one line must be provided for each style'
-            })
+        colors = data.get('colors', [])
         
-        # Validate that combinations are unique within this style
-        combinations = [(l.get('color_code'), l.get('cad_code')) for l in lines]
-        if len(combinations) != len(set(combinations)):
-            raise serializers.ValidationError({
-                'lines': 'Each color+CAD combination must be unique within a style'
-            })
+        # Accept either lines or colors (for backward compatibility)
+        if not lines and not colors:
+            # Only validate if this is a create operation (no id)
+            if not data.get('id') and not self.instance:
+                raise serializers.ValidationError({
+                    'lines': 'At least one line or color must be provided for each style'
+                })
+        
+        # Validate lines if provided
+        if lines:
+            combinations = [(l.get('color_code'), l.get('cad_code')) for l in lines]
+            if len(combinations) != len(set(combinations)):
+                raise serializers.ValidationError({
+                    'lines': 'Each color+CAD combination must be unique within a style'
+                })
         
         return data
     
     def create(self, validated_data):
-        """Create style with nested lines"""
+        """Create style with nested lines/colors"""
         from .models_order_line import OrderLine
         
-        lines_data = validated_data.pop('lines')
+        lines_data = validated_data.pop('lines', [])
+        colors_data = validated_data.pop('colors', [])
+        
+        # If colors are provided instead of lines, use them as lines
+        if colors_data and not lines_data:
+            lines_data = colors_data
+        
         style = OrderStyle.objects.create(**validated_data)
         
         for line_data in lines_data:
@@ -257,10 +270,15 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         return style
     
     def update(self, instance, validated_data):
-        """Update style and nested lines"""
+        """Update style and nested lines/colors"""
         from .models_order_line import OrderLine
         
         lines_data = validated_data.pop('lines', None)
+        colors_data = validated_data.pop('colors', None)
+        
+        # If colors are provided instead of lines, use them as lines
+        if colors_data is not None and lines_data is None:
+            lines_data = colors_data
         
         # Update style fields
         for attr, value in validated_data.items():
@@ -272,6 +290,8 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
             # Delete existing lines and create new ones
             instance.lines.all().delete()
             for line_data in lines_data:
+                # Remove id from line_data to avoid conflicts
+                line_data.pop('id', None)
                 OrderLine.objects.create(style=instance, **line_data)
         
         return instance
