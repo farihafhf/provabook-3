@@ -501,6 +501,27 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         
         return data
     
+    def _convert_line_data_to_snake_case(self, line_data):
+        """Convert camelCase line data keys to snake_case for model fields"""
+        field_mapping = {
+            'colorCode': 'color_code',
+            'colorName': 'color_name',
+            'cadCode': 'cad_code',
+            'cadName': 'cad_name',
+            'millName': 'mill_name',
+            'millPrice': 'mill_price',
+            'provaPrice': 'prova_price',
+            'submissionDate': 'submission_date',
+            'approvalDate': 'approval_date',
+            'approvalStatus': 'approval_status',
+        }
+        
+        converted = {}
+        for key, value in line_data.items():
+            new_key = field_mapping.get(key, key)
+            converted[new_key] = value
+        return converted
+    
     def update(self, instance, validated_data):
         """Update order with nested styles and lines/colors"""
         from .models_style_color import OrderStyle
@@ -543,6 +564,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             existing_line_ids = set()
                             
                             for line_data in lines_data:
+                                # Convert camelCase to snake_case
+                                line_data = self._convert_line_data_to_snake_case(line_data)
                                 line_id = line_data.pop('id', None)
                                 
                                 if line_id:
@@ -561,7 +584,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 if not line_id:
                                     # No valid ID - try to match by logical combination (style + color + CAD)
                                     color_code = line_data.get('color_code') or ''
-                                    cad_code = line_data.get('cad_code') or ''
+                                    cad_code = line_data.get('cad_code') or line_data.get('cad_name') or ''
 
                                     # Try to find existing line with same style + color + CAD
                                     # Use filter().first() to avoid MultipleObjectsReturned
@@ -583,8 +606,13 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                         existing_line_ids.add(str(new_line.id))
                             
                             # Delete lines that weren't in the update (user removed them)
-                            # Approval history will be preserved due to SET_NULL on ForeignKey
-                            style.lines.exclude(id__in=existing_line_ids).delete()
+                            # BUT: Only delete lines with NO approval history
+                            # Lines with approval history must be kept so history queries can find them
+                            lines_to_delete = style.lines.exclude(id__in=existing_line_ids)
+                            for line in lines_to_delete:
+                                # Only delete if this line has no approval history
+                                if not line.approval_history.exists():
+                                    line.delete()
                         
                     except OrderStyle.DoesNotExist:
                         # Style ID provided but doesn't exist, create new one
@@ -611,6 +639,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 existing_line_ids = set()
                                 
                                 for line_data in lines_data:
+                                    # Convert camelCase to snake_case
+                                    line_data = self._convert_line_data_to_snake_case(line_data)
                                     line_id = line_data.pop('id', None)
                                     
                                     if line_id:
@@ -629,7 +659,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     if not line_id:
                                         # No valid ID - try to match by logical combination (style + color + CAD)
                                         color_code = line_data.get('color_code') or ''
-                                        cad_code = line_data.get('cad_code') or ''
+                                        cad_code = line_data.get('cad_code') or line_data.get('cad_name') or ''
 
                                         # Try to find existing line with same style + color + CAD
                                         # Use filter().first() to avoid MultipleObjectsReturned
@@ -651,8 +681,13 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                             existing_line_ids.add(str(new_line.id))
                                 
                                 # Delete lines that weren't in the update (user removed them)
-                                # Approval history will be preserved due to SET_NULL on ForeignKey
-                                style.lines.exclude(id__in=existing_line_ids).delete()
+                                # BUT: Only delete lines with NO approval history
+                                # Lines with approval history must be kept so history queries can find them
+                                lines_to_delete = style.lines.exclude(id__in=existing_line_ids)
+                                for line in lines_to_delete:
+                                    # Only delete if this line has no approval history
+                                    if not line.approval_history.exists():
+                                        line.delete()
                         except OrderStyle.DoesNotExist:
                             # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)
