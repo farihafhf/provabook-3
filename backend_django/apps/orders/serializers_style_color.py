@@ -288,11 +288,28 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         
         # Update lines if provided
         if lines_data is not None:
-            # Delete existing lines and create new ones
-            instance.lines.all().delete()
+            existing_line_ids = set()
+            
             for line_data in lines_data:
-                # Remove id from line_data to avoid conflicts
-                line_data.pop('id', None)
-                OrderLine.objects.create(style=instance, **line_data)
+                line_id = line_data.pop('id', None)
+                
+                if line_id:
+                    # Update existing line
+                    try:
+                        line = OrderLine.objects.get(id=line_id, style=instance)
+                        existing_line_ids.add(str(line_id))
+                        
+                        for attr, value in line_data.items():
+                            setattr(line, attr, value)
+                        line.save()
+                    except OrderLine.DoesNotExist:
+                        # Line ID provided but doesn't exist, create new one
+                        OrderLine.objects.create(style=instance, **line_data)
+                else:
+                    # No ID, create new line
+                    OrderLine.objects.create(style=instance, **line_data)
+            
+            # Delete lines that weren't in the update
+            instance.lines.exclude(id__in=existing_line_ids).delete()
         
         return instance
