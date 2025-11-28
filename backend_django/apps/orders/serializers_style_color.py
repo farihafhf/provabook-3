@@ -274,7 +274,12 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         return style
     
     def update(self, instance, validated_data):
-        """Update style and nested lines/colors"""
+        """
+        Update style and nested lines/colors.
+        
+        CRITICAL FIX: Lines are now looked up by ID only (not ID+style) to prevent
+        the issue where lines could be recreated if style mismatches occur.
+        """
         from .models_order_line import OrderLine
         
         lines_data = validated_data.pop('lines', None)
@@ -292,27 +297,35 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         # Update lines if provided
         if lines_data is not None:
             existing_line_ids = set()
+            order = instance.order  # Get the parent order for security check
             
             for line_data in lines_data:
                 line_id = line_data.pop('id', None)
                 
                 if line_id:
-                    # Update existing line
+                    # CRITICAL FIX: Look up line by ID only, verify it belongs to this order
                     try:
-                        line = OrderLine.objects.get(id=line_id, style=instance)
+                        line = OrderLine.objects.get(id=line_id, style__order=order)
                         existing_line_ids.add(str(line_id))
+                        
+                        # Update the line's style if it changed
+                        if line.style_id != instance.id:
+                            line.style = instance
                         
                         for attr, value in line_data.items():
                             setattr(line, attr, value)
                         line.save()
                     except OrderLine.DoesNotExist:
-                        # Line ID provided but doesn't exist, create new one
-                        OrderLine.objects.create(style=instance, **line_data)
+                        # Line ID provided but doesn't exist in this order, create new one
+                        new_line = OrderLine.objects.create(style=instance, **line_data)
+                        existing_line_ids.add(str(new_line.id))
                 else:
                     # No ID, create new line
-                    OrderLine.objects.create(style=instance, **line_data)
+                    new_line = OrderLine.objects.create(style=instance, **line_data)
+                    existing_line_ids.add(str(new_line.id))
             
             # Delete lines that weren't in the update
+            # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
             instance.lines.exclude(id__in=existing_line_ids).delete()
         
         return instance

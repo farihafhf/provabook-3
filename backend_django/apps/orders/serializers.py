@@ -523,7 +523,18 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         return converted
     
     def update(self, instance, validated_data):
-        """Update order with nested styles and lines/colors"""
+        """
+        Update order with nested styles and lines/colors.
+        
+        CRITICAL FIX: Lines are now looked up by ID only (not ID+style) to prevent
+        the issue where frontend grouping mismatches cause lines to be recreated,
+        losing their approval history links.
+        
+        The fix:
+        1. Look up lines by ID only, verify they belong to this order
+        2. Update the line's style FK if it changed
+        3. Track all processed line IDs globally for proper deletion
+        """
         from .models_style_color import OrderStyle
         from .models_order_line import OrderLine
         
@@ -536,7 +547,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         
         # Update styles if provided
         if styles_data is not None:
-            # Get existing style IDs
+            # Track ALL processed line IDs across all styles for proper deletion
+            all_processed_line_ids = set()
             existing_style_ids = set()
             
             for style_data in styles_data:
@@ -548,8 +560,9 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                 if colors_data and not lines_data:
                     lines_data = colors_data
                 
+                # Resolve the style (get existing or create new)
+                style = None
                 if style_id:
-                    # Update existing style
                     try:
                         style = OrderStyle.objects.get(id=style_id, order=instance)
                         existing_style_ids.add(str(style_id))
@@ -558,46 +571,15 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         for attr, value in style_data.items():
                             setattr(style, attr, value)
                         style.save()
-                        
-                        # Handle lines updates
-                        if lines_data:
-                            existing_line_ids = set()
-                            
-                            for line_data in lines_data:
-                                # Convert camelCase to snake_case
-                                line_data = self._convert_line_data_to_snake_case(line_data)
-                                line_id = line_data.pop('id', None)
-                                
-                                if line_id:
-                                    # ID provided - update existing line by ID only
-                                    line = OrderLine.objects.get(id=line_id, style=style)
-                                    existing_line_ids.add(str(line_id))
-                                    
-                                    for attr, value in line_data.items():
-                                        setattr(line, attr, value)
-                                    line.save()
-                                else:
-                                    # No ID - this is a NEW line, create it
-                                    new_line = OrderLine.objects.create(style=style, **line_data)
-                                    existing_line_ids.add(str(new_line.id))
-                            
-                            # Delete lines that weren't in the update (user removed them)
-                            # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
-                            style.lines.exclude(id__in=existing_line_ids).delete()
-                        
                     except OrderStyle.DoesNotExist:
                         # Style ID provided but doesn't exist, create new one
                         style = OrderStyle.objects.create(order=instance, **style_data)
-                        for line_data in lines_data:
-                            line_data = self._convert_line_data_to_snake_case(line_data)
-                            line_data.pop('id', None)  # Remove ID for new lines
-                            OrderLine.objects.create(style=style, **line_data)
+                        existing_style_ids.add(str(style.id))
                 else:
                     # No ID provided, check if style with same style_number exists
                     style_number = style_data.get('style_number')
                     if style_number:
                         try:
-                            # Try to get existing style by style_number
                             style = OrderStyle.objects.get(order=instance, style_number=style_number)
                             existing_style_ids.add(str(style.id))
                             
@@ -605,53 +587,52 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             for attr, value in style_data.items():
                                 setattr(style, attr, value)
                             style.save()
-                            
-                            # Handle lines updates
-                            if lines_data:
-                                existing_line_ids = set()
-                                
-                                for line_data in lines_data:
-                                    # Convert camelCase to snake_case
-                                    line_data = self._convert_line_data_to_snake_case(line_data)
-                                    line_id = line_data.pop('id', None)
-                                    
-                                    if line_id:
-                                        # ID provided - update existing line by ID only
-                                        line = OrderLine.objects.get(id=line_id, style=style)
-                                        existing_line_ids.add(str(line_id))
-                                        
-                                        for attr, value in line_data.items():
-                                            setattr(line, attr, value)
-                                        line.save()
-                                    else:
-                                        # No ID - this is a NEW line, create it
-                                        new_line = OrderLine.objects.create(style=style, **line_data)
-                                        existing_line_ids.add(str(new_line.id))
-                                
-                                # Delete lines that weren't in the update (user removed them)
-                                # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
-                                style.lines.exclude(id__in=existing_line_ids).delete()
                         except OrderStyle.DoesNotExist:
-                            # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)
-                            for line_data in lines_data:
-                                line_data = self._convert_line_data_to_snake_case(line_data)
-                                line_data.pop('id', None)  # Remove ID for new lines
-                                OrderLine.objects.create(style=style, **line_data)
                             existing_style_ids.add(str(style.id))
                     else:
                         # No style_number, just create new style
                         style = OrderStyle.objects.create(order=instance, **style_data)
-                        for line_data in lines_data:
-                            line_data = self._convert_line_data_to_snake_case(line_data)
-                            line_data.pop('id', None)  # Remove ID for new lines
-                            OrderLine.objects.create(style=style, **line_data)
                         existing_style_ids.add(str(style.id))
+                
+                # Process lines for this style
+                for line_data in lines_data:
+                    # Convert camelCase to snake_case
+                    line_data = self._convert_line_data_to_snake_case(line_data)
+                    line_id = line_data.pop('id', None)
+                    
+                    if line_id:
+                        # CRITICAL FIX: Look up line by ID only, verify it belongs to this order
+                        try:
+                            line = OrderLine.objects.get(id=line_id, style__order=instance)
+                            all_processed_line_ids.add(str(line_id))
+                            
+                            # Update the line's style if it changed (user moved line to different style)
+                            if line.style_id != style.id:
+                                line.style = style
+                            
+                            # Update other fields
+                            for attr, value in line_data.items():
+                                setattr(line, attr, value)
+                            line.save()
+                        except OrderLine.DoesNotExist:
+                            # Line ID provided but doesn't exist in this order, create new one
+                            new_line = OrderLine.objects.create(style=style, **line_data)
+                            all_processed_line_ids.add(str(new_line.id))
+                    else:
+                        # No ID - this is a NEW line, create it
+                        new_line = OrderLine.objects.create(style=style, **line_data)
+                        all_processed_line_ids.add(str(new_line.id))
+            
+            # Delete lines that weren't in the update (user removed them)
+            # This is done at order level to handle lines that may have moved between styles
+            # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
+            for order_style in instance.styles.all():
+                order_style.lines.exclude(id__in=all_processed_line_ids).delete()
             
             # NOTE: We intentionally do NOT delete styles that aren't in the update
             # to preserve approval history and other linked data
             # Styles should be deleted through explicit delete actions
-            # instance.styles.exclude(id__in=existing_style_ids).delete()
         
         return instance
 
