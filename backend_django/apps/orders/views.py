@@ -291,27 +291,8 @@ class OrderViewSet(viewsets.ModelViewSet):
                 changed_by=request.user if request.user.is_authenticated else None
             )
 
-        # Auto-progress logic based on order status
-        approvals = order.approval_status or {}
-        
-        # If Running Order: check if all running approvals are approved → auto-advance to Bulk
-        if order.status == OrderStatus.RUNNING:
-            running_approvals = ['labDip', 'ppSample', 'handloom']
-            strike_off_approved = approvals.get('strikeOff') == 'approved'
-            
-            if strike_off_approved and all(approvals.get(g) == 'approved' for g in running_approvals):
-                order.status = OrderStatus.BULK
-                order.save(update_fields=['status', 'updated_at'])
-        
-        # If Upcoming/In Development: check if Quality and Price are approved → auto-advance to Running Order
-        elif order.status in [OrderStatus.UPCOMING, OrderStatus.IN_DEVELOPMENT]:
-            quality_approved = approvals.get('quality') == 'approved' or approvals.get('qualityTest') == 'approved'
-            price_approved = approvals.get('price') == 'approved' or approvals.get('bulkSwatch') == 'approved'
-            
-            if quality_approved and price_approved:
-                order.status = OrderStatus.RUNNING
-                order.category = OrderCategory.RUNNING
-                order.save(update_fields=['status', 'category', 'updated_at'])
+        # Stage changes are now manual - no auto-progress based on approval status
+        # Users must use the "Go to Next Stage" button or status dropdown to change stages
         
         # Return updated order
         response_serializer = OrderSerializer(order)

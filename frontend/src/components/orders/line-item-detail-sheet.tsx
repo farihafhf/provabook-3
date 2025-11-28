@@ -143,59 +143,12 @@ export function LineItemDetailSheet({
     if (!onApprovalChange) return;
     const label = `${line.styleNumber || ''} ${line.colorCode || ''} ${line.cadCode || ''}`.trim();
     
-    // Update the approval first
+    // Update the approval - no auto-advance, stage changes are manual
     await onApprovalChange(approvalType, newStatus, line.id, label);
-    
-    // Check if all gates for current status are approved and auto-advance status
-    const currentApprovals = { ...line.approvalStatus, [approvalType]: newStatus };
-    checkAndAutoAdvanceStatus(currentApprovals);
   };
 
-  // Determine which approval gates to show based on LINE status (not order status)
-  const getApprovalGatesForStatus = (status: string): string[] => {
-    switch (status) {
-      case 'upcoming':
-      case 'in_development':
-        return ['price', 'quality'];
-      case 'running':
-        return ['labDip', 'strikeOff', 'handloom', 'ppSample'];
-      case 'bulk':
-      case 'completed':
-        return []; // No approval gates for bulk/completed
-      default:
-        return ['price', 'quality'];
-    }
-  };
-
-  const approvalTypes = getApprovalGatesForStatus(line.status || 'upcoming');
-
-  // Check if all required approvals for current stage are approved, then auto-advance
-  const checkAndAutoAdvanceStatus = (currentApprovals: Record<string, string>) => {
-    if (!onStatusChange) return;
-    
-    const currentStatus = line.status || 'upcoming';
-    const requiredGates = getApprovalGatesForStatus(currentStatus);
-    
-    // Check if all required gates are approved
-    const allApproved = requiredGates.every(gate => currentApprovals[gate] === 'approved');
-    
-    if (allApproved && requiredGates.length > 0) {
-      // Auto-advance to next status
-      let nextStatus = '';
-      if (currentStatus === 'upcoming' || currentStatus === 'in_development') {
-        nextStatus = 'running';
-      } else if (currentStatus === 'running') {
-        nextStatus = 'bulk';
-      }
-      
-      if (nextStatus) {
-        // Trigger auto-advance after approval saves - parent will refetch with cache-bust
-        setTimeout(() => {
-          onStatusChange(line.id, nextStatus);
-        }, 300);
-      }
-    }
-  };
+  // All approval gates are shown at all times - stage changes are manual
+  const allApprovalTypes = ['price', 'quality', 'labDip', 'strikeOff', 'handloom', 'ppSample'];
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -317,19 +270,15 @@ export function LineItemDetailSheet({
             </div>
           )}
 
-          {/* Approval Gates */}
-          {onApprovalChange && approvalTypes.length > 0 && (
+          {/* Approval Gates - Always show all 6 approval points */}
+          {onApprovalChange && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">
                 Approval Gates
-                {line.status === 'upcoming' || line.status === 'in_development' ? (
-                  <span className="text-sm font-normal text-gray-600 ml-2">(Price & Quality for Running)</span>
-                ) : line.status === 'running' ? (
-                  <span className="text-sm font-normal text-gray-600 ml-2">(Sample approvals for Bulk)</span>
-                ) : null}
+                <span className="text-sm font-normal text-gray-600 ml-2">(All approvals - stage changes are manual)</span>
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {approvalTypes.map((approvalType) => (
+                {allApprovalTypes.map((approvalType) => (
                   <div key={approvalType} className="p-3 border rounded-lg space-y-2">
                     <Label className="text-sm font-semibold flex items-center gap-2">
                       {getApprovalIcon(line.approvalStatus?.[approvalType] || 'default')}
@@ -358,35 +307,37 @@ export function LineItemDetailSheet({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
 
-              {/* Go to Next Stage button for applicable statuses */}
-              {['upcoming', 'in_development', 'running'].includes(line.status || 'upcoming') && onStatusChange && (
-                <div className="pt-2">
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={updating}
-                    onClick={async () => {
-                      const currentStatus = line.status || 'upcoming';
-                      let nextStatus = '';
+          {/* Go to Next Stage button - Independent of approval gates */}
+          {['upcoming', 'in_development', 'running', 'bulk'].includes(line.status || 'upcoming') && onStatusChange && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={updating}
+                onClick={async () => {
+                  const currentStatus = line.status || 'upcoming';
+                  let nextStatus = '';
 
-                      if (currentStatus === 'upcoming') {
-                        nextStatus = 'in_development';
-                      } else if (currentStatus === 'in_development') {
-                        nextStatus = 'running';
-                      } else if (currentStatus === 'running') {
-                        nextStatus = 'bulk';
-                      }
+                  if (currentStatus === 'upcoming') {
+                    nextStatus = 'in_development';
+                  } else if (currentStatus === 'in_development') {
+                    nextStatus = 'running';
+                  } else if (currentStatus === 'running') {
+                    nextStatus = 'bulk';
+                  } else if (currentStatus === 'bulk') {
+                    nextStatus = 'completed';
+                  }
 
-                      if (!nextStatus) return;
+                  if (!nextStatus) return;
 
-                      await onStatusChange(line.id, nextStatus);
-                    }}
-                  >
-                    {updating ? 'Moving to next stage...' : 'Go to Next Stage'}
-                  </Button>
-                </div>
-              )}
+                  await onStatusChange(line.id, nextStatus);
+                }}
+              >
+                {updating ? 'Moving to next stage...' : 'Go to Next Stage'}
+              </Button>
             </div>
           )}
 
