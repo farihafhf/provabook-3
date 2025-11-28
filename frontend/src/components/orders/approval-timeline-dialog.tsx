@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw, Calendar } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw, Calendar, Ship, Plane } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 
@@ -19,6 +19,17 @@ interface ApprovalHistoryItem {
   changedByName?: string;
   changedByEmail?: string;
   createdAt: string;
+  notes?: string;
+}
+
+interface TimelineEvent {
+  id: string;
+  type: 'approval' | 'etd' | 'eta';
+  date: string;
+  approvalType?: string;
+  status?: string;
+  changedByName?: string;
+  changedByEmail?: string;
   notes?: string;
 }
 
@@ -98,7 +109,7 @@ export function ApprovalTimelineDialog({
   lineLabel,
 }: ApprovalTimelineDialogProps) {
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState<ApprovalHistoryItem[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
     if (open && orderId && lineId) {
@@ -110,7 +121,43 @@ export function ApprovalTimelineDialog({
     setLoading(true);
     try {
       const response = await api.get(`/orders/${orderId}/lines/${lineId}/approval-history/`);
-      setHistory(response.data);
+      const { history = [], etd, eta } = response.data;
+      
+      // Convert approval history to timeline events
+      const approvalEvents: TimelineEvent[] = history.map((item: ApprovalHistoryItem) => ({
+        id: item.id,
+        type: 'approval' as const,
+        date: item.createdAt,
+        approvalType: item.approvalType,
+        status: item.status,
+        changedByName: item.changedByName,
+        changedByEmail: item.changedByEmail,
+        notes: item.notes,
+      }));
+      
+      // Add ETD/ETA as timeline events if they exist
+      const dateEvents: TimelineEvent[] = [];
+      if (etd) {
+        dateEvents.push({
+          id: `etd-${lineId}`,
+          type: 'etd' as const,
+          date: etd,
+        });
+      }
+      if (eta) {
+        dateEvents.push({
+          id: `eta-${lineId}`,
+          type: 'eta' as const,
+          date: eta,
+        });
+      }
+      
+      // Combine and sort all events by date
+      const allEvents = [...approvalEvents, ...dateEvents].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      
+      setTimelineEvents(allEvents);
     } catch (error) {
       console.error('Failed to fetch approval history:', error);
     } finally {
@@ -132,12 +179,12 @@ export function ApprovalTimelineDialog({
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
           </div>
-        ) : history.length === 0 ? (
+        ) : timelineEvents.length === 0 ? (
           <div className="py-12 text-center">
             <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No approval history yet</p>
+            <p className="text-gray-500">No timeline events yet</p>
             <p className="text-sm text-gray-400 mt-2">
-              Approval changes will appear here as they happen
+              Timeline events will appear here as they happen
             </p>
           </div>
         ) : (
@@ -147,70 +194,96 @@ export function ApprovalTimelineDialog({
 
             {/* Timeline Items */}
             <div className="space-y-8">
-              {history.map((item, index) => (
-                <div key={item.id} className="relative pl-14">
-                  {/* Timeline Dot */}
-                  <div className="absolute left-0 top-1 flex items-center justify-center">
-                    <div className="bg-white p-1.5 rounded-full border-2 border-indigo-300 shadow-md">
-                      {getStatusIcon(item.status)}
-                    </div>
-                  </div>
-
-                  {/* Timeline Content Card */}
-                  <div className="bg-white border-2 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                    <div className="p-4">
-                      {/* Header */}
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div>
-                          <h4 className="font-semibold text-lg text-gray-900">
-                            {formatApprovalType(item.approvalType)}
-                          </h4>
-                          <Badge className={`mt-1 ${getStatusColor(item.status)} border font-medium`}>
-                            {getStatusLabel(item.status)}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>{formatDate(item.createdAt)}</span>
-                        </div>
+              {timelineEvents.map((event) => {
+                const isApproval = event.type === 'approval';
+                const isETD = event.type === 'etd';
+                const isETA = event.type === 'eta';
+                
+                return (
+                  <div key={event.id} className="relative pl-14">
+                    {/* Timeline Dot */}
+                    <div className="absolute left-0 top-1 flex items-center justify-center">
+                      <div className={`bg-white p-1.5 rounded-full border-2 shadow-md ${
+                        isETD ? 'border-blue-400' : isETA ? 'border-purple-400' : 'border-indigo-300'
+                      }`}>
+                        {isETD ? (
+                          <Ship className="h-5 w-5 text-blue-600" />
+                        ) : isETA ? (
+                          <Plane className="h-5 w-5 text-purple-600" />
+                        ) : (
+                          getStatusIcon(event.status!)
+                        )}
                       </div>
+                    </div>
 
-                      {/* Details */}
-                      <div className="space-y-2">
-                        {item.changedByName && (
-                          <div className="text-sm">
-                            <span className="text-gray-500">Changed by: </span>
-                            <span className="text-gray-900 font-medium">{item.changedByName}</span>
-                            {item.changedByEmail && (
-                              <span className="text-gray-400 ml-1">({item.changedByEmail})</span>
+                    {/* Timeline Content Card */}
+                    <div className="bg-white border-2 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                      <div className="p-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div>
+                            <h4 className="font-semibold text-lg text-gray-900">
+                              {isETD
+                                ? 'Estimated Time of Departure (ETD)'
+                                : isETA
+                                ? 'Estimated Time of Arrival (ETA)'
+                                : formatApprovalType(event.approvalType!)}
+                            </h4>
+                            {isApproval && (
+                              <Badge className={`mt-1 ${getStatusColor(event.status!)} border font-medium`}>
+                                {getStatusLabel(event.status!)}
+                              </Badge>
+                            )}
+                            {(isETD || isETA) && (
+                              <Badge className="mt-1 bg-sky-100 text-sky-800 border-sky-300 border font-medium">
+                                Milestone
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Calendar className="h-4 w-4" />
+                            <span>{formatDate(event.date)}</span>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        {isApproval && (
+                          <div className="space-y-2">
+                            {event.changedByName && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Changed by: </span>
+                                <span className="text-gray-900 font-medium">{event.changedByName}</span>
+                                {event.changedByEmail && (
+                                  <span className="text-gray-400 ml-1">({event.changedByEmail})</span>
+                                )}
+                              </div>
+                            )}
+                            {event.notes && (
+                              <div className="text-sm">
+                                <span className="text-gray-500">Notes: </span>
+                                <span className="text-gray-900">{event.notes}</span>
+                              </div>
                             )}
                           </div>
                         )}
-                        {item.notes && (
-                          <div className="text-sm">
-                            <span className="text-gray-500">Notes: </span>
-                            <span className="text-gray-900">{item.notes}</span>
-                          </div>
-                        )}
-                      </div>
 
-                      {/* Timestamp */}
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-400">
-                          {new Date(item.createdAt).toLocaleString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
+                        {/* Timestamp */}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-xs text-gray-400">
+                            {new Date(event.date).toLocaleString('en-US', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              ...(isApproval ? { hour: '2-digit', minute: '2-digit' } : {}),
+                            })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

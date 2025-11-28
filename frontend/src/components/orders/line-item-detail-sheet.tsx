@@ -82,6 +82,8 @@ const getApprovalIcon = (status: string) => {
       return <XCircle className="h-4 w-4 text-red-600" />;
     case 'resubmission':
       return <AlertCircle className="h-4 w-4 text-orange-600" />;
+    case 'submission':
+      return <Clock className="h-4 w-4 text-blue-600" />;
     default:
       return <Clock className="h-4 w-4 text-gray-400" />;
   }
@@ -328,11 +330,11 @@ export function LineItemDetailSheet({
                 {approvalTypes.map((approvalType) => (
                   <div key={approvalType} className="p-3 border rounded-lg space-y-2">
                     <Label className="text-sm font-semibold flex items-center gap-2">
-                      {getApprovalIcon(line.approvalStatus?.[approvalType] || 'submission')}
+                      {getApprovalIcon(line.approvalStatus?.[approvalType] || '')}
                       {formatApprovalName(approvalType)}
                     </Label>
                     <Select
-                      value={selectedApprovals[approvalType] || line.approvalStatus?.[approvalType] || 'submission'}
+                      value={selectedApprovals[approvalType] || line.approvalStatus?.[approvalType] || ''}
                       onValueChange={(value) => {
                         setSelectedApprovals(prev => ({ ...prev, [approvalType]: value }));
                         handleApprovalUpdate(approvalType, value);
@@ -340,9 +342,10 @@ export function LineItemDetailSheet({
                       disabled={updating}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue />
+                        <SelectValue placeholder="Default" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="">Default</SelectItem>
                         <SelectItem value="submission">Submission</SelectItem>
                         <SelectItem value="resubmission">Re-submission</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>

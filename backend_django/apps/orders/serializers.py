@@ -571,12 +571,58 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             line_data.pop('id', None)  # Remove ID for new lines
                             OrderLine.objects.create(style=style, **line_data)
                 else:
-                    # No ID, create new style
-                    style = OrderStyle.objects.create(order=instance, **style_data)
-                    for line_data in lines_data:
-                        line_data.pop('id', None)  # Remove ID for new lines
-                        OrderLine.objects.create(style=style, **line_data)
-                    existing_style_ids.add(str(style.id))
+                    # No ID provided, check if style with same style_number exists
+                    style_number = style_data.get('style_number')
+                    if style_number:
+                        try:
+                            # Try to get existing style by style_number
+                            style = OrderStyle.objects.get(order=instance, style_number=style_number)
+                            existing_style_ids.add(str(style.id))
+                            
+                            # Update style fields
+                            for attr, value in style_data.items():
+                                setattr(style, attr, value)
+                            style.save()
+                            
+                            # Handle lines updates
+                            if lines_data:
+                                existing_line_ids = set()
+                                
+                                for line_data in lines_data:
+                                    line_id = line_data.pop('id', None)
+                                    
+                                    if line_id:
+                                        # Update existing line
+                                        try:
+                                            line = OrderLine.objects.get(id=line_id, style=style)
+                                            existing_line_ids.add(str(line_id))
+                                            
+                                            for attr, value in line_data.items():
+                                                setattr(line, attr, value)
+                                            line.save()
+                                        except OrderLine.DoesNotExist:
+                                            # Line ID provided but doesn't exist, create new one
+                                            OrderLine.objects.create(style=style, **line_data)
+                                    else:
+                                        # No ID, create new line
+                                        OrderLine.objects.create(style=style, **line_data)
+                                
+                                # Delete lines that weren't in the update
+                                style.lines.exclude(id__in=existing_line_ids).delete()
+                        except OrderStyle.DoesNotExist:
+                            # Style doesn't exist, create new one
+                            style = OrderStyle.objects.create(order=instance, **style_data)
+                            for line_data in lines_data:
+                                line_data.pop('id', None)  # Remove ID for new lines
+                                OrderLine.objects.create(style=style, **line_data)
+                            existing_style_ids.add(str(style.id))
+                    else:
+                        # No style_number, just create new style
+                        style = OrderStyle.objects.create(order=instance, **style_data)
+                        for line_data in lines_data:
+                            line_data.pop('id', None)  # Remove ID for new lines
+                            OrderLine.objects.create(style=style, **line_data)
+                        existing_style_ids.add(str(style.id))
             
             # Delete styles that weren't in the update
             instance.styles.exclude(id__in=existing_style_ids).delete()

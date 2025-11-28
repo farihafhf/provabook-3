@@ -252,10 +252,18 @@ class OrderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Update line approval status
+            # Store previous status for history tracking
             if not order_line.approval_status:
                 order_line.approval_status = {}
-            order_line.approval_status[approval_type] = approval_status
+            previous_status = order_line.approval_status.get(approval_type, '')
+            
+            # Update line approval status
+            if approval_status:  # Only set if not empty (not "Default")
+                order_line.approval_status[approval_type] = approval_status
+            elif approval_type in order_line.approval_status:
+                # If setting to empty/default, remove the key
+                del order_line.approval_status[approval_type]
+            
             order_line.save(update_fields=['approval_status', 'updated_at'])
             
             # Update approval_date if status is approved
@@ -267,16 +275,21 @@ class OrderViewSet(viewsets.ModelViewSet):
             self._aggregate_line_approvals_to_order(order, approval_type)
         else:
             # Order-level approval (backwards compatible)
+            previous_status = (order.approval_status or {}).get(approval_type, '') if order.approval_status else ''
             order.update_approval_status(approval_type, approval_status)
         
-        # Create approval history record
-        ApprovalHistory.objects.create(
-            order=order,
-            order_line=order_line,
-            approval_type=approval_type,
-            status=approval_status,
-            changed_by=request.user if request.user.is_authenticated else None
-        )
+        # Create approval history record only if status actually changed AND it's not empty/default
+        # This ensures "Default" doesn't create timeline events, but changing from "Default" to "Submission" does
+        should_create_history = approval_status and (not previous_status or previous_status != approval_status)
+        
+        if should_create_history:
+            ApprovalHistory.objects.create(
+                order=order,
+                order_line=order_line,
+                approval_type=approval_type,
+                status=approval_status,
+                changed_by=request.user if request.user.is_authenticated else None
+            )
 
         # Auto-progress logic based on order status
         approvals = order.approval_status or {}
@@ -552,7 +565,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         ).order_by('created_at')
         
         serializer = ApprovalHistorySerializer(history, many=True)
-        return Response(serializer.data)
+        
+        # Include ETD/ETA info from the line if available
+        response_data = {
+            'history': serializer.data,
+            'etd': line.etd.isoformat() if line.etd else None,
+            'eta': line.eta.isoformat() if line.eta else None,
+        }
+        
+        return Response(response_data)
 
     @action(detail=True, methods=['get'], url_path='download-po')
     def download_po(self, request, pk=None):
