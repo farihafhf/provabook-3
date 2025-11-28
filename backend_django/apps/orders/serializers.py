@@ -562,14 +562,16 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 
                                     existing_line = None
                                     if color_code is not None or cad_code is not None:
-                                        try:
-                                            existing_line = OrderLine.objects.get(
-                                                style=style,
-                                                color_code=color_code,
-                                                cad_code=cad_code,
-                                            )
-                                        except OrderLine.DoesNotExist:
-                                            existing_line = None
+                                        # Use filter().first() to avoid MultipleObjectsReturned when
+                                        # historical duplicates exist
+                                        existing_line = (
+                                            OrderLine.objects
+                                            .filter(style=style,
+                                                    color_code=color_code,
+                                                    cad_code=cad_code)
+                                            .order_by('created_at')
+                                            .first()
+                                        )
 
                                     if existing_line is not None:
                                         # Update the logically matching line instead of creating a duplicate
@@ -627,14 +629,16 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 
                                         existing_line = None
                                         if color_code is not None or cad_code is not None:
-                                            try:
-                                                existing_line = OrderLine.objects.get(
-                                                    style=style,
-                                                    color_code=color_code,
-                                                    cad_code=cad_code,
-                                                )
-                                            except OrderLine.DoesNotExist:
-                                                existing_line = None
+                                            # Use filter().first() to avoid MultipleObjectsReturned when
+                                            # historical duplicates exist
+                                            existing_line = (
+                                                OrderLine.objects
+                                                .filter(style=style,
+                                                        color_code=color_code,
+                                                        cad_code=cad_code)
+                                                .order_by('created_at')
+                                                .first()
+                                            )
 
                                         if existing_line is not None:
                                             # Update the logically matching line instead of creating a duplicate
