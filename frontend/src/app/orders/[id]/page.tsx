@@ -23,6 +23,7 @@ import { PrintableOrder } from '@/components/printable-order';
 import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-timeline';
 import { LineItemCard } from '@/components/orders/line-item-card';
 import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
+import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
 
 interface OrderLine {
   id: string;
@@ -1057,36 +1058,46 @@ export default function OrderDetailPage() {
 
           {/* Line Items Tab */}
           <TabsContent value="lineitems" className="space-y-6">
-            {order.styles && order.styles.length > 0 && order.styles.some(s => s.lines && s.lines.length > 0) ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {order.styles.map((style) => 
-                  style.lines && style.lines.length > 0 ? style.lines.map((line) => (
-                    <LineItemCard
-                      key={line.id}
-                      line={{
-                        ...line,
-                        // Use style-level ETD as fallback when line-level ETD is missing
-                        etd: line.etd || style.etd,
-                        styleNumber: style.styleNumber,
-                      }}
-                      orderId={order.id}
-                      onClick={() => {
-                        setSelectedLineItem({...line, styleNumber: style.styleNumber});
-                        setShowLineItemSheet(true);
-                      }}
-                    />
-                  )) : null
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Line Item Cards - Left Side (3/4 width on large screens) */}
+              <div className="lg:col-span-3">
+                {order.styles && order.styles.length > 0 && order.styles.some(s => s.lines && s.lines.length > 0) ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {order.styles.map((style) => 
+                      style.lines && style.lines.length > 0 ? style.lines.map((line) => (
+                        <LineItemCard
+                          key={line.id}
+                          line={{
+                            ...line,
+                            // Use style-level ETD as fallback when line-level ETD is missing
+                            etd: line.etd || style.etd,
+                            styleNumber: style.styleNumber,
+                          }}
+                          orderId={order.id}
+                          onClick={() => {
+                            setSelectedLineItem({...line, styleNumber: style.styleNumber});
+                            setShowLineItemSheet(true);
+                          }}
+                        />
+                      )) : null
+                    )}
+                  </div>
+                ) : (
+                  <Card className="border-dashed border-2">
+                    <CardContent className="pt-12 pb-12 text-center">
+                      <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500 text-lg mb-2">No line items yet</p>
+                      <p className="text-sm text-gray-400">Line items will appear here once they are added to the order</p>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
-            ) : (
-              <Card className="border-dashed border-2">
-                <CardContent className="pt-12 pb-12 text-center">
-                  <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg mb-2">No line items yet</p>
-                  <p className="text-sm text-gray-400">Line items will appear here once they are added to the order</p>
-                </CardContent>
-              </Card>
-            )}
+
+              {/* Document Tracking Timeline - Right Side (1/4 width on large screens) */}
+              <div className="lg:col-span-1">
+                <DocumentTrackingTimeline documents={documents} />
+              </div>
+            </div>
           </TabsContent>
 
           {/* Info Tab (hidden, for backward compatibility) */}
