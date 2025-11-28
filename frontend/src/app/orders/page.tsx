@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -51,6 +51,7 @@ function OrdersPageContent() {
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
+  const [sortByEtd, setSortByEtd] = useState(false);
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
@@ -290,8 +291,16 @@ function OrdersPageContent() {
         </Suspense>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>All Orders</CardTitle>
+            <Button
+              variant={sortByEtd ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortByEtd(!sortByEtd)}
+            >
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              Sort by ETD
+            </Button>
           </CardHeader>
           <CardContent>
             {orders.length === 0 ? (
@@ -319,7 +328,15 @@ function OrdersPageContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {orders.map((order) => (
+                    {(sortByEtd
+                      ? [...orders].sort((a, b) => {
+                          if (!a.earliestEtd && !b.earliestEtd) return 0;
+                          if (!a.earliestEtd) return 1;
+                          if (!b.earliestEtd) return -1;
+                          return new Date(a.earliestEtd).getTime() - new Date(b.earliestEtd).getTime();
+                        })
+                      : orders
+                    ).map((order) => (
                       <tr
                         key={order.id}
                         className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
