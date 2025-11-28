@@ -562,6 +562,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         # We match by:
         # 1. Specific OrderLine row (if FK still points to valid line)
         # 2. Same (style, color_code) - more lenient matching that ignores cad_code changes
+        # 3. Orphaned records (order_line=NULL) - these were SET_NULL when lines were
+        #    deleted during previous buggy edits
         # This ensures earlier phases remain visible even if the line row was
         # recreated during edits or if cad_code changed.
         from django.db.models import Q
@@ -580,6 +582,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             else:
                 # For lines without color_code, match by style only
                 line_match |= Q(order_line__style=style)
+        
+        # Also include orphaned records (where order_line was SET_NULL)
+        # These are approval history records that lost their line FK when lines
+        # were deleted during previous buggy edit operations.
+        # Since we filter by order, this only includes orphaned records for this order.
+        line_match |= Q(order_line__isnull=True)
 
         history = (
             ApprovalHistory.objects
