@@ -643,8 +643,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     Returns camelCase for frontend
     """
     merchandiser_name = serializers.SerializerMethodField()
-    potential_profit = serializers.ReadOnlyField()
-    realized_profit = serializers.ReadOnlyField()
+    earliest_etd = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -652,13 +651,24 @@ class OrderListSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date',
-            'potential_profit', 'realized_profit',
-            'merchandiser', 'merchandiser_name', 'created_at'
+            'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd'
         ]
     
     def get_merchandiser_name(self, obj):
         """Safely get merchandiser full name, return None if no merchandiser assigned"""
         return obj.merchandiser.full_name if obj.merchandiser else None
+    
+    def get_earliest_etd(self, obj):
+        """Get the earliest ETD from all order lines within this order"""
+        from .models_order_line import OrderLine
+        from django.db.models import Min
+        
+        earliest = OrderLine.objects.filter(
+            style__order=obj,
+            etd__isnull=False
+        ).aggregate(min_etd=Min('etd'))['min_etd']
+        
+        return earliest.isoformat() if earliest else None
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -671,8 +681,6 @@ class OrderListSerializer(serializers.ModelSerializer):
             'quantity': float(data['quantity']) if data['quantity'] else 0,
             'unit': data['unit'],
             'currency': data.get('currency'),
-            'potentialProfit': data.get('potential_profit'),
-            'realizedProfit': data.get('realized_profit'),
             'status': data['status'],
             'category': data['category'],
             'orderDate': data['order_date'],
@@ -680,6 +688,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'merchandiser': str(data['merchandiser']) if data['merchandiser'] else None,
             'merchandiserName': data.get('merchandiser_name'),
             'createdAt': data['created_at'],
+            'earliestEtd': data.get('earliest_etd'),
         }
 
 

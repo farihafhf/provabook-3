@@ -26,12 +26,9 @@ interface Order {
   category: string;
   orderDate: string;
   expectedDeliveryDate: string;
-  millPrice?: number;
-  provaPrice?: number;
   currency?: string;
-  potentialProfit?: number;
-  realizedProfit?: number;
   merchandiserName?: string;
+  earliestEtd?: string;
 }
 
 interface OrdersFilterParams {
@@ -183,6 +180,30 @@ function OrdersPageContent() {
     return statusMap[status.toLowerCase()] || status;
   };
 
+  const getEtdRowClass = (etd?: string): string => {
+    if (!etd) return '';
+    
+    const etdDate = new Date(etd);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    etdDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = etdDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      // Past due - red
+      return 'bg-red-50 hover:bg-red-100';
+    } else if (diffDays <= 5) {
+      // Within 5 days - red
+      return 'bg-red-50 hover:bg-red-100';
+    } else if (diffDays <= 10) {
+      // Within 10 days - yellow
+      return 'bg-yellow-50 hover:bg-yellow-100';
+    }
+    return '';
+  };
+
   const handleDeleteClick = (order: Order) => {
     setOrderToDelete(order);
     setDeleteDialogOpen(true);
@@ -290,8 +311,7 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium">Customer</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
-                      <th className="pb-3 font-medium">Potential Profit</th>
-                      <th className="pb-3 font-medium">Realized Profit</th>
+                      <th className="pb-3 font-medium">ETD</th>
                       <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
@@ -302,7 +322,7 @@ function OrdersPageContent() {
                     {orders.map((order) => (
                       <tr
                         key={order.id}
-                        className="text-sm hover:bg-gray-50 cursor-pointer"
+                        className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
                         onClick={() => router.push(`/orders/${order.id}`)}
                       >
                         <td className="py-4 font-medium">{order.poNumber}</td>
@@ -310,19 +330,8 @@ function OrdersPageContent() {
                         <td className="py-4">{order.fabricType}</td>
                         <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
                         <td className="py-4">
-                          {order.potentialProfit !== undefined ? (
-                            <span className="font-medium text-blue-700">
-                              {order.currency} {order.potentialProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="py-4">
-                          {order.realizedProfit !== undefined ? (
-                            <span className="font-medium text-green-700">
-                              {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </span>
+                          {order.earliestEtd ? (
+                            <span className="font-medium">{formatDate(order.earliestEtd)}</span>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
