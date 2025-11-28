@@ -33,11 +33,11 @@ interface OrderLineFormData {
   
   // Optional Style Technical Details
   description?: string;
-  fabricType?: string;
   fabricComposition?: string;
   gsm?: string;
   construction?: string;
   cuttableWidth?: string;
+  finishingWidth?: string;
   
   // Optional Commercial Data
   millPrice?: string;
@@ -253,11 +253,12 @@ export function CreateOrderDialog({
           return {
             styleNumber: styleNumber,
             description: firstLine.description || undefined,
-            fabricType: firstLine.fabricType || formData.fabricType,
+            fabricType: formData.fabricType,
             fabricComposition: firstLine.fabricComposition || undefined,
             gsm: firstLine.gsm ? parseFloat(firstLine.gsm) : undefined,
             construction: firstLine.construction || undefined,
             cuttableWidth: firstLine.cuttableWidth || undefined,
+            finishingWidth: firstLine.finishingWidth || undefined,
             etd: firstLine.etd || undefined,
             eta: firstLine.eta || undefined,
             submissionDate: firstLine.submissionDate || undefined,
@@ -551,14 +552,6 @@ export function CreateOrderDialog({
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`line-${lineIndex}-fabricType`}>Fabric Type</Label>
-                      <Input
-                        id={`line-${lineIndex}-fabricType`}
-                        value={line.fabricType || ''}
-                        onChange={(e) => updateOrderLine(lineIndex, 'fabricType', e.target.value)}
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor={`line-${lineIndex}-fabricComposition`}>Fabric Composition</Label>
                       <Input
                         id={`line-${lineIndex}-fabricComposition`}
@@ -582,6 +575,15 @@ export function CreateOrderDialog({
                         value={line.cuttableWidth || ''}
                         onChange={(e) => updateOrderLine(lineIndex, 'cuttableWidth', e.target.value)}
                         placeholder="e.g., 60 inches"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`line-${lineIndex}-finishingWidth`}>Finishing Width</Label>
+                      <Input
+                        id={`line-${lineIndex}-finishingWidth`}
+                        value={line.finishingWidth || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'finishingWidth', e.target.value)}
+                        placeholder="e.g., 58 inches"
                       />
                     </div>
                     <div className="col-span-2">

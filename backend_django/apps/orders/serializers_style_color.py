@@ -82,7 +82,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'style_number', 'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
-            'gsm', 'finish_type', 'construction', 'cuttable_width',
+            'gsm', 'finish_type', 'construction', 'cuttable_width', 'finishing_width',
             'etd', 'eta', 'submission_date', 'notes',
             'colors', 'lines', 'created_at', 'updated_at'
         ]
@@ -102,6 +102,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
             'finishType': data.get('finish_type'),
             'construction': data.get('construction'),
             'cuttableWidth': data.get('cuttable_width'),
+            'finishingWidth': data.get('finishing_width'),
             'etd': data.get('etd'),
             'eta': data.get('eta'),
             'submissionDate': data.get('submission_date'),
@@ -117,6 +118,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
         field_mapping = {
             'styleNumber': 'style_number',
             'cuttableWidth': 'cuttable_width',
+            'finishingWidth': 'finishing_width',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',
             'fabricComposition': 'fabric_composition',
@@ -203,7 +205,7 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'style_number', 'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
-            'gsm', 'finish_type', 'construction', 'cuttable_width',
+            'gsm', 'finish_type', 'construction', 'cuttable_width', 'finishing_width',
             'etd', 'eta', 'submission_date', 'notes',
             'lines', 'colors'
         ]
@@ -213,6 +215,7 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         field_mapping = {
             'styleNumber': 'style_number',
             'cuttableWidth': 'cuttable_width',
+            'finishingWidth': 'finishing_width',
             'fabricType': 'fabric_type',
             'fabricSpecifications': 'fabric_specifications',
             'fabricComposition': 'fabric_composition',

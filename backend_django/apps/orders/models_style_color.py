@@ -31,6 +31,7 @@ class OrderStyle(TimestampedModel):
     finish_type = models.CharField(max_length=100, blank=True, null=True)
     construction = models.TextField(blank=True, null=True, help_text='Construction details including width and other info')
     cuttable_width = models.CharField(max_length=100, blank=True, null=True, help_text='Cuttable width specification')
+    finishing_width = models.CharField(max_length=100, blank=True, null=True, help_text='Finishing width specification')
     
     # Style-level dates
     etd = models.DateField(blank=True, null=True, help_text='Estimated Time of Departure')

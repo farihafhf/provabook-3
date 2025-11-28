@@ -79,6 +79,7 @@ interface OrderStyle {
   finishType?: string;
   construction?: string;
   cuttableWidth?: string;
+  finishingWidth?: string;
   etd?: string;
   eta?: string;
   submissionDate?: string;
