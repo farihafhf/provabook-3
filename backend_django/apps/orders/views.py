@@ -559,21 +559,27 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
         
         # Get approval history for this logical line
-        # We match by specific OrderLine row OR by the same
-        # (style, color_code, cad_code) combination. This ensures
-        # earlier phases remain visible even if the line row was
-        # recreated during edits.
+        # We match by:
+        # 1. Specific OrderLine row (if FK still points to valid line)
+        # 2. Same (style, color_code) - more lenient matching that ignores cad_code changes
+        # This ensures earlier phases remain visible even if the line row was
+        # recreated during edits or if cad_code changed.
         from django.db.models import Q
 
         style = getattr(line, 'style', None)
 
         line_match = Q(order_line=line)
         if style is not None:
-            line_match |= Q(
-                order_line__style=style,
-                order_line__color_code=line.color_code,
-                order_line__cad_code=line.cad_code,
-            )
+            # Match by style + color_code only (more lenient)
+            # This handles cases where cad_code changes or is missing
+            if line.color_code:
+                line_match |= Q(
+                    order_line__style=style,
+                    order_line__color_code=line.color_code,
+                )
+            else:
+                # For lines without color_code, match by style only
+                line_match |= Q(order_line__style=style)
 
         history = (
             ApprovalHistory.objects

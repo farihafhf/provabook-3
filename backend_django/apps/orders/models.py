@@ -342,7 +342,7 @@ class ApprovalHistory(TimestampedModel):
     # Link to OrderLine for line-level approvals (optional for backwards compatibility)
     order_line = models.ForeignKey(
         'OrderLine',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='approval_history',
         null=True,
         blank=True,
