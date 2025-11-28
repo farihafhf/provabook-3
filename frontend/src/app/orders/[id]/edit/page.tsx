@@ -198,7 +198,8 @@ export default function OrderEditPage() {
           eta: style.eta || undefined,
           submissionDate: style.submissionDate || undefined,
           notes: style.notes || undefined,
-          colors: style.colors.map((color) => ({
+          // Send line items under `lines` so backend updates OrderLine records directly
+          lines: style.colors.map((color) => ({
             id: color.id,
             colorCode: color.colorCode,
             cadName: color.cadName || undefined,
