@@ -582,13 +582,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     existing_line_ids.add(str(new_line.id))
                             
                             # Delete lines that weren't in the update (user removed them)
-                            # BUT: Only delete lines with NO approval history
-                            # Lines with approval history must be kept so history queries can find them
-                            lines_to_delete = style.lines.exclude(id__in=existing_line_ids)
-                            for line in lines_to_delete:
-                                # Only delete if this line has no approval history
-                                if not line.approval_history.exists():
-                                    line.delete()
+                            # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
+                            style.lines.exclude(id__in=existing_line_ids).delete()
                         
                     except OrderStyle.DoesNotExist:
                         # Style ID provided but doesn't exist, create new one
@@ -634,13 +629,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                         existing_line_ids.add(str(new_line.id))
                                 
                                 # Delete lines that weren't in the update (user removed them)
-                                # BUT: Only delete lines with NO approval history
-                                # Lines with approval history must be kept so history queries can find them
-                                lines_to_delete = style.lines.exclude(id__in=existing_line_ids)
-                                for line in lines_to_delete:
-                                    # Only delete if this line has no approval history
-                                    if not line.approval_history.exists():
-                                        line.delete()
+                                # ApprovalHistory.order_line uses SET_NULL so history rows are preserved
+                                style.lines.exclude(id__in=existing_line_ids).delete()
                         except OrderStyle.DoesNotExist:
                             # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)

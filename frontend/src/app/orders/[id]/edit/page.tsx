@@ -38,6 +38,7 @@ interface OrderLineFormData {
   finishType?: string;
   construction?: string;
   cuttableWidth?: string;
+  finishingWidth?: string;
 }
 
 export default function OrderEditPage() {
@@ -114,6 +115,7 @@ export default function OrderEditPage() {
               finishType: style.finishType || '',
               construction: style.construction || '',
               cuttableWidth: style.cuttableWidth || '',
+              finishingWidth: style.finishingWidth || '',
             });
           });
         });
@@ -184,6 +186,7 @@ export default function OrderEditPage() {
             finishType: firstLine.finishType || undefined,
             construction: firstLine.construction || undefined,
             cuttableWidth: firstLine.cuttableWidth || undefined,
+            finishingWidth: firstLine.finishingWidth || undefined,
             lines: lines.map((line) => ({
               id: line.id,
               colorCode: line.colorCode,
@@ -213,9 +216,10 @@ export default function OrderEditPage() {
       router.push(`/orders/${params.id}`);
     } catch (error: any) {
       console.error('Error updating order:', error);
+      const errorMessage = error.response?.data?.message || JSON.stringify(error.response?.data) || 'Failed to update order';
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to update order',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -494,6 +498,15 @@ export default function OrderEditPage() {
                             value={line.cuttableWidth || ''}
                             onChange={(e) => updateOrderLine(lineIndex, 'cuttableWidth', e.target.value)}
                             placeholder="e.g., 60 inches"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Finishing Width</Label>
+                          <Input
+                            value={line.finishingWidth || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'finishingWidth', e.target.value)}
+                            placeholder="e.g., 58 inches"
                             className="text-sm"
                           />
                         </div>
