@@ -62,12 +62,22 @@ class OrderStyle(TimestampedModel):
     def save(self, *args, **kwargs):
         """Auto-generate style_number if not provided"""
         if not self.style_number and self.order_id:
-            # Get base style number from order
-            base_style = self.order.base_style_number or 'STYLE'
-            # Count existing styles for this order
-            existing_count = OrderStyle.objects.filter(order=self.order).count()
-            # Generate style number: base_style_number-01, base_style_number-02, etc.
-            self.style_number = f"{base_style}-{str(existing_count + 1).zfill(2)}"
+            # Get base style number from order (fallback to order.style_number or 'STYLE')
+            base_style = self.order.base_style_number or self.order.style_number or 'STYLE'
+
+            # Get existing style_numbers for this order
+            existing_numbers = set(
+                OrderStyle.objects.filter(order=self.order).values_list('style_number', flat=True)
+            )
+
+            # Pick the next available suffix: base_style-01, base_style-02, ...
+            suffix = 1
+            while True:
+                candidate = f"{base_style}-{str(suffix).zfill(2)}"
+                if candidate not in existing_numbers:
+                    self.style_number = candidate
+                    break
+                suffix += 1
         super().save(*args, **kwargs)
 
 
