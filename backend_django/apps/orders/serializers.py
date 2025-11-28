@@ -557,21 +557,16 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 
                                 if not line_id:
                                     # No valid ID - try to match by logical combination (style + color + CAD)
-                                    color_code = line_data.get('color_code')
-                                    cad_code = line_data.get('cad_code')
+                                    color_code = line_data.get('color_code') or ''
+                                    cad_code = line_data.get('cad_code') or ''
 
-                                    existing_line = None
-                                    if color_code is not None or cad_code is not None:
-                                        # Use filter().first() to avoid MultipleObjectsReturned when
-                                        # historical duplicates exist
-                                        existing_line = (
-                                            OrderLine.objects
-                                            .filter(style=style,
-                                                    color_code=color_code,
-                                                    cad_code=cad_code)
-                                            .order_by('created_at')
-                                            .first()
-                                        )
+                                    # Try to find existing line with same style + color + CAD
+                                    # Use filter().first() to avoid MultipleObjectsReturned
+                                    existing_line = OrderLine.objects.filter(
+                                        style=style,
+                                        color_code=color_code,
+                                        cad_code=cad_code,
+                                    ).first()
 
                                     if existing_line is not None:
                                         # Update the logically matching line instead of creating a duplicate
@@ -624,21 +619,16 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     
                                     if not line_id:
                                         # No valid ID - try to match by logical combination (style + color + CAD)
-                                        color_code = line_data.get('color_code')
-                                        cad_code = line_data.get('cad_code')
+                                        color_code = line_data.get('color_code') or ''
+                                        cad_code = line_data.get('cad_code') or ''
 
-                                        existing_line = None
-                                        if color_code is not None or cad_code is not None:
-                                            # Use filter().first() to avoid MultipleObjectsReturned when
-                                            # historical duplicates exist
-                                            existing_line = (
-                                                OrderLine.objects
-                                                .filter(style=style,
-                                                        color_code=color_code,
-                                                        cad_code=cad_code)
-                                                .order_by('created_at')
-                                                .first()
-                                            )
+                                        # Try to find existing line with same style + color + CAD
+                                        # Use filter().first() to avoid MultipleObjectsReturned
+                                        existing_line = OrderLine.objects.filter(
+                                            style=style,
+                                            color_code=color_code,
+                                            cad_code=cad_code,
+                                        ).first()
 
                                         if existing_line is not None:
                                             # Update the logically matching line instead of creating a duplicate
