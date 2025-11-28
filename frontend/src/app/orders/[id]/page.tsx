@@ -1063,6 +1063,8 @@ export default function OrderDetailPage() {
                       key={line.id}
                       line={{
                         ...line,
+                        // Use style-level ETD as fallback when line-level ETD is missing
+                        etd: line.etd || style.etd,
                         styleNumber: style.styleNumber,
                       }}
                       orderId={order.id}

@@ -558,19 +558,40 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Get approval history for this line
-        history = ApprovalHistory.objects.filter(
-            order=order,
-            order_line=line
-        ).order_by('created_at')
+        # Get approval history for this logical line
+        # We match by specific OrderLine row OR by the same
+        # (style, color_code, cad_code) combination. This ensures
+        # earlier phases remain visible even if the line row was
+        # recreated during edits.
+        from django.db.models import Q
+
+        style = getattr(line, 'style', None)
+
+        line_match = Q(order_line=line)
+        if style is not None:
+            line_match |= Q(
+                order_line__style=style,
+                order_line__color_code=line.color_code,
+                order_line__cad_code=line.cad_code,
+            )
+
+        history = (
+            ApprovalHistory.objects
+            .filter(order=order)
+            .filter(line_match)
+            .order_by('created_at')
+        )
         
         serializer = ApprovalHistorySerializer(history, many=True)
+
+        # Prefer line-level ETD/ETA, but fall back to style-level or order-level
+        etd_source = line.etd or (style.etd if style is not None else None) or order.etd
+        eta_source = line.eta or (style.eta if style is not None else None) or order.eta
         
-        # Include ETD/ETA info from the line if available
         response_data = {
             'history': serializer.data,
-            'etd': line.etd.isoformat() if line.etd else None,
-            'eta': line.eta.isoformat() if line.eta else None,
+            'etd': etd_source.isoformat() if etd_source else None,
+            'eta': eta_source.isoformat() if eta_source else None,
         }
         
         return Response(response_data)
