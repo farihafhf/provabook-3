@@ -152,9 +152,9 @@ export function ApprovalTimelineDialog({
         });
       }
       
-      // Combine and sort all events by date
+      // Combine and sort all events by date (latest first)
       const allEvents = [...approvalEvents, ...dateEvents].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       
       setTimelineEvents(allEvents);

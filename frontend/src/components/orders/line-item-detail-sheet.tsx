@@ -2,13 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -242,14 +235,15 @@ export function LineItemDetailSheet({
   const allApprovalTypes = ['price', 'quality', 'labDip', 'strikeOff', 'handloom', 'ppSample'];
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="text-2xl">Order Line Details</SheetTitle>
-          <SheetDescription>
+    <>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Order Line Details</DialogTitle>
+          <DialogDescription>
             View and manage line item status and approvals
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="mt-6 space-y-6">
           {/* Line Identification */}
@@ -439,10 +433,11 @@ export function LineItemDetailSheet({
             </div>
           )}
         </div>
-      </SheetContent>
+      </DialogContent>
+    </Dialog>
 
-      {/* Approval Timestamp Dialog */}
-      <Dialog open={showTimestampDialog} onOpenChange={(open) => !open && handleCancelApproval()}>
+    {/* Approval Timestamp Dialog */}
+    <Dialog open={showTimestampDialog} onOpenChange={(open) => !open && handleCancelApproval()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -519,6 +514,6 @@ export function LineItemDetailSheet({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Sheet>
+    </>
   );
 }
