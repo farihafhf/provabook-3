@@ -569,41 +569,17 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 line_id = line_data.pop('id', None)
                                 
                                 if line_id:
-                                    # Update existing line by primary key
-                                    try:
-                                        line = OrderLine.objects.get(id=line_id, style=style)
-                                        existing_line_ids.add(str(line_id))
-                                        
-                                        for attr, value in line_data.items():
-                                            setattr(line, attr, value)
-                                        line.save()
-                                    except OrderLine.DoesNotExist:
-                                        # Line ID provided but doesn't exist, fall back to matching by logical key
-                                        line_id = None
-                                
-                                if not line_id:
-                                    # No valid ID - try to match by logical combination (style + color + CAD)
-                                    color_code = line_data.get('color_code') or ''
-                                    cad_code = line_data.get('cad_code') or line_data.get('cad_name') or ''
-
-                                    # Try to find existing line with same style + color + CAD
-                                    # Use filter().first() to avoid MultipleObjectsReturned
-                                    existing_line = OrderLine.objects.filter(
-                                        style=style,
-                                        color_code=color_code,
-                                        cad_code=cad_code,
-                                    ).first()
-
-                                    if existing_line is not None:
-                                        # Update the logically matching line instead of creating a duplicate
-                                        existing_line_ids.add(str(existing_line.id))
-                                        for attr, value in line_data.items():
-                                            setattr(existing_line, attr, value)
-                                        existing_line.save()
-                                    else:
-                                        # No match found, create a new line
-                                        new_line = OrderLine.objects.create(style=style, **line_data)
-                                        existing_line_ids.add(str(new_line.id))
+                                    # ID provided - update existing line by ID only
+                                    line = OrderLine.objects.get(id=line_id, style=style)
+                                    existing_line_ids.add(str(line_id))
+                                    
+                                    for attr, value in line_data.items():
+                                        setattr(line, attr, value)
+                                    line.save()
+                                else:
+                                    # No ID - this is a NEW line, create it
+                                    new_line = OrderLine.objects.create(style=style, **line_data)
+                                    existing_line_ids.add(str(new_line.id))
                             
                             # Delete lines that weren't in the update (user removed them)
                             # BUT: Only delete lines with NO approval history
@@ -618,6 +594,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         # Style ID provided but doesn't exist, create new one
                         style = OrderStyle.objects.create(order=instance, **style_data)
                         for line_data in lines_data:
+                            line_data = self._convert_line_data_to_snake_case(line_data)
                             line_data.pop('id', None)  # Remove ID for new lines
                             OrderLine.objects.create(style=style, **line_data)
                 else:
@@ -644,41 +621,17 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     line_id = line_data.pop('id', None)
                                     
                                     if line_id:
-                                        # Update existing line by primary key
-                                        try:
-                                            line = OrderLine.objects.get(id=line_id, style=style)
-                                            existing_line_ids.add(str(line_id))
-                                            
-                                            for attr, value in line_data.items():
-                                                setattr(line, attr, value)
-                                            line.save()
-                                        except OrderLine.DoesNotExist:
-                                            # Line ID provided but doesn't exist, fall back to logical match
-                                            line_id = None
-                                    
-                                    if not line_id:
-                                        # No valid ID - try to match by logical combination (style + color + CAD)
-                                        color_code = line_data.get('color_code') or ''
-                                        cad_code = line_data.get('cad_code') or line_data.get('cad_name') or ''
-
-                                        # Try to find existing line with same style + color + CAD
-                                        # Use filter().first() to avoid MultipleObjectsReturned
-                                        existing_line = OrderLine.objects.filter(
-                                            style=style,
-                                            color_code=color_code,
-                                            cad_code=cad_code,
-                                        ).first()
-
-                                        if existing_line is not None:
-                                            # Update the logically matching line instead of creating a duplicate
-                                            existing_line_ids.add(str(existing_line.id))
-                                            for attr, value in line_data.items():
-                                                setattr(existing_line, attr, value)
-                                            existing_line.save()
-                                        else:
-                                            # No match found, create a new line
-                                            new_line = OrderLine.objects.create(style=style, **line_data)
-                                            existing_line_ids.add(str(new_line.id))
+                                        # ID provided - update existing line by ID only
+                                        line = OrderLine.objects.get(id=line_id, style=style)
+                                        existing_line_ids.add(str(line_id))
+                                        
+                                        for attr, value in line_data.items():
+                                            setattr(line, attr, value)
+                                        line.save()
+                                    else:
+                                        # No ID - this is a NEW line, create it
+                                        new_line = OrderLine.objects.create(style=style, **line_data)
+                                        existing_line_ids.add(str(new_line.id))
                                 
                                 # Delete lines that weren't in the update (user removed them)
                                 # BUT: Only delete lines with NO approval history
@@ -692,6 +645,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)
                             for line_data in lines_data:
+                                line_data = self._convert_line_data_to_snake_case(line_data)
                                 line_data.pop('id', None)  # Remove ID for new lines
                                 OrderLine.objects.create(style=style, **line_data)
                             existing_style_ids.add(str(style.id))
@@ -699,6 +653,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         # No style_number, just create new style
                         style = OrderStyle.objects.create(order=instance, **style_data)
                         for line_data in lines_data:
+                            line_data = self._convert_line_data_to_snake_case(line_data)
                             line_data.pop('id', None)  # Remove ID for new lines
                             OrderLine.objects.create(style=style, **line_data)
                         existing_style_ids.add(str(style.id))
