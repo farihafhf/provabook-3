@@ -8,11 +8,21 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 interface OrderLine {
@@ -48,8 +58,13 @@ interface LineItemDetailSheetProps {
   onClose: () => void;
   orderStatus?: string;
   onStatusChange?: (lineId: string, newStatus: string) => Promise<void>;
-  onApprovalChange?: (approvalType: string, newStatus: string, lineId: string, lineLabel: string) => Promise<void>;
+  onApprovalChange?: (approvalType: string, newStatus: string, lineId: string, lineLabel: string, customTimestamp?: string) => Promise<void>;
   updating?: boolean;
+}
+
+interface PendingApproval {
+  approvalType: string;
+  newStatus: string;
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -117,6 +132,13 @@ export function LineItemDetailSheet({
 }: LineItemDetailSheetProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedApprovals, setSelectedApprovals] = useState<Record<string, string>>({});
+  
+  // Custom timestamp dialog state
+  const [showTimestampDialog, setShowTimestampDialog] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
+  const [useCustomTimestamp, setUseCustomTimestamp] = useState(false);
+  const [customDate, setCustomDate] = useState('');
+  const [customTime, setCustomTime] = useState('');
 
   // Reset local selection state when the sheet opens for a new line
   useEffect(() => {
@@ -131,12 +153,81 @@ export function LineItemDetailSheet({
     }
   }, [open, line?.id]);
 
+  // Reset dialog state when closed
+  const resetTimestampDialog = () => {
+    setShowTimestampDialog(false);
+    setPendingApproval(null);
+    setUseCustomTimestamp(false);
+    setCustomDate('');
+    setCustomTime('');
+  };
+
+  // Get current date/time for default values
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const time = now.toTimeString().slice(0, 5);
+    return { date, time };
+  };
+
   if (!line) return null;
 
   const handleStatusUpdate = async () => {
     if (!selectedStatus || !onStatusChange) return;
     await onStatusChange(line.id, selectedStatus);
     onClose();
+  };
+
+  // Called when user selects an approval status from dropdown
+  const handleApprovalSelect = (approvalType: string, newStatus: string) => {
+    // Don't show dialog for 'default' selection (clearing the status)
+    if (newStatus === 'default' || newStatus === '') {
+      handleApprovalUpdate(approvalType, '');
+      return;
+    }
+    
+    // Check if this is an actual change
+    const currentStatus = line.approvalStatus?.[approvalType] || 'default';
+    if (newStatus === currentStatus) return;
+    
+    // Show the timestamp dialog
+    setPendingApproval({ approvalType, newStatus });
+    const { date, time } = getCurrentDateTime();
+    setCustomDate(date);
+    setCustomTime(time);
+    setShowTimestampDialog(true);
+  };
+
+  // Called when user confirms the approval change in the dialog
+  const handleConfirmApproval = async () => {
+    if (!pendingApproval || !onApprovalChange) return;
+    
+    const { approvalType, newStatus } = pendingApproval;
+    const label = `${line.styleNumber || ''} ${line.colorCode || ''} ${line.cadCode || ''}`.trim();
+    
+    // Update local state immediately
+    setSelectedApprovals(prev => ({ ...prev, [approvalType]: newStatus }));
+    
+    // Build custom timestamp if user wants to use one
+    let customTimestamp: string | undefined;
+    if (useCustomTimestamp && customDate && customTime) {
+      customTimestamp = `${customDate}T${customTime}:00`;
+    }
+    
+    resetTimestampDialog();
+    
+    // Update the approval with optional custom timestamp
+    await onApprovalChange(approvalType, newStatus, line.id, label, customTimestamp);
+  };
+
+  // Called when user cancels the approval change
+  const handleCancelApproval = () => {
+    // Revert the local selection state
+    if (pendingApproval) {
+      const originalStatus = line.approvalStatus?.[pendingApproval.approvalType] || 'default';
+      setSelectedApprovals(prev => ({ ...prev, [pendingApproval.approvalType]: originalStatus }));
+    }
+    resetTimestampDialog();
   };
 
   const handleApprovalUpdate = async (approvalType: string, newStatus: string) => {
@@ -287,9 +378,8 @@ export function LineItemDetailSheet({
                     <Select
                       value={selectedApprovals[approvalType] || line.approvalStatus?.[approvalType] || 'default'}
                       onValueChange={(value) => {
-                        setSelectedApprovals(prev => ({ ...prev, [approvalType]: value }));
-                        // Convert 'default' to empty string for backend
-                        handleApprovalUpdate(approvalType, value === 'default' ? '' : value);
+                        // Show confirmation dialog with optional timestamp
+                        handleApprovalSelect(approvalType, value);
                       }}
                       disabled={updating}
                     >
@@ -350,6 +440,85 @@ export function LineItemDetailSheet({
           )}
         </div>
       </SheetContent>
+
+      {/* Approval Timestamp Dialog */}
+      <Dialog open={showTimestampDialog} onOpenChange={(open) => !open && handleCancelApproval()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Confirm Approval Change
+            </DialogTitle>
+            <DialogDescription>
+              {pendingApproval && (
+                <>
+                  Set <strong>{formatApprovalName(pendingApproval.approvalType)}</strong> to{' '}
+                  <strong className="capitalize">{pendingApproval.newStatus}</strong>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Option to use custom timestamp */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="useCustomTimestamp"
+                checked={useCustomTimestamp}
+                onCheckedChange={(checked) => setUseCustomTimestamp(checked === true)}
+              />
+              <label
+                htmlFor="useCustomTimestamp"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Set custom date and time
+              </label>
+            </div>
+
+            {/* Date/Time inputs - shown when custom timestamp is enabled */}
+            {useCustomTimestamp && (
+              <div className="grid grid-cols-2 gap-4 pl-6">
+                <div className="space-y-2">
+                  <Label htmlFor="customDate" className="text-sm">Date</Label>
+                  <Input
+                    id="customDate"
+                    type="date"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customTime" className="text-sm">Time</Label>
+                  <Input
+                    id="customTime"
+                    type="time"
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Info text */}
+            <p className="text-xs text-muted-foreground">
+              {useCustomTimestamp 
+                ? 'The approval will be recorded with the date and time you specified above.'
+                : 'The approval will be recorded with the current date and time.'}
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleCancelApproval}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmApproval} disabled={updating}>
+              {updating ? 'Saving...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Sheet>
   );
 }

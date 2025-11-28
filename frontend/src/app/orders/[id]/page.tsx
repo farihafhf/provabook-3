@@ -583,7 +583,7 @@ export default function OrderDetailPage() {
     }
   };
 
-  const handleLineApprovalChange = async (approvalType: string, newStatus: string, lineId: string, lineLabel: string) => {
+  const handleLineApprovalChange = async (approvalType: string, newStatus: string, lineId: string, lineLabel: string, customTimestamp?: string) => {
     if (!order) return;
     
     setUpdating(true);
@@ -592,6 +592,7 @@ export default function OrderDetailPage() {
         approvalType,
         status: newStatus,
         orderLineId: lineId,
+        ...(customTimestamp && { customTimestamp }),
       });
 
       // Refetch order to get updated data (no toast for better UX)

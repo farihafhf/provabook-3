@@ -738,6 +738,7 @@ class ApprovalUpdateSerializer(serializers.Serializer):
     Serializer for updating approval status
     Accepts camelCase from frontend
     Now supports line-level approvals via orderLineId
+    Supports optional custom timestamp for backdating approval history
     """
     approval_type = serializers.ChoiceField(
         choices=['labDip', 'strikeOff', 'handloom', 'aop', 'qualityTest', 'quality', 'bulkSwatch', 'price', 'ppSample']
@@ -746,12 +747,14 @@ class ApprovalUpdateSerializer(serializers.Serializer):
         choices=['submission', 'resubmission', 'approved', 'rejected']
     )
     order_line_id = serializers.UUIDField(required=False, allow_null=True)
+    custom_timestamp = serializers.DateTimeField(required=False, allow_null=True)
     
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""
         field_mapping = {
             'approvalType': 'approval_type',
             'orderLineId': 'order_line_id',
+            'customTimestamp': 'custom_timestamp',
         }
         
         converted_data = {}

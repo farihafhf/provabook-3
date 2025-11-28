@@ -227,7 +227,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         {
             "approvalType": "labDip",
             "status": "approved",
-            "orderLineId": "uuid" (optional - for line-level approvals)
+            "orderLineId": "uuid" (optional - for line-level approvals),
+            "customTimestamp": "2024-01-15T10:30:00Z" (optional - for backdating approval)
         }
         """
         from .models_order_line import OrderLine
@@ -239,6 +240,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         approval_type = serializer.validated_data['approval_type']
         approval_status = serializer.validated_data['status']
         order_line_id = serializer.validated_data.get('order_line_id')
+        custom_timestamp = serializer.validated_data.get('custom_timestamp')
         
         order_line = None
         
@@ -268,7 +270,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             # Update approval_date if status is approved
             if approval_status == 'approved' and not order_line.approval_date:
-                order_line.approval_date = timezone.now().date()
+                # Use custom timestamp date if provided, otherwise use current date
+                if custom_timestamp:
+                    order_line.approval_date = custom_timestamp.date()
+                else:
+                    order_line.approval_date = timezone.now().date()
                 order_line.save(update_fields=['approval_date', 'updated_at'])
             
             # Aggregate line approvals to order level
@@ -283,13 +289,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         should_create_history = approval_status and (not previous_status or previous_status != approval_status)
         
         if should_create_history:
-            ApprovalHistory.objects.create(
+            history_entry = ApprovalHistory.objects.create(
                 order=order,
                 order_line=order_line,
                 approval_type=approval_type,
                 status=approval_status,
                 changed_by=request.user if request.user.is_authenticated else None
             )
+            
+            # If custom timestamp provided, update the created_at field
+            # Using QuerySet.update() bypasses auto_now_add behavior
+            if custom_timestamp:
+                ApprovalHistory.objects.filter(pk=history_entry.pk).update(created_at=custom_timestamp)
 
         # Stage changes are now manual - no auto-progress based on approval status
         # Users must use the "Go to Next Stage" button or status dropdown to change stages
