@@ -171,7 +171,7 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.BrowsableAPIRenderer',
     ),
     'EXCEPTION_HANDLER': 'apps.core.exceptions.custom_exception_handler',
-    'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S.%fZ',
+    'DATETIME_FORMAT': '%Y-%m-%dT%H:%M:%S.%f%z',  # Use actual timezone offset instead of hardcoded 'Z'
     'DATE_FORMAT': '%Y-%m-%d',
     'DEFAULT_ROUTER_CLASS': 'rest_framework.routers.DefaultRouter',
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.AutoSchema',

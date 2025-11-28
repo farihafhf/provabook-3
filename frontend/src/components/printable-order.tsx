@@ -150,7 +150,7 @@ export function PrintableOrder({ order }: PrintableOrderProps) {
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Customer Name</p>
+            <p className="text-xs text-gray-500 uppercase font-semibold mb-1">Vendor Name</p>
             <p className="text-base">{order.customerName}</p>
           </div>
           {order.buyerName && (

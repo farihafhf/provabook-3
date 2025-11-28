@@ -292,7 +292,7 @@ export default function OrderEditPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="customerName">Customer Name *</Label>
+                  <Label htmlFor="customerName">Vendor Name *</Label>
                   <Input
                     id="customerName"
                     required

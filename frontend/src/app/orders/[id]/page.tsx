@@ -1284,7 +1284,7 @@ export default function OrderDetailPage() {
                         <p className="font-medium">{order.poNumber}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Customer Name</p>
+                        <p className="text-xs text-gray-500">Vendor Name</p>
                         <p className="font-medium">{order.customerName}</p>
                       </div>
                       {order.buyerName && (

@@ -164,7 +164,7 @@ export function CreateOrderDialog({
     if (!formData.customerName.trim()) {
       toast({
         title: 'Validation Error',
-        description: 'Customer name is required',
+        description: 'Vendor name is required',
         variant: 'destructive',
       });
       return false;
@@ -358,7 +358,7 @@ export function CreateOrderDialog({
               </div>
               <div>
                 <Label htmlFor="customerName">
-                  Customer Name <span className="text-red-500">*</span>
+                  Vendor Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="customerName"

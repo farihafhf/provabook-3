@@ -758,7 +758,7 @@ export default function FinancialsPage() {
                 <div className="flex-1">
                   <Input
                     id="search"
-                    placeholder="Search by order number, customer name, PI number, or LC number..."
+                    placeholder="Search by order number, vendor name, PI number, or LC number..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />

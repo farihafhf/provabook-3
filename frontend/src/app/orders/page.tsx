@@ -308,7 +308,7 @@ function OrdersPageContent() {
                   <thead className="border-b">
                     <tr className="text-left text-sm text-gray-600">
                       <th className="pb-3 font-medium">PO #</th>
-                      <th className="pb-3 font-medium">Customer</th>
+                      <th className="pb-3 font-medium">Vendor</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">ETD</th>
