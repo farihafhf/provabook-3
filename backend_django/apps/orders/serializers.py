@@ -540,8 +540,6 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         
                         # Handle lines updates
                         if lines_data:
-                            existing_line_ids = set()
-                            
                             for line_data in lines_data:
                                 line_id = line_data.pop('id', None)
                                 
@@ -549,7 +547,6 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     # Update existing line
                                     try:
                                         line = OrderLine.objects.get(id=line_id, style=style)
-                                        existing_line_ids.add(str(line_id))
                                         
                                         for attr, value in line_data.items():
                                             setattr(line, attr, value)
@@ -561,8 +558,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     # No ID, create new line
                                     OrderLine.objects.create(style=style, **line_data)
                             
-                            # Delete lines that weren't in the update
-                            style.lines.exclude(id__in=existing_line_ids).delete()
+                            # NOTE: We intentionally do NOT delete lines that aren't in the update
+                            # to preserve approval history and other linked data
                         
                     except OrderStyle.DoesNotExist:
                         # Style ID provided but doesn't exist, create new one
@@ -586,8 +583,6 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             
                             # Handle lines updates
                             if lines_data:
-                                existing_line_ids = set()
-                                
                                 for line_data in lines_data:
                                     line_id = line_data.pop('id', None)
                                     
@@ -595,7 +590,6 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                         # Update existing line
                                         try:
                                             line = OrderLine.objects.get(id=line_id, style=style)
-                                            existing_line_ids.add(str(line_id))
                                             
                                             for attr, value in line_data.items():
                                                 setattr(line, attr, value)
@@ -607,8 +601,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                         # No ID, create new line
                                         OrderLine.objects.create(style=style, **line_data)
                                 
-                                # Delete lines that weren't in the update
-                                style.lines.exclude(id__in=existing_line_ids).delete()
+                                # NOTE: We intentionally do NOT delete lines that aren't in the update
+                                # to preserve approval history and other linked data
                         except OrderStyle.DoesNotExist:
                             # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)
@@ -624,8 +618,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             OrderLine.objects.create(style=style, **line_data)
                         existing_style_ids.add(str(style.id))
             
-            # Delete styles that weren't in the update
-            instance.styles.exclude(id__in=existing_style_ids).delete()
+            # NOTE: We intentionally do NOT delete styles that aren't in the update
+            # to preserve approval history and other linked data
+            # Styles should be deleted through explicit delete actions
+            # instance.styles.exclude(id__in=existing_style_ids).delete()
         
         return instance
 

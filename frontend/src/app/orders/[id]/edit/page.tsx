@@ -14,8 +14,10 @@ import { ArrowLeft, Save, Plus, Trash2, Calendar } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
 
-interface ColorFormData {
+interface OrderLineFormData {
   id?: string;
+  styleId?: string;
+  styleNumber: string;
   colorCode: string;
   cadName?: string;
   quantity: string;
@@ -28,10 +30,7 @@ interface ColorFormData {
   eta?: string;
   submissionDate?: string;
   notes?: string;
-}
-
-interface StyleFormData {
-  id?: string;
+  // Optional style-level fields
   description?: string;
   fabricType?: string;
   fabricComposition?: string;
@@ -39,11 +38,6 @@ interface StyleFormData {
   finishType?: string;
   construction?: string;
   cuttableWidth?: string;
-  etd?: string;
-  eta?: string;
-  submissionDate?: string;
-  notes?: string;
-  colors: ColorFormData[];
 }
 
 export default function OrderEditPage() {
@@ -58,13 +52,12 @@ export default function OrderEditPage() {
     poNumber: '',
     customerName: '',
     buyerName: '',
-    baseStyleNumber: '',
     fabricType: '',
     orderDate: '',
     notes: '',
   });
   
-  const [styles, setStyles] = useState<StyleFormData[]>([]);
+  const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -84,21 +77,36 @@ export default function OrderEditPage() {
         poNumber: order.poNumber || '',
         customerName: order.customerName || '',
         buyerName: order.buyerName || '',
-        baseStyleNumber: order.baseStyleNumber || order.styleNumber || '',
         fabricType: order.fabricType || '',
         orderDate: order.orderDate || '',
         notes: order.notes || '',
       });
 
-      // Set styles data if available
+      // Flatten styles and lines into orderLines array
       if (order.styles && order.styles.length > 0) {
-        setStyles(
-          order.styles.map((style: any) => {
-            // Prefer lines over colors (new structure), fallback to colors for backward compatibility
-            const lineItems = style.lines || style.colors || [];
-            
-            return {
-              id: style.id,
+        const lines: OrderLineFormData[] = [];
+        
+        order.styles.forEach((style: any) => {
+          const lineItems = style.lines || style.colors || [];
+          
+          lineItems.forEach((item: any) => {
+            lines.push({
+              id: item.id,
+              styleId: style.id,
+              styleNumber: style.styleNumber || '',
+              colorCode: item.colorCode || '',
+              cadName: item.cadName || '',
+              quantity: item.quantity ? item.quantity.toString() : '',
+              unit: item.unit || 'meters',
+              millName: item.millName || '',
+              millPrice: item.millPrice ? item.millPrice.toString() : '',
+              provaPrice: item.provaPrice ? item.provaPrice.toString() : '',
+              currency: item.currency || 'USD',
+              etd: item.etd || '',
+              eta: item.eta || '',
+              submissionDate: item.submissionDate || '',
+              notes: item.notes || '',
+              // Style-level fields
               description: style.description || '',
               fabricType: style.fabricType || '',
               fabricComposition: style.fabricComposition || '',
@@ -106,47 +114,21 @@ export default function OrderEditPage() {
               finishType: style.finishType || '',
               construction: style.construction || '',
               cuttableWidth: style.cuttableWidth || '',
-              etd: style.etd || '',
-              eta: style.eta || '',
-              submissionDate: style.submissionDate || '',
-              notes: style.notes || '',
-              colors: lineItems.map((item: any) => ({
-                id: item.id,
-                colorCode: item.colorCode || '',
-                cadName: item.cadName || '',
-                quantity: item.quantity ? item.quantity.toString() : '',
-                unit: item.unit || 'meters',
-                millName: item.millName || '',
-                millPrice: item.millPrice ? item.millPrice.toString() : '',
-                provaPrice: item.provaPrice ? item.provaPrice.toString() : '',
-                currency: item.currency || 'USD',
-                etd: item.etd || '',
-                eta: item.eta || '',
-                submissionDate: item.submissionDate || '',
-                notes: item.notes || '',
-              })),
-            };
-          })
-        );
+            });
+          });
+        });
+        
+        setOrderLines(lines);
       } else {
-        // Fallback to single style with basic data
-        setStyles([
+        // Fallback to single line
+        setOrderLines([
           {
+            styleNumber: order.styleNumber || '',
+            colorCode: '',
+            quantity: order.quantity ? order.quantity.toString() : '',
+            unit: order.unit || 'meters',
+            currency: order.currency || 'USD',
             fabricType: order.fabricType || '',
-            fabricComposition: order.fabricComposition || '',
-            gsm: order.gsm ? order.gsm.toString() : '',
-            finishType: order.finishType || '',
-            construction: order.construction || '',
-            colors: [
-              {
-                colorCode: '',
-                cadName: '',
-                quantity: order.quantity ? order.quantity.toString() : '',
-                unit: order.unit || 'meters',
-                millName: '',
-                currency: order.currency || 'USD',
-              },
-            ],
           },
         ]);
       }
@@ -167,54 +149,58 @@ export default function OrderEditPage() {
     setSubmitting(true);
 
     try {
+      // Group lines by style number
+      const styleGroups = new Map<string, typeof orderLines>();
+      
+      orderLines.forEach(line => {
+        const styleKey = `${line.styleNumber}-${line.styleId || ''}`;
+        if (!styleGroups.has(styleKey)) {
+          styleGroups.set(styleKey, []);
+        }
+        styleGroups.get(styleKey)!.push(line);
+      });
+
       const orderData = {
         poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
-        baseStyleNumber: formData.baseStyleNumber,
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         notes: formData.notes || undefined,
-        quantity: styles.reduce(
-          (total, style) =>
-            total +
-            style.colors.reduce(
-              (styleTotal, color) => styleTotal + (parseFloat(color.quantity) || 0),
-              0
-            ),
+        quantity: orderLines.reduce(
+          (total, line) => total + (parseFloat(line.quantity) || 0),
           0
         ),
         unit: 'meters',
-        styles: styles.map((style) => ({
-          id: style.id,
-          description: style.description || undefined,
-          fabricType: style.fabricType || formData.fabricType,
-          fabricComposition: style.fabricComposition || undefined,
-          gsm: style.gsm ? parseFloat(style.gsm) : undefined,
-          finishType: style.finishType || undefined,
-          construction: style.construction || undefined,
-          cuttableWidth: style.cuttableWidth || undefined,
-          etd: style.etd || undefined,
-          eta: style.eta || undefined,
-          submissionDate: style.submissionDate || undefined,
-          notes: style.notes || undefined,
-          // Send line items under `lines` so backend updates OrderLine records directly
-          lines: style.colors.map((color) => ({
-            id: color.id,
-            colorCode: color.colorCode,
-            cadName: color.cadName || undefined,
-            quantity: parseFloat(color.quantity),
-            unit: color.unit,
-            millName: color.millName || undefined,
-            millPrice: color.millPrice ? parseFloat(color.millPrice) : undefined,
-            provaPrice: color.provaPrice ? parseFloat(color.provaPrice) : undefined,
-            currency: color.currency,
-            etd: color.etd || undefined,
-            eta: color.eta || undefined,
-            submissionDate: color.submissionDate || undefined,
-            notes: color.notes || undefined,
-          })),
-        })),
+        styles: Array.from(styleGroups.entries()).map(([key, lines]) => {
+          const firstLine = lines[0];
+          return {
+            id: firstLine.styleId,
+            styleNumber: firstLine.styleNumber,
+            description: firstLine.description || undefined,
+            fabricType: firstLine.fabricType || formData.fabricType,
+            fabricComposition: firstLine.fabricComposition || undefined,
+            gsm: firstLine.gsm ? parseFloat(firstLine.gsm) : undefined,
+            finishType: firstLine.finishType || undefined,
+            construction: firstLine.construction || undefined,
+            cuttableWidth: firstLine.cuttableWidth || undefined,
+            lines: lines.map((line) => ({
+              id: line.id,
+              colorCode: line.colorCode,
+              cadName: line.cadName || undefined,
+              quantity: parseFloat(line.quantity),
+              unit: line.unit,
+              millName: line.millName || undefined,
+              millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
+              provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
+              currency: line.currency,
+              etd: line.etd || undefined,
+              eta: line.eta || undefined,
+              submissionDate: line.submissionDate || undefined,
+              notes: line.notes || undefined,
+            })),
+          };
+        }),
       };
 
       await api.patch(`/orders/${params.id}/`, orderData);
@@ -237,55 +223,28 @@ export default function OrderEditPage() {
     }
   };
 
-  const updateStyle = (index: number, field: keyof StyleFormData, value: any) => {
-    const newStyles = [...styles];
-    (newStyles[index] as any)[field] = value;
-    setStyles(newStyles);
+  const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
+    const newLines = [...orderLines];
+    newLines[index] = { ...newLines[index], [field]: value };
+    setOrderLines(newLines);
   };
 
-  const updateColor = (styleIndex: number, colorIndex: number, field: keyof ColorFormData, value: any) => {
-    const newStyles = [...styles];
-    newStyles[styleIndex].colors[colorIndex] = {
-      ...newStyles[styleIndex].colors[colorIndex],
-      [field]: value,
-    };
-    setStyles(newStyles);
-  };
-
-  const addColor = (styleIndex: number) => {
-    const newStyles = [...styles];
-    newStyles[styleIndex].colors.push({
-      colorCode: '',
-      cadName: '',
-      quantity: '',
-      unit: 'meters',
-      millName: '',
-      currency: 'USD',
-    });
-    setStyles(newStyles);
-  };
-
-  const removeColor = (styleIndex: number, colorIndex: number) => {
-    const newStyles = [...styles];
-    if (newStyles[styleIndex].colors.length > 1) {
-      newStyles[styleIndex].colors.splice(colorIndex, 1);
-      setStyles(newStyles);
-    }
-  };
-
-  const addStyle = () => {
-    setStyles([
-      ...styles,
+  const addOrderLine = () => {
+    setOrderLines([
+      ...orderLines,
       {
-        colors: [{ colorCode: '', cadName: '', quantity: '', unit: 'meters', millName: '', currency: 'USD' }],
+        styleNumber: '',
+        colorCode: '',
+        quantity: '',
+        unit: 'meters',
+        currency: 'USD',
       },
     ]);
   };
 
-  const removeStyle = (index: number) => {
-    if (styles.length > 1) {
-      const newStyles = styles.filter((_, i) => i !== index);
-      setStyles(newStyles);
+  const removeOrderLine = (index: number) => {
+    if (orderLines.length > 1) {
+      setOrderLines(orderLines.filter((_, i) => i !== index));
     }
   };
 
@@ -299,10 +258,6 @@ export default function OrderEditPage() {
     );
   }
 
-  const flattenedLines = styles.flatMap((style, styleIndex) =>
-    style.colors.map((_, colorIndex) => ({ styleIndex, colorIndex }))
-  );
-
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-6 pb-8">
@@ -312,7 +267,7 @@ export default function OrderEditPage() {
             Back to Order Details
           </Button>
           <h1 className="text-3xl font-bold">Edit Order</h1>
-          <p className="text-gray-500 mt-1">Update order information and styles</p>
+          <p className="text-gray-500 mt-1">Update order information and lines</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -350,16 +305,6 @@ export default function OrderEditPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="baseStyleNumber">Base Style Number *</Label>
-                  <Input
-                    id="baseStyleNumber"
-                    required
-                    placeholder="e.g., ST2024"
-                    value={formData.baseStyleNumber}
-                    onChange={(e) => setFormData({ ...formData, baseStyleNumber: e.target.value })}
-                  />
-                </div>
-                <div>
                   <Label htmlFor="fabricType">Fabric Type *</Label>
                   <Input
                     id="fabricType"
@@ -379,7 +324,7 @@ export default function OrderEditPage() {
                   />
                 </div>
                 <div className="col-span-1">
-                  <Label htmlFor="notes">Notes</Label>
+                  <Label htmlFor="notes">Order Notes</Label>
                   <Input
                     id="notes"
                     value={formData.notes}
@@ -390,23 +335,19 @@ export default function OrderEditPage() {
             </CardContent>
           </Card>
 
-          {/* Styles */}
+          {/* Order Lines */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Order Lines</h2>
-              <Button type="button" variant="outline" onClick={addStyle}>
+              <Button type="button" variant="outline" onClick={addOrderLine}>
                 <Plus className="h-4 w-4 mr-1" />
-                Add Style
+                Add Line
               </Button>
             </div>
 
-            {flattenedLines.map(({ styleIndex, colorIndex }, lineIndex) => {
-              const style = styles[styleIndex];
-              const color = style.colors[colorIndex];
-
-              return (
+            {orderLines.map((line, lineIndex) => (
                 <Card
-                  key={`${styleIndex}-${colorIndex}`}
+                  key={line.id || lineIndex}
                   className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all"
                 >
                   <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
@@ -415,282 +356,247 @@ export default function OrderEditPage() {
                         <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
                           Line {lineIndex + 1}
                         </span>
-                        {formData.baseStyleNumber && (
-                          <span className="text-sm text-gray-700">
-                            {formData.baseStyleNumber}-{String(styleIndex + 1).padStart(2, '0')}
+                        {line.styleNumber && (
+                          <span className="text-sm text-gray-700 font-mono">
+                            {line.styleNumber}
                           </span>
                         )}
-                        {color.colorCode && (
+                        {line.colorCode && (
                           <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
-                            {color.colorCode}
+                            {line.colorCode}
                           </span>
                         )}
                       </CardTitle>
-                      <div className="flex items-center gap-1">
-                        {style.colors.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeColor(styleIndex, colorIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {styles.length > 1 && style.colors.length === 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeStyle(styleIndex)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeOrderLine(lineIndex)}
+                        disabled={orderLines.length === 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Style Details */}
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="col-span-4">
-                        <Label className="text-sm">Description</Label>
-                        <Textarea
-                          value={style.description || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'description', e.target.value)}
-                          placeholder="Style description"
-                          rows={2}
-                          className="text-sm"
-                        />
-                      </div>
+                    {/* Required Fields */}
+                    <div className="grid grid-cols-6 gap-3">
                       <div>
-                        <Label className="text-sm">Fabric Composition</Label>
+                        <Label className="text-sm">Style Number *</Label>
                         <Input
-                          value={style.fabricComposition || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'fabricComposition', e.target.value)}
+                          value={line.styleNumber}
+                          onChange={(e) => updateOrderLine(lineIndex, 'styleNumber', e.target.value)}
+                          required
+                          className="text-sm"
+                          placeholder="ST2024"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Color Code *</Label>
+                        <Input
+                          value={line.colorCode}
+                          onChange={(e) => updateOrderLine(lineIndex, 'colorCode', e.target.value)}
+                          required
                           className="text-sm"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">GSM</Label>
+                        <Label className="text-sm">CAD Name</Label>
+                        <Input
+                          value={line.cadName || ''}
+                          onChange={(e) => updateOrderLine(lineIndex, 'cadName', e.target.value)}
+                          className="text-sm"
+                          placeholder="Optional"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Quantity *</Label>
                         <Input
                           type="number"
-                          value={style.gsm || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'gsm', e.target.value)}
+                          step="0.01"
+                          value={line.quantity}
+                          onChange={(e) => updateOrderLine(lineIndex, 'quantity', e.target.value)}
+                          required
                           className="text-sm"
                         />
                       </div>
                       <div>
-                        <Label className="text-sm">Finish Type</Label>
-                        <Input
-                          value={style.finishType || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'finishType', e.target.value)}
-                          className="text-sm"
-                        />
+                        <Label className="text-sm">Unit</Label>
+                        <Select
+                          value={line.unit}
+                          onValueChange={(value) => updateOrderLine(lineIndex, 'unit', value)}
+                        >
+                          <SelectTrigger className="text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="meters">Meters</SelectItem>
+                            <SelectItem value="yards">Yards</SelectItem>
+                            <SelectItem value="kg">Kilograms</SelectItem>
+                            <SelectItem value="lbs">Pounds</SelectItem>
+                            <SelectItem value="pieces">Pieces</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
-                        <Label className="text-sm">Cuttable Width</Label>
+                        <Label className="text-sm">Currency</Label>
                         <Input
-                          value={style.cuttableWidth || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'cuttableWidth', e.target.value)}
-                          placeholder="e.g., 60 inches"
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="col-span-4">
-                        <Label className="text-sm">Construction</Label>
-                        <Textarea
-                          value={style.construction || ''}
-                          onChange={(e) => updateStyle(styleIndex, 'construction', e.target.value)}
-                          placeholder="Construction details"
-                          rows={2}
+                          value={line.currency}
+                          onChange={(e) => updateOrderLine(lineIndex, 'currency', e.target.value)}
                           className="text-sm"
                         />
                       </div>
                     </div>
 
-                    {/* Style Dates */}
+                    {/* Optional Style Technical Details */}
+                    <div className="border-t pt-3">
+                      <Label className="text-sm font-semibold mb-2 block">Style Technical Details (Optional)</Label>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="col-span-4">
+                          <Label className="text-sm">Description</Label>
+                          <Textarea
+                            value={line.description || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'description', e.target.value)}
+                            placeholder="Style description"
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Fabric Composition</Label>
+                          <Input
+                            value={line.fabricComposition || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'fabricComposition', e.target.value)}
+                            className="text-sm"
+                            placeholder="e.g., 100% Cotton"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">GSM</Label>
+                          <Input
+                            type="number"
+                            value={line.gsm || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'gsm', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Finish Type</Label>
+                          <Input
+                            value={line.finishType || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'finishType', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Cuttable Width</Label>
+                          <Input
+                            value={line.cuttableWidth || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'cuttableWidth', e.target.value)}
+                            placeholder="e.g., 60 inches"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="col-span-4">
+                          <Label className="text-sm">Construction</Label>
+                          <Textarea
+                            value={line.construction || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'construction', e.target.value)}
+                            placeholder="Construction details"
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Commercial Data */}
+                    <div className="border-t pt-3">
+                      <Label className="text-sm font-semibold mb-2 block">Commercial Data (Optional)</Label>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <Label className="text-sm">Mill Name</Label>
+                          <Input
+                            value={line.millName || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'millName', e.target.value)}
+                            className="text-sm"
+                            placeholder="Mill supplier"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Mill Price</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={line.millPrice || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'millPrice', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm">Prova Price</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={line.provaPrice || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'provaPrice', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
                     <div className="border-t pt-3">
                       <Label className="text-sm font-semibold flex items-center gap-2 mb-2">
                         <Calendar className="h-4 w-4" />
-                        Delivery Dates
+                        Important Dates (Optional)
                       </Label>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <Label className="text-xs">ETD</Label>
+                          <Label className="text-sm">ETD</Label>
                           <Input
                             type="date"
-                            value={style.etd || ''}
-                            onChange={(e) => updateStyle(styleIndex, 'etd', e.target.value)}
+                            value={line.etd || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'etd', e.target.value)}
                             className="text-sm"
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">ETA</Label>
+                          <Label className="text-sm">ETA</Label>
                           <Input
                             type="date"
-                            value={style.eta || ''}
-                            onChange={(e) => updateStyle(styleIndex, 'eta', e.target.value)}
+                            value={line.eta || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'eta', e.target.value)}
                             className="text-sm"
                           />
                         </div>
                         <div>
-                          <Label className="text-xs">Submission Date</Label>
+                          <Label className="text-sm">Submission Date</Label>
                           <Input
                             type="date"
-                            value={style.submissionDate || ''}
-                            onChange={(e) => updateStyle(styleIndex, 'submissionDate', e.target.value)}
+                            value={line.submissionDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'submissionDate', e.target.value)}
                             className="text-sm"
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Colors */}
+                    {/* Notes */}
                     <div className="border-t pt-3">
-                      <div className="flex justify-between items-center mb-3">
-                        <Label className="text-sm font-semibold">Line Details</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addColor(styleIndex)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add Line to Style
-                        </Button>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-6 gap-2">
-                          <div>
-                            <Label className="text-xs">Color Code *</Label>
-                            <Input
-                              value={color.colorCode}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'colorCode', e.target.value)}
-                              required
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">CAD Name</Label>
-                            <Input
-                              value={color.cadName || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'cadName', e.target.value)}
-                              className="text-sm"
-                              placeholder="CAD description"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Quantity *</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.quantity}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'quantity', e.target.value)}
-                              required
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Unit</Label>
-                            <Select
-                              value={color.unit}
-                              onValueChange={(value) => updateColor(styleIndex, colorIndex, 'unit', value)}
-                            >
-                              <SelectTrigger className="text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="meters">Meters</SelectItem>
-                                <SelectItem value="yards">Yards</SelectItem>
-                                <SelectItem value="kg">Kilograms</SelectItem>
-                                <SelectItem value="lbs">Pounds</SelectItem>
-                                <SelectItem value="pieces">Pieces</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Mill Name</Label>
-                            <Input
-                              value={color.millName || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'millName', e.target.value)}
-                              className="text-sm"
-                              placeholder="Mill supplier"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Currency</Label>
-                            <Input
-                              value={color.currency}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'currency', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-6 gap-2">
-                          <div>
-                            <Label className="text-xs">Mill Price</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.millPrice || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'millPrice', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Prova Price</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={color.provaPrice || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'provaPrice', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">ETD</Label>
-                            <Input
-                              type="date"
-                              value={color.etd || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'etd', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">ETA</Label>
-                            <Input
-                              type="date"
-                              value={color.eta || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'eta', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Submission Date</Label>
-                            <Input
-                              type="date"
-                              value={color.submissionDate || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'submissionDate', e.target.value)}
-                              className="text-sm"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-xs">Notes</Label>
-                            <Input
-                              value={color.notes || ''}
-                              onChange={(e) => updateColor(styleIndex, colorIndex, 'notes', e.target.value)}
-                              className="text-sm"
-                              placeholder="Line notes"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      <Label className="text-sm">Line Notes</Label>
+                      <Textarea
+                        value={line.notes || ''}
+                        onChange={(e) => updateOrderLine(lineIndex, 'notes', e.target.value)}
+                        placeholder="Additional notes for this line"
+                        rows={2}
+                        className="text-sm"
+                      />
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
+              ))}
           </div>
 
           {/* Submit Button */}
