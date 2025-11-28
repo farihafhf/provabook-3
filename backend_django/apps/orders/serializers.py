@@ -540,6 +540,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         
                         # Handle lines updates
                         if lines_data:
+                            existing_line_ids = set()
+                            
                             for line_data in lines_data:
                                 line_id = line_data.pop('id', None)
                                 
@@ -547,6 +549,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     # Update existing line by primary key
                                     try:
                                         line = OrderLine.objects.get(id=line_id, style=style)
+                                        existing_line_ids.add(str(line_id))
                                         
                                         for attr, value in line_data.items():
                                             setattr(line, attr, value)
@@ -570,15 +573,18 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 
                                     if existing_line is not None:
                                         # Update the logically matching line instead of creating a duplicate
+                                        existing_line_ids.add(str(existing_line.id))
                                         for attr, value in line_data.items():
                                             setattr(existing_line, attr, value)
                                         existing_line.save()
                                     else:
                                         # No match found, create a new line
-                                        OrderLine.objects.create(style=style, **line_data)
+                                        new_line = OrderLine.objects.create(style=style, **line_data)
+                                        existing_line_ids.add(str(new_line.id))
                             
-                            # NOTE: We intentionally do NOT delete lines that aren't in the update
-                            # to preserve approval history and other linked data
+                            # Delete lines that weren't in the update (user removed them)
+                            # Approval history will be preserved due to SET_NULL on ForeignKey
+                            style.lines.exclude(id__in=existing_line_ids).delete()
                         
                     except OrderStyle.DoesNotExist:
                         # Style ID provided but doesn't exist, create new one
@@ -602,6 +608,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             
                             # Handle lines updates
                             if lines_data:
+                                existing_line_ids = set()
+                                
                                 for line_data in lines_data:
                                     line_id = line_data.pop('id', None)
                                     
@@ -609,6 +617,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                         # Update existing line by primary key
                                         try:
                                             line = OrderLine.objects.get(id=line_id, style=style)
+                                            existing_line_ids.add(str(line_id))
                                             
                                             for attr, value in line_data.items():
                                                 setattr(line, attr, value)
@@ -632,15 +641,18 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
 
                                         if existing_line is not None:
                                             # Update the logically matching line instead of creating a duplicate
+                                            existing_line_ids.add(str(existing_line.id))
                                             for attr, value in line_data.items():
                                                 setattr(existing_line, attr, value)
                                             existing_line.save()
                                         else:
                                             # No match found, create a new line
-                                            OrderLine.objects.create(style=style, **line_data)
+                                            new_line = OrderLine.objects.create(style=style, **line_data)
+                                            existing_line_ids.add(str(new_line.id))
                                 
-                                # NOTE: We intentionally do NOT delete lines that aren't in the update
-                                # to preserve approval history and other linked data
+                                # Delete lines that weren't in the update (user removed them)
+                                # Approval history will be preserved due to SET_NULL on ForeignKey
+                                style.lines.exclude(id__in=existing_line_ids).delete()
                         except OrderStyle.DoesNotExist:
                             # Style doesn't exist, create new one
                             style = OrderStyle.objects.create(order=instance, **style_data)
