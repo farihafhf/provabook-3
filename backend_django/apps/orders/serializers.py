@@ -544,7 +544,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 line_id = line_data.pop('id', None)
                                 
                                 if line_id:
-                                    # Update existing line
+                                    # Update existing line by primary key
                                     try:
                                         line = OrderLine.objects.get(id=line_id, style=style)
                                         
@@ -552,11 +552,33 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                             setattr(line, attr, value)
                                         line.save()
                                     except OrderLine.DoesNotExist:
-                                        # Line ID provided but doesn't exist, create new one
+                                        # Line ID provided but doesn't exist, fall back to matching by logical key
+                                        line_id = None
+                                
+                                if not line_id:
+                                    # No valid ID - try to match by logical combination (style + color + CAD)
+                                    color_code = line_data.get('color_code')
+                                    cad_code = line_data.get('cad_code')
+
+                                    existing_line = None
+                                    if color_code is not None or cad_code is not None:
+                                        try:
+                                            existing_line = OrderLine.objects.get(
+                                                style=style,
+                                                color_code=color_code,
+                                                cad_code=cad_code,
+                                            )
+                                        except OrderLine.DoesNotExist:
+                                            existing_line = None
+
+                                    if existing_line is not None:
+                                        # Update the logically matching line instead of creating a duplicate
+                                        for attr, value in line_data.items():
+                                            setattr(existing_line, attr, value)
+                                        existing_line.save()
+                                    else:
+                                        # No match found, create a new line
                                         OrderLine.objects.create(style=style, **line_data)
-                                else:
-                                    # No ID, create new line
-                                    OrderLine.objects.create(style=style, **line_data)
                             
                             # NOTE: We intentionally do NOT delete lines that aren't in the update
                             # to preserve approval history and other linked data
@@ -587,7 +609,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                     line_id = line_data.pop('id', None)
                                     
                                     if line_id:
-                                        # Update existing line
+                                        # Update existing line by primary key
                                         try:
                                             line = OrderLine.objects.get(id=line_id, style=style)
                                             
@@ -595,11 +617,33 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                                 setattr(line, attr, value)
                                             line.save()
                                         except OrderLine.DoesNotExist:
-                                            # Line ID provided but doesn't exist, create new one
+                                            # Line ID provided but doesn't exist, fall back to logical match
+                                            line_id = None
+                                    
+                                    if not line_id:
+                                        # No valid ID - try to match by logical combination (style + color + CAD)
+                                        color_code = line_data.get('color_code')
+                                        cad_code = line_data.get('cad_code')
+
+                                        existing_line = None
+                                        if color_code is not None or cad_code is not None:
+                                            try:
+                                                existing_line = OrderLine.objects.get(
+                                                    style=style,
+                                                    color_code=color_code,
+                                                    cad_code=cad_code,
+                                                )
+                                            except OrderLine.DoesNotExist:
+                                                existing_line = None
+
+                                        if existing_line is not None:
+                                            # Update the logically matching line instead of creating a duplicate
+                                            for attr, value in line_data.items():
+                                                setattr(existing_line, attr, value)
+                                            existing_line.save()
+                                        else:
+                                            # No match found, create a new line
                                             OrderLine.objects.create(style=style, **line_data)
-                                    else:
-                                        # No ID, create new line
-                                        OrderLine.objects.create(style=style, **line_data)
                                 
                                 # NOTE: We intentionally do NOT delete lines that aren't in the update
                                 # to preserve approval history and other linked data
