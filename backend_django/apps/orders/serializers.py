@@ -651,6 +651,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     """
     merchandiser_name = serializers.SerializerMethodField()
     earliest_etd = serializers.SerializerMethodField()
+    line_status_counts = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -658,7 +659,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date',
-            'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd'
+            'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
+            'line_status_counts'
         ]
     
     def get_merchandiser_name(self, obj):
@@ -676,6 +678,18 @@ class OrderListSerializer(serializers.ModelSerializer):
         ).aggregate(min_etd=Min('etd'))['min_etd']
         
         return earliest.isoformat() if earliest else None
+    
+    def get_line_status_counts(self, obj):
+        """Get counts of each status from all order lines"""
+        from .models_order_line import OrderLine
+        from django.db.models import Count
+        
+        status_counts = OrderLine.objects.filter(
+            style__order=obj
+        ).values('status').annotate(count=Count('status'))
+        
+        # Convert to dict: {status: count}
+        return {item['status']: item['count'] for item in status_counts}
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -696,6 +710,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'merchandiserName': data.get('merchandiser_name'),
             'createdAt': data['created_at'],
             'earliestEtd': data.get('earliest_etd'),
+            'lineStatusCounts': data.get('line_status_counts') or {},
         }
 
 

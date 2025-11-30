@@ -29,6 +29,7 @@ interface Order {
   currency?: string;
   merchandiserName?: string;
   earliestEtd?: string;
+  lineStatusCounts?: Record<string, number>;
 }
 
 interface OrdersFilterParams {
@@ -179,6 +180,49 @@ function OrdersPageContent() {
       'archived': 'Archived'
     };
     return statusMap[status.toLowerCase()] || status;
+  };
+
+  // Render aggregated status badges based on line status counts
+  const renderAggregatedStatus = (order: Order) => {
+    const statusCounts = order.lineStatusCounts || {};
+    const statuses = Object.keys(statusCounts);
+
+    // If no line statuses, fall back to parent order status
+    if (statuses.length === 0) {
+      return (
+        <Badge className={getStatusBadgeClass(order.status)}>
+          {getStatusDisplayName(order.status)}
+        </Badge>
+      );
+    }
+
+    // If all lines have same status, show single badge
+    if (statuses.length === 1) {
+      return (
+        <Badge className={getStatusBadgeClass(statuses[0])}>
+          {getStatusDisplayName(statuses[0])}
+        </Badge>
+      );
+    }
+
+    // Mixed statuses - show stacked badges with counts
+    const statusPriority = ['running', 'bulk', 'in_development', 'upcoming', 'completed', 'archived'];
+    const sortedStatuses = statuses.sort((a, b) => 
+      statusPriority.indexOf(a) - statusPriority.indexOf(b)
+    );
+
+    return (
+      <div className="flex flex-col gap-1">
+        {sortedStatuses.map(status => (
+          <Badge 
+            key={status} 
+            className={`${getStatusBadgeClass(status)} text-xs px-2 py-0.5`}
+          >
+            {statusCounts[status]} {getStatusDisplayName(status)}
+          </Badge>
+        ))}
+      </div>
+    );
   };
 
   const getEtdRowClass = (etd?: string): string => {
@@ -361,9 +405,7 @@ function OrdersPageContent() {
                           )}
                         </td>
                         <td className="py-4">
-                          <Badge className={getStatusBadgeClass(order.status)}>
-                            {getStatusDisplayName(order.status)}
-                          </Badge>
+                          {renderAggregatedStatus(order)}
                         </td>
                         <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
                         <td className="py-4">
