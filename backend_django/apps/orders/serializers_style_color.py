@@ -235,9 +235,7 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
         return super().to_internal_value(converted_data)
     
     def validate(self, data):
-        """Validate that at least one line/color is provided"""
-        from .models_order_line import OrderLine
-        
+        """Validate that at least one line/color is provided for new styles"""
         lines = data.get('lines', [])
         colors = data.get('colors', [])
         
@@ -249,13 +247,8 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
                     'lines': 'At least one line or color must be provided for each style'
                 })
         
-        # Validate lines if provided
-        if lines:
-            combinations = [(l.get('color_code'), l.get('cad_code')) for l in lines]
-            if len(combinations) != len(set(combinations)):
-                raise serializers.ValidationError({
-                    'lines': 'Each color+CAD combination must be unique within a style'
-                })
+        # NOTE: Duplicate color+CAD validation removed - the database UniqueConstraint
+        # handles this properly and doesn't block legitimate updates/deletes
         
         return data
     
