@@ -1,19 +1,31 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { CreateOrderDialog } from '@/components/orders/create-order-dialog';
+
+interface OrderLine {
+  id: string;
+  styleNumber?: string;
+  colorCode?: string;
+  description?: string;
+  quantity: number;
+  unit: string;
+  etd?: string;
+  status?: string;
+  approvalStatus?: Record<string, string>;
+}
 
 interface Order {
   id: string;
@@ -30,6 +42,7 @@ interface Order {
   merchandiserName?: string;
   earliestEtd?: string;
   lineStatusCounts?: Record<string, number>;
+  lines?: OrderLine[];
 }
 
 interface OrdersFilterParams {
@@ -53,6 +66,7 @@ function OrdersPageContent() {
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
@@ -249,6 +263,58 @@ function OrdersPageContent() {
     return '';
   };
 
+  const toggleOrderExpanded = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatApprovalName = (key: string): string => {
+    const names: Record<string, string> = {
+      price: 'Price',
+      quality: 'Quality',
+      labDip: 'Lab Dip',
+      strikeOff: 'Strike Off',
+      handloom: 'Handloom',
+      ppSample: 'PP Sample',
+    };
+    return names[key] || key;
+  };
+
+  const getApprovalBadge = (status: string) => {
+    const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+      approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
+      rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
+      submission: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Submission' },
+      resubmission: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Resubmission' },
+      default: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Pending' },
+    };
+    return statusConfig[status] || statusConfig.default;
+  };
+
+  // Get all unique approval types that have non-default values across all lines in an order
+  const getActiveApprovalTypes = (lines: OrderLine[]): string[] => {
+    const activeTypes = new Set<string>();
+    lines.forEach(line => {
+      if (line.approvalStatus) {
+        Object.entries(line.approvalStatus).forEach(([key, value]) => {
+          if (value && value !== 'default') {
+            activeTypes.add(key);
+          }
+        });
+      }
+    });
+    // Sort by priority order
+    const priority = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample'];
+    return priority.filter(type => activeTypes.has(type));
+  };
+
   const handleDeleteClick = (order: Order) => {
     setOrderToDelete(order);
     setDeleteDialogOpen(true);
@@ -360,6 +426,7 @@ function OrdersPageContent() {
                 <table className="w-full">
                   <thead className="border-b">
                     <tr className="text-left text-sm text-gray-600">
+                      <th className="pb-3 font-medium w-8"></th>
                       <th className="pb-3 font-medium">PO #</th>
                       <th className="pb-3 font-medium">Vendor</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
@@ -380,75 +447,175 @@ function OrdersPageContent() {
                           return new Date(a.earliestEtd).getTime() - new Date(b.earliestEtd).getTime();
                         })
                       : orders
-                    ).map((order) => (
-                      <tr
-                        key={order.id}
-                        className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
-                        onClick={() => router.push(`/orders/${order.id}`)}
-                      >
-                        <td className="py-4 font-medium">{order.poNumber}</td>
-                        <td className="py-4">{order.customerName}</td>
-                        <td className="py-4">{order.fabricType}</td>
-                        <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
-                        <td className="py-4">
-                          {order.earliestEtd ? (
-                            <span className="font-medium">{formatDate(order.earliestEtd)}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
+                    ).map((order) => {
+                      const isExpanded = expandedOrders.has(order.id);
+                      const lines = order.lines || [];
+                      const activeApprovalTypes = getActiveApprovalTypes(lines);
+                      
+                      return (
+                        <React.Fragment key={order.id}>
+                          {/* Main order row */}
+                          <tr
+                            className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
+                            onClick={() => router.push(`/orders/${order.id}`)}
+                          >
+                            <td className="py-4">
+                              {lines.length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="p-1 h-6 w-6"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleOrderExpanded(order.id);
+                                  }}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              )}
+                            </td>
+                            <td className="py-4 font-medium">{order.poNumber}</td>
+                            <td className="py-4">{order.customerName}</td>
+                            <td className="py-4">{order.fabricType}</td>
+                            <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
+                            <td className="py-4">
+                              {order.earliestEtd ? (
+                                <span className="font-medium">{formatDate(order.earliestEtd)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
+                              {order.merchandiserName ? (
+                                <span className="text-gray-700">{order.merchandiserName}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
+                              {renderAggregatedStatus(order)}
+                            </td>
+                            <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
+                            <td className="py-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(`/orders/${order.id}`);
+                                  }}
+                                  title="View Details"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(`/orders/${order.id}/edit`);
+                                  }}
+                                  title="Edit Order"
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleDeleteClick(order);
+                                  }}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded line items */}
+                          {isExpanded && lines.length > 0 && (
+                            <tr>
+                              <td colSpan={10} className="p-0">
+                                <div className="bg-gray-50 border-t border-b">
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr className="text-xs text-gray-500 bg-gray-100">
+                                        <th className="py-2 px-3 text-left font-medium">Style</th>
+                                        <th className="py-2 px-3 text-left font-medium">Color</th>
+                                        <th className="py-2 px-3 text-left font-medium">Description</th>
+                                        <th className="py-2 px-3 text-left font-medium">ETD</th>
+                                        {activeApprovalTypes.map(type => (
+                                          <th key={type} className="py-2 px-3 text-left font-medium">
+                                            {formatApprovalName(type)}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {lines.map((line) => (
+                                        <tr 
+                                          key={line.id} 
+                                          className="text-sm border-t border-gray-200 hover:bg-gray-100 cursor-pointer"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            router.push(`/orders/${order.id}`);
+                                          }}
+                                        >
+                                          <td className="py-2 px-3">
+                                            <Badge className="bg-indigo-100 text-indigo-700 text-xs">
+                                              {line.styleNumber || '-'}
+                                            </Badge>
+                                          </td>
+                                          <td className="py-2 px-3">
+                                            {line.colorCode ? (
+                                              <Badge className="bg-blue-100 text-blue-700 text-xs font-mono">
+                                                {line.colorCode}
+                                              </Badge>
+                                            ) : (
+                                              <span className="text-gray-400">-</span>
+                                            )}
+                                          </td>
+                                          <td className="py-2 px-3 text-gray-600 max-w-xs truncate">
+                                            {line.description || '-'}
+                                          </td>
+                                          <td className="py-2 px-3">
+                                            {line.etd ? formatDate(line.etd) : '-'}
+                                          </td>
+                                          {activeApprovalTypes.map(type => {
+                                            const status = line.approvalStatus?.[type] || 'default';
+                                            const badge = getApprovalBadge(status);
+                                            return (
+                                              <td key={type} className="py-2 px-3">
+                                                {status !== 'default' ? (
+                                                  <Badge className={`${badge.bg} ${badge.text} text-xs`}>
+                                                    {badge.label}
+                                                  </Badge>
+                                                ) : (
+                                                  <span className="text-gray-400 text-xs">-</span>
+                                                )}
+                                              </td>
+                                            );
+                                          })}
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
                           )}
-                        </td>
-                        <td className="py-4">
-                          {order.merchandiserName ? (
-                            <span className="text-gray-700">{order.merchandiserName}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="py-4">
-                          {renderAggregatedStatus(order)}
-                        </td>
-                        <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                router.push(`/orders/${order.id}`);
-                              }}
-                              title="View Details"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                router.push(`/orders/${order.id}/edit`);
-                              }}
-                              title="Edit Order"
-                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleDeleteClick(order);
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Delete Order"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -659,6 +659,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     merchandiser_name = serializers.SerializerMethodField()
     earliest_etd = serializers.SerializerMethodField()
     line_status_counts = serializers.SerializerMethodField()
+    lines = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -667,7 +668,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date',
             'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
-            'line_status_counts'
+            'line_status_counts', 'lines'
         ]
     
     def get_merchandiser_name(self, obj):
@@ -698,6 +699,31 @@ class OrderListSerializer(serializers.ModelSerializer):
         # Convert to dict: {status: count}
         return {item['status']: item['count'] for item in status_counts}
     
+    def get_lines(self, obj):
+        """Get line details for expandable rows"""
+        from .models_order_line import OrderLine
+        
+        lines = OrderLine.objects.filter(
+            style__order=obj
+        ).select_related('style')
+        
+        result = []
+        for line in lines:
+            line_data = {
+                'id': str(line.id),
+                'styleNumber': line.style.style_number if line.style else None,
+                'colorCode': line.color_code,
+                'description': line.style.description if line.style else None,
+                'quantity': float(line.quantity) if line.quantity else 0,
+                'unit': line.unit,
+                'etd': line.etd.isoformat() if line.etd else None,
+                'status': line.status,
+                'approvalStatus': line.approval_status or {},
+            }
+            result.append(line_data)
+        
+        return result
+    
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
         data = super().to_representation(instance)
@@ -718,6 +744,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'createdAt': data['created_at'],
             'earliestEtd': data.get('earliest_etd'),
             'lineStatusCounts': data.get('line_status_counts') or {},
+            'lines': data.get('lines') or [],
         }
 
 
