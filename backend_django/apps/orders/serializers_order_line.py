@@ -103,6 +103,10 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes'
         ]
+        # CRITICAL: Make 'id' writable so nested update logic can identify existing lines
+        extra_kwargs = {
+            'id': {'read_only': False, 'required': False}
+        }
     
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""

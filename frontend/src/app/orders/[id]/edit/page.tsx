@@ -216,7 +216,23 @@ export default function OrderEditPage() {
       router.push(`/orders/${params.id}`);
     } catch (error: any) {
       console.error('Error updating order:', error);
-      const errorMessage = error.response?.data?.message || JSON.stringify(error.response?.data) || 'Failed to update order';
+      // Extract error message, ensuring it's always a string
+      let errorMessage = 'Failed to update order';
+      const responseData = error.response?.data;
+      if (responseData) {
+        if (typeof responseData.message === 'string') {
+          errorMessage = responseData.message;
+        } else if (responseData.message && typeof responseData.message === 'object') {
+          // Flatten nested validation errors to a readable string
+          const firstKey = Object.keys(responseData.message)[0];
+          const firstValue = responseData.message[firstKey];
+          errorMessage = Array.isArray(firstValue) ? firstValue[0] : String(firstValue);
+        } else if (responseData.detail) {
+          errorMessage = String(responseData.detail);
+        } else {
+          errorMessage = JSON.stringify(responseData);
+        }
+      }
       toast({
         title: 'Error',
         description: errorMessage,

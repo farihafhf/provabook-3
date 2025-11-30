@@ -209,6 +209,10 @@ class OrderStyleCreateUpdateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'notes',
             'lines', 'colors'
         ]
+        # CRITICAL: Make 'id' writable so nested update logic can identify existing styles
+        extra_kwargs = {
+            'id': {'read_only': False, 'required': False}
+        }
     
     def to_internal_value(self, data):
         """Convert camelCase to snake_case"""
