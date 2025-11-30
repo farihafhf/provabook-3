@@ -133,7 +133,8 @@ export function LineItemDetailSheet({
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('');
 
-  // Reset local selection state when the sheet opens for a new line
+  // Sync local state when the sheet opens or when line data changes
+  // This ensures the UI updates immediately when approval/status changes are made
   useEffect(() => {
     if (!line) return;
 
@@ -144,7 +145,7 @@ export function LineItemDetailSheet({
       setSelectedStatus('');
       setSelectedApprovals({});
     }
-  }, [open, line?.id]);
+  }, [open, line?.id, line?.approvalStatus, line?.status]);
 
   // Reset dialog state when closed
   const resetTimestampDialog = () => {
@@ -278,8 +279,8 @@ export function LineItemDetailSheet({
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-semibold text-gray-700">Current Status</Label>
-              <Badge className={`${getStatusBadgeClass(line.status || 'upcoming')} font-medium px-3 py-1.5`}>
-                {getStatusDisplayName(line.status || 'upcoming')}
+              <Badge className={`${getStatusBadgeClass(selectedStatus || line.status || 'upcoming')} font-medium px-3 py-1.5`}>
+                {getStatusDisplayName(selectedStatus || line.status || 'upcoming')}
               </Badge>
             </div>
           </div>
@@ -366,7 +367,7 @@ export function LineItemDetailSheet({
                 {allApprovalTypes.map((approvalType) => (
                   <div key={approvalType} className="p-3 border rounded-lg space-y-2">
                     <Label className="text-sm font-semibold flex items-center gap-2">
-                      {getApprovalIcon(line.approvalStatus?.[approvalType] || 'default')}
+                      {getApprovalIcon(selectedApprovals[approvalType] || line.approvalStatus?.[approvalType] || 'default')}
                       {formatApprovalName(approvalType)}
                     </Label>
                     <Select

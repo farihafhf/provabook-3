@@ -601,6 +601,12 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                     line_data = self._convert_line_data_to_snake_case(line_data)
                     line_id = line_data.pop('id', None)
                     
+                    # CRITICAL FIX: Always remove approval_status and status from line_data
+                    # These fields should NEVER be updated through the Edit Order page
+                    # They can only be changed via the dedicated approval/status endpoints
+                    line_data.pop('approval_status', None)
+                    line_data.pop('status', None)
+                    
                     if line_id:
                         # CRITICAL FIX: Look up line by ID only, verify it belongs to this order
                         try:
@@ -611,19 +617,9 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             if line.style_id != style.id:
                                 line.style = style
                             
-                            # CRITICAL: Preserve approval_status and status if not explicitly provided
-                            # The Edit Order page doesn't send these fields, so we must not overwrite them
-                            preserved_fields = ['approval_status', 'status']
-                            original_values = {field: getattr(line, field) for field in preserved_fields}
-                            
-                            # Update other fields
+                            # Update other fields (approval_status and status already removed above)
                             for attr, value in line_data.items():
                                 setattr(line, attr, value)
-                            
-                            # Restore preserved fields if they weren't in the update data
-                            for field in preserved_fields:
-                                if field not in line_data:
-                                    setattr(line, field, original_values[field])
                             
                             line.save()
                         except OrderLine.DoesNotExist:

@@ -262,6 +262,25 @@ export default function OrderDetailPage() {
     fetchCurrentTask();
   }, [isAuthenticated, router, params.id]);
 
+  // Update selectedLineItem when order data changes (e.g., after approval/status changes)
+  // This ensures the popup shows fresh data without needing to close and reopen
+  useEffect(() => {
+    if (!order || !selectedLineItem) return;
+    
+    // Find the updated line data from the refreshed order
+    for (const style of (order.styles || [])) {
+      const updatedLine = style.lines?.find((l: OrderLine) => l.id === selectedLineItem.id);
+      if (updatedLine) {
+        // Update selectedLineItem with fresh data, preserving styleNumber
+        setSelectedLineItem({
+          ...updatedLine,
+          styleNumber: style.styleNumber,
+        });
+        return;
+      }
+    }
+  }, [order]);
+
   const fetchOrder = async () => {
     try {
       // Add cache-busting to prevent stale state
