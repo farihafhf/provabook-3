@@ -356,6 +356,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         styles_data = validated_data.pop('styles')
         order_number = validated_data.get('order_number')
+        merchandiser = validated_data.get('merchandiser')  # Get merchandiser from validated_data
         
         # Check if order with this PO number already exists
         if order_number:
@@ -369,7 +370,13 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     for style_data in styles_data
                 )
                 order.quantity = float(order.quantity) + new_quantity
-                order.save(update_fields=['quantity', 'updated_at'])
+                
+                # If order has no merchandiser assigned, assign the current user
+                if not order.merchandiser and merchandiser:
+                    order.merchandiser = merchandiser
+                    order.save(update_fields=['quantity', 'merchandiser', 'updated_at'])
+                else:
+                    order.save(update_fields=['quantity', 'updated_at'])
                 
             except Order.DoesNotExist:
                 # PO number provided but doesn't exist yet, create new order
