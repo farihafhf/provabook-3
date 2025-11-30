@@ -51,6 +51,11 @@ interface OrderLine {
   totalCost?: number;
   profit?: number;
   lineLabel?: string;
+  // Style-level fields (populated when line is selected)
+  description?: string;
+  gsm?: number;
+  cuttableWidth?: string;
+  finishingWidth?: string;
 }
 
 interface OrderColor {
@@ -271,10 +276,14 @@ export default function OrderDetailPage() {
     for (const style of (order.styles || [])) {
       const updatedLine = style.lines?.find((l: OrderLine) => l.id === selectedLineItem.id);
       if (updatedLine) {
-        // Update selectedLineItem with fresh data, preserving styleNumber
+        // Update selectedLineItem with fresh data, preserving style-level fields
         setSelectedLineItem({
           ...updatedLine,
           styleNumber: style.styleNumber,
+          description: style.description,
+          gsm: style.gsm,
+          cuttableWidth: style.cuttableWidth,
+          finishingWidth: style.finishingWidth,
         });
         return;
       }
@@ -1129,7 +1138,14 @@ export default function OrderDetailPage() {
                           }}
                           orderId={order.id}
                           onClick={() => {
-                            setSelectedLineItem({...line, styleNumber: style.styleNumber});
+                            setSelectedLineItem({
+                              ...line, 
+                              styleNumber: style.styleNumber,
+                              description: style.description,
+                              gsm: style.gsm,
+                              cuttableWidth: style.cuttableWidth,
+                              finishingWidth: style.finishingWidth,
+                            });
                             setShowLineItemSheet(true);
                           }}
                         />

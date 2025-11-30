@@ -43,6 +43,11 @@ interface OrderLine {
   totalCost?: number;
   profit?: number;
   lineLabel?: string;
+  // Style details
+  description?: string;
+  gsm?: number;
+  cuttableWidth?: string;
+  finishingWidth?: string;
 }
 
 interface LineItemDetailSheetProps {
@@ -271,6 +276,35 @@ export function LineItemDetailSheet({
               <div className="text-sm text-gray-600 space-y-1">
                 {line.colorName && <div>Color: {line.colorName}</div>}
                 {line.cadName && <div>CAD: {line.cadName}</div>}
+              </div>
+            )}
+            {/* Style Details */}
+            {(line.description || line.gsm || line.cuttableWidth || line.finishingWidth) && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {line.description && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Description:</span>{' '}
+                      <span className="text-gray-800">{line.description}</span>
+                    </div>
+                  )}
+                  {line.gsm && (
+                    <div>
+                      <span className="text-gray-500">GSM:</span>{' '}
+                      <span className="text-gray-800 font-medium">{line.gsm}</span>
+                    </div>
+                  )}
+                  {(line.cuttableWidth || line.finishingWidth) && (
+                    <div>
+                      <span className="text-gray-500">Width:</span>{' '}
+                      <span className="text-gray-800 font-medium">
+                        {line.cuttableWidth && `${line.cuttableWidth} (Cuttable)`}
+                        {line.cuttableWidth && line.finishingWidth && ' / '}
+                        {line.finishingWidth && `${line.finishingWidth} (Finishing)`}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
