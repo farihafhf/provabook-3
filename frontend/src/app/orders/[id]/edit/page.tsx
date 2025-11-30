@@ -173,7 +173,7 @@ export default function OrderEditPage() {
           (total, line) => total + (parseFloat(line.quantity) || 0),
           0
         ),
-        unit: 'meters',
+        unit: orderLines[0]?.unit || 'meters',
         styles: Array.from(styleGroups.entries()).map(([key, lines]) => {
           const firstLine = lines[0];
           return {
