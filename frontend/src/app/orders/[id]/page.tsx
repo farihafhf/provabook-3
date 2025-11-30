@@ -919,9 +919,9 @@ export default function OrderDetailPage() {
   };
 
   // Calculate aggregated order status based on line items
-  const getAggregatedOrderStatus = (): { status: string; display: string } => {
+  const getAggregatedOrderStatus = (): { status: string; display: string; isMixed: boolean; statusCounts?: Record<string, number> } => {
     if (!order?.styles || order.styles.length === 0) {
-      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming') };
+      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming'), isMixed: false };
     }
 
     const allLines: OrderLine[] = [];
@@ -932,37 +932,48 @@ export default function OrderDetailPage() {
     });
 
     if (allLines.length === 0) {
-      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming') };
+      return { status: order?.status || 'upcoming', display: getStatusDisplayName(order?.status || 'upcoming'), isMixed: false };
     }
 
-    // If ANY line is running, order is running
-    const hasRunning = allLines.some(line => line.status === 'running');
-    if (hasRunning) {
-      return { status: 'running', display: 'Running Order' };
+    // Count statuses
+    const statusCounts: Record<string, number> = {};
+    allLines.forEach(line => {
+      const lineStatus = line.status || 'upcoming';
+      statusCounts[lineStatus] = (statusCounts[lineStatus] || 0) + 1;
+    });
+
+    const uniqueStatuses = Object.keys(statusCounts);
+
+    // If all lines have the same status, return that status
+    if (uniqueStatuses.length === 1) {
+      const singleStatus = uniqueStatuses[0];
+      return { 
+        status: singleStatus, 
+        display: getStatusDisplayName(singleStatus), 
+        isMixed: false 
+      };
     }
 
-    // If ALL lines are completed or bulk, order is completed
-    const allCompleted = allLines.every(line => 
-      line.status === 'completed' || line.status === 'bulk'
+    // Mixed statuses - build display string with counts
+    // Order by priority: running > bulk > in_development > upcoming > completed > archived
+    const statusPriority = ['running', 'bulk', 'in_development', 'upcoming', 'completed', 'archived'];
+    const sortedStatuses = uniqueStatuses.sort((a, b) => {
+      return statusPriority.indexOf(a) - statusPriority.indexOf(b);
+    });
+
+    const displayParts = sortedStatuses.map(status => 
+      `${statusCounts[status]} ${getStatusDisplayName(status)}`
     );
-    if (allCompleted) {
-      return { status: 'completed', display: 'Completed' };
-    }
 
-    // If ANY line is bulk, order is bulk
-    const hasBulk = allLines.some(line => line.status === 'bulk');
-    if (hasBulk) {
-      return { status: 'bulk', display: 'Bulk' };
-    }
+    // Primary status is the highest priority one for badge styling
+    const primaryStatus = sortedStatuses[0];
 
-    // If ANY line is in_development, order is in_development
-    const hasInDev = allLines.some(line => line.status === 'in_development');
-    if (hasInDev) {
-      return { status: 'in_development', display: 'In Development' };
-    }
-
-    // Default to upcoming
-    return { status: 'upcoming', display: 'Upcoming' };
+    return { 
+      status: primaryStatus, 
+      display: displayParts.join('\n'), 
+      isMixed: true,
+      statusCounts 
+    };
   };
 
   if (loading) {
@@ -1003,9 +1014,33 @@ export default function OrderDetailPage() {
             <h1 className="text-3xl font-bold">PO #{order.poNumber}</h1>
             <div className="flex items-center gap-3 mt-2 flex-wrap">
               <p className="text-gray-500">{order.customerName}</p>
-              <Badge className={`${getStatusBadgeClass(getAggregatedOrderStatus().status)} font-semibold px-3 py-1.5`}>
-                {getAggregatedOrderStatus().display}
-              </Badge>
+              {(() => {
+                const aggregatedStatus = getAggregatedOrderStatus();
+                if (aggregatedStatus.isMixed && aggregatedStatus.statusCounts) {
+                  // Display multiple badges for mixed statuses
+                  const statusPriority = ['running', 'bulk', 'in_development', 'upcoming', 'completed', 'archived'];
+                  const sortedStatuses = Object.keys(aggregatedStatus.statusCounts).sort((a, b) => 
+                    statusPriority.indexOf(a) - statusPriority.indexOf(b)
+                  );
+                  return (
+                    <div className="flex flex-wrap gap-1.5">
+                      {sortedStatuses.map(status => (
+                        <Badge 
+                          key={status} 
+                          className={`${getStatusBadgeClass(status)} font-semibold px-2.5 py-1 text-xs`}
+                        >
+                          {aggregatedStatus.statusCounts![status]} {getStatusDisplayName(status)}
+                        </Badge>
+                      ))}
+                    </div>
+                  );
+                }
+                return (
+                  <Badge className={`${getStatusBadgeClass(aggregatedStatus.status)} font-semibold px-3 py-1.5`}>
+                    {aggregatedStatus.display}
+                  </Badge>
+                );
+              })()}
               {order.merchandiserDetails && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 font-semibold px-3 py-1.5">
                   👤 {order.merchandiserDetails.fullName}
