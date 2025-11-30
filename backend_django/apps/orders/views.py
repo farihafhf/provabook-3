@@ -88,6 +88,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         Filter orders based on user role:
         - Merchandisers see only their orders
         - Managers and Admins see all orders
+        
+        Note: Status filtering is handled by OrderFilter.filter_by_line_status()
+        which filters based on LINE statuses, not the parent order status.
         """
         if self.action in ['list', 'stats', 'export_excel']:
             self._validate_date_params()
@@ -98,10 +101,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         if user.role == 'merchandiser':
             queryset = queryset.filter(merchandiser=user)
         
-        # Apply query parameters
-        status_param = self.request.query_params.get('status')
-        if status_param:
-            queryset = queryset.filter(status=status_param)
+        # Note: status filtering is now handled by django-filter (OrderFilter)
+        # which filters by line status, not parent order status
         
         category_param = self.request.query_params.get('category')
         if category_param:
