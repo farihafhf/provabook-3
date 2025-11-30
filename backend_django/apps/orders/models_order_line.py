@@ -71,7 +71,7 @@ class OrderLine(TimestampedModel):
         decimal_places=2,
         help_text='Quantity for this specific line'
     )
-    unit = models.CharField(max_length=20, default='meters')
+    unit = models.CharField(max_length=20, default='yards')
     
     # Pricing (per line)
     mill_name = models.CharField(max_length=255, blank=True, null=True)

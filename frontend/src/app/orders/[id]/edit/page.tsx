@@ -256,7 +256,7 @@ export default function OrderEditPage() {
         styleNumber: '',
         colorCode: '',
         quantity: '',
-        unit: 'meters',
+        unit: 'yards',
         currency: 'USD',
       },
     ]);

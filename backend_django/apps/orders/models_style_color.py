@@ -102,7 +102,7 @@ class OrderColor(TimestampedModel):
     
     # Quantity
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    unit = models.CharField(max_length=20, default='meters')
+    unit = models.CharField(max_length=20, default='yards')
     
     # Color-specific dates
     etd = models.DateField(blank=True, null=True, help_text='Estimated Time of Departure')

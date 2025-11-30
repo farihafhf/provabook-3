@@ -59,7 +59,7 @@ class Order(TimestampedModel):
     
     # Quantity
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    unit = models.CharField(max_length=20, default='meters')
+    unit = models.CharField(max_length=20, default='yards')
     color_quantity_breakdown = models.JSONField(blank=True, null=True, default=list)
     colorways = models.JSONField(blank=True, null=True, default=list)
     

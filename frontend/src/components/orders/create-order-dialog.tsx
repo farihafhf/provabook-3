@@ -81,7 +81,7 @@ export function CreateOrderDialog({
     {
       styleNumber: '',
       quantity: '',
-      unit: 'meters',
+      unit: 'yards',
       currency: 'USD',
     },
   ]);
@@ -104,7 +104,7 @@ export function CreateOrderDialog({
       {
         styleNumber: '',
         quantity: '',
-        unit: 'meters',
+        unit: 'yards',
         currency: 'USD',
       },
     ]);
@@ -303,7 +303,7 @@ export function CreateOrderDialog({
         {
           styleNumber: '',
           quantity: '',
-          unit: 'meters',
+          unit: 'yards',
           currency: 'USD',
         },
       ]);
