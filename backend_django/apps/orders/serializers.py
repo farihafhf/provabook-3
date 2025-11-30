@@ -611,9 +611,20 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             if line.style_id != style.id:
                                 line.style = style
                             
+                            # CRITICAL: Preserve approval_status and status if not explicitly provided
+                            # The Edit Order page doesn't send these fields, so we must not overwrite them
+                            preserved_fields = ['approval_status', 'status']
+                            original_values = {field: getattr(line, field) for field in preserved_fields}
+                            
                             # Update other fields
                             for attr, value in line_data.items():
                                 setattr(line, attr, value)
+                            
+                            # Restore preserved fields if they weren't in the update data
+                            for field in preserved_fields:
+                                if field not in line_data:
+                                    setattr(line, field, original_values[field])
+                            
                             line.save()
                         except OrderLine.DoesNotExist:
                             # Line ID provided but doesn't exist in this order, create new one
