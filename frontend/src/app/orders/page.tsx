@@ -63,6 +63,7 @@ interface OrdersFilterParams {
 const ORDERS_CACHE_KEY = 'orders_cache';
 const ORDERS_SCROLL_KEY = 'orders_scroll_position';
 const ORDERS_EXPANDED_KEY = 'orders_expanded';
+const ORDERS_FILTERS_KEY = 'orders_filters';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface OrdersCache {
@@ -93,19 +94,33 @@ function OrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Initialize filters from URL params to preserve state on back navigation
+  // Initialize filters from sessionStorage (primary) or URL params (fallback)
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
     if (typeof window !== 'undefined') {
+      // First try sessionStorage (most reliable for back navigation)
+      try {
+        const saved = sessionStorage.getItem(ORDERS_FILTERS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && (parsed.status || parsed.search || parsed.orderDateFrom || parsed.orderDateTo)) {
+            return parsed;
+          }
+        }
+      } catch { /* ignore */ }
+      
+      // Fallback to URL params
       const urlStatus = searchParams.get('status');
       const urlSearch = searchParams.get('search');
       const urlDateFrom = searchParams.get('order_date_from');
       const urlDateTo = searchParams.get('order_date_to');
-      return {
-        status: urlStatus || null,
-        search: urlSearch || null,
-        orderDateFrom: urlDateFrom || null,
-        orderDateTo: urlDateTo || null,
-      };
+      if (urlStatus || urlSearch || urlDateFrom || urlDateTo) {
+        return {
+          status: urlStatus || null,
+          search: urlSearch || null,
+          orderDateFrom: urlDateFrom || null,
+          orderDateTo: urlDateTo || null,
+        };
+      }
     }
     return {};
   });
@@ -158,6 +173,10 @@ function OrdersPageContent() {
       ) {
         return prev;
       }
+      // Save filters to sessionStorage for back navigation persistence
+      try {
+        sessionStorage.setItem(ORDERS_FILTERS_KEY, JSON.stringify(newFilters));
+      } catch { /* ignore */ }
       return newFilters;
     });
   };

@@ -38,6 +38,18 @@ export interface OrderFiltersProps {
   }) => void;
 }
 
+const ORDERS_FILTERS_KEY = 'orders_filters';
+
+// Helper to get saved filters from sessionStorage
+function getSavedFilters(): { search?: string; status?: string; orderDateFrom?: string; orderDateTo?: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = sessionStorage.getItem(ORDERS_FILTERS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return null;
+}
+
 export function OrderFilters({
   className,
   initialSearch,
@@ -50,17 +62,22 @@ export function OrderFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Initialize from sessionStorage first, then URL params, then props
   const [search, setSearch] = React.useState<string>(() => {
-    return searchParams.get('search') ?? initialSearch ?? '';
+    const saved = getSavedFilters();
+    return saved?.search || searchParams.get('search') || initialSearch || '';
   });
   const [status, setStatus] = React.useState<string>(() => {
-    return searchParams.get('status') ?? initialStatus ?? 'all';
+    const saved = getSavedFilters();
+    return saved?.status || searchParams.get('status') || initialStatus || 'all';
   });
   const [orderDateFrom, setOrderDateFrom] = React.useState<string>(() => {
-    return searchParams.get('order_date_from') ?? initialOrderDateFrom ?? '';
+    const saved = getSavedFilters();
+    return saved?.orderDateFrom || searchParams.get('order_date_from') || initialOrderDateFrom || '';
   });
   const [orderDateTo, setOrderDateTo] = React.useState<string>(() => {
-    return searchParams.get('order_date_to') ?? initialOrderDateTo ?? '';
+    const saved = getSavedFilters();
+    return saved?.orderDateTo || searchParams.get('order_date_to') || initialOrderDateTo || '';
   });
 
   const emitFilterChange = React.useCallback(
