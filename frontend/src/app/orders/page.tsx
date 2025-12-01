@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState, useRef, useCallback } from 'react';
+import React, { Suspense, useEffect, useState, useRef, useCallback, useLayoutEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,28 @@ interface OrdersFilterParams {
   orderDateTo?: string | null;
 }
 
+// Cache keys for sessionStorage
+const ORDERS_CACHE_KEY = 'orders_cache';
+const ORDERS_SCROLL_KEY = 'orders_scroll_position';
+const ORDERS_EXPANDED_KEY = 'orders_expanded';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+interface OrdersCache {
+  data: Order[];
+  filterKey: string;
+  timestamp: number;
+}
+
+// Generate a cache key from filters
+function getFilterKey(filters: OrdersFilterParams): string {
+  return JSON.stringify({
+    search: filters.search || '',
+    status: filters.status || '',
+    orderDateFrom: filters.orderDateFrom || '',
+    orderDateTo: filters.orderDateTo || '',
+  });
+}
+
 function OrdersPageContent() {
   const router = useRouter();
   const { toast } = useToast();
@@ -72,8 +94,20 @@ function OrdersPageContent() {
   const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
-  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(() => {
+    // Restore expanded orders from sessionStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem(ORDERS_EXPANDED_KEY);
+        if (saved) return new Set(JSON.parse(saved));
+      } catch { /* ignore */ }
+    }
+    return new Set();
+  });
   const scrollContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const hasRestoredScroll = useRef(false);
+  const isInitialMount = useRef(true);
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
 
   // Setup wheel event listener with { passive: false } to allow preventDefault
@@ -112,18 +146,90 @@ function OrdersPageContent() {
     });
   };
 
+  // Save scroll position before unload or navigation
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      if (mainScrollRef.current) {
+        sessionStorage.setItem(ORDERS_SCROLL_KEY, String(mainScrollRef.current.scrollTop));
+      }
+    };
+
+    // Save on beforeunload
+    window.addEventListener('beforeunload', saveScrollPosition);
+
+    // Save expanded orders state
+    sessionStorage.setItem(ORDERS_EXPANDED_KEY, JSON.stringify(Array.from(expandedOrders)));
+
+    return () => {
+      window.removeEventListener('beforeunload', saveScrollPosition);
+      // Save on component unmount (navigation)
+      saveScrollPosition();
+    };
+  }, [expandedOrders]);
+
+  // Restore scroll position after orders load
+  useLayoutEffect(() => {
+    if (!loading && orders.length > 0 && !hasRestoredScroll.current && mainScrollRef.current) {
+      const savedScroll = sessionStorage.getItem(ORDERS_SCROLL_KEY);
+      if (savedScroll) {
+        const scrollPos = parseInt(savedScroll, 10);
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          if (mainScrollRef.current) {
+            mainScrollRef.current.scrollTop = scrollPos;
+          }
+        });
+      }
+      hasRestoredScroll.current = true;
+    }
+  }, [loading, orders]);
+
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
       return;
     }
 
+    // Try to load from cache first for instant display
+    const filterKey = getFilterKey(filters);
+    try {
+      const cached = sessionStorage.getItem(ORDERS_CACHE_KEY);
+      if (cached) {
+        const cacheData: OrdersCache = JSON.parse(cached);
+        const isValid = Date.now() - cacheData.timestamp < CACHE_TTL;
+        const isSameFilter = cacheData.filterKey === filterKey;
+        
+        if (isValid && isSameFilter && cacheData.data.length > 0) {
+          // Use cached data immediately
+          setOrders(cacheData.data);
+          setLoading(false);
+          
+          // Only refresh in background if it's been more than 30 seconds
+          if (Date.now() - cacheData.timestamp > 30000) {
+            fetchOrders(filters, true); // silent refresh
+          }
+          return;
+        }
+      }
+    } catch { /* ignore cache errors */ }
+
+    // No valid cache, fetch fresh
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+    }
     fetchOrders(filters);
   }, [isAuthenticated, router, filters]);
 
-  const fetchOrders = async (filtersToUse?: OrdersFilterParams) => {
+  const fetchOrders = async (filtersToUse?: OrdersFilterParams, silent = false) => {
     try {
-      const params: Record<string, string> = {};
+      if (!silent) {
+        // Only show loading if not a silent refresh and we have no data
+        if (orders.length === 0) {
+          setLoading(true);
+        }
+      }
+
+      const params: Record<string, string> = { _t: String(Date.now()) }; // Cache bust
       if (filtersToUse?.search) params.search = filtersToUse.search;
       if (filtersToUse?.status) params.status = filtersToUse.status;
       if (filtersToUse?.orderDateFrom) params.order_date_from = filtersToUse.orderDateFrom;
@@ -131,6 +237,17 @@ function OrdersPageContent() {
 
       const response = await api.get('/orders', { params });
       setOrders(response.data);
+
+      // Save to cache
+      const filterKey = getFilterKey(filtersToUse || {});
+      const cacheData: OrdersCache = {
+        data: response.data,
+        filterKey,
+        timestamp: Date.now(),
+      };
+      try {
+        sessionStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(cacheData));
+      } catch { /* ignore storage errors */ }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {
@@ -467,7 +584,10 @@ function OrdersPageContent() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent 
+            ref={mainScrollRef}
+            className="max-h-[calc(100vh-320px)] overflow-y-auto"
+          >
             {orders.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 mb-4">No orders found</p>

@@ -38,8 +38,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     - POST /orders/{id}/change_stage/ - Change order stage
     """
     queryset = Order.objects.select_related('merchandiser').prefetch_related(
-        'styles__lines',
-        'styles__colors'
+        'styles__lines__approval_history',  # Prefetch approval history for each line
+        'styles__colors',
+        'documents',  # Prefetch documents for LC/PI dates
     ).all()
     permission_classes = [permissions.IsAuthenticated, IsMerchandiser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]

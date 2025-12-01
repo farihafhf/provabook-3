@@ -655,6 +655,9 @@ class OrderListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for listing orders
     Returns camelCase for frontend
+    
+    OPTIMIZED: Uses prefetched data to avoid N+1 queries.
+    The queryset MUST be annotated/prefetched properly in the ViewSet.
     """
     merchandiser_name = serializers.SerializerMethodField()
     earliest_etd = serializers.SerializerMethodField()
@@ -675,112 +678,106 @@ class OrderListSerializer(serializers.ModelSerializer):
     
     def get_merchandiser_name(self, obj):
         """Safely get merchandiser full name, return None if no merchandiser assigned"""
+        # Uses prefetched merchandiser from select_related
         return obj.merchandiser.full_name if obj.merchandiser else None
     
     def get_earliest_etd(self, obj):
-        """Get the earliest ETD from all order lines within this order"""
-        from .models_order_line import OrderLine
-        from django.db.models import Min
-        
-        earliest = OrderLine.objects.filter(
-            style__order=obj,
-            etd__isnull=False
-        ).aggregate(min_etd=Min('etd'))['min_etd']
-        
+        """Get the earliest ETD from prefetched order lines - no extra query"""
+        # Use prefetched data instead of making a new query
+        earliest = None
+        for style in obj.styles.all():
+            for line in style.lines.all():
+                if line.etd:
+                    if earliest is None or line.etd < earliest:
+                        earliest = line.etd
         return earliest.isoformat() if earliest else None
     
     def get_line_status_counts(self, obj):
-        """Get counts of each status from all order lines"""
-        from .models_order_line import OrderLine
-        from django.db.models import Count
-        
-        status_counts = OrderLine.objects.filter(
-            style__order=obj
-        ).values('status').annotate(count=Count('status'))
-        
-        # Convert to dict: {status: count}
-        return {item['status']: item['count'] for item in status_counts}
+        """Get counts of each status from prefetched order lines - no extra query"""
+        # Use prefetched data instead of making a new query
+        status_counts = {}
+        for style in obj.styles.all():
+            for line in style.lines.all():
+                status = line.status
+                status_counts[status] = status_counts.get(status, 0) + 1
+        return status_counts
     
     def get_lines(self, obj):
-        """Get line details for expandable rows with approval dates and statuses from history"""
-        from .models_order_line import OrderLine
-        from .models import ApprovalHistory
-        
-        lines = OrderLine.objects.filter(
-            style__order=obj
-        ).select_related('style').prefetch_related('approval_history')
-        
+        """Get line details from prefetched data - no extra queries per line"""
         result = []
-        for line in lines:
-            # Get approval data from ApprovalHistory for this line
-            # For each approval type, get:
-            # - earliest date (when approval process started)
-            # - latest status (current state from history)
-            approval_dates = {}
-            approval_statuses_from_history = {}
-            
-            # Get all approval types that have ANY history for this line
-            approval_types = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample', 'aop', 'qualityTest', 'bulkSwatch']
-            
-            for approval_type in approval_types:
-                # Get all records for this approval type, ordered by date
-                history_records = ApprovalHistory.objects.filter(
-                    order_line=line,
-                    approval_type=approval_type
-                ).order_by('created_at')
+        
+        for style in obj.styles.all():
+            for line in style.lines.all():
+                # Get approval data from prefetched approval_history
+                # Group by approval_type and get first/last records
+                approval_dates = {}
+                approval_statuses_from_history = {}
                 
-                if history_records.exists():
-                    # First record date (when it started)
-                    first_record = history_records.first()
-                    approval_dates[approval_type] = first_record.created_at.date().isoformat()
-                    
-                    # Latest record status (current state)
-                    latest_record = history_records.last()
-                    approval_statuses_from_history[approval_type] = latest_record.status
-            
-            # Merge: prefer history-based status, fall back to stored approval_status
-            # This ensures old records show correct status from history
-            merged_approval_status = {}
-            stored_status = line.approval_status or {}
-            
-            # First, add all from history (source of truth)
-            for key, value in approval_statuses_from_history.items():
-                merged_approval_status[key] = value
-            
-            # Then add any from stored status that aren't in history (edge case)
-            for key, value in stored_status.items():
-                if key not in merged_approval_status and value and value != 'default':
+                # Use prefetched approval_history - already ordered by created_at
+                history_by_type = {}
+                for record in line.approval_history.all():
+                    atype = record.approval_type
+                    if atype not in history_by_type:
+                        history_by_type[atype] = []
+                    history_by_type[atype].append(record)
+                
+                for atype, records in history_by_type.items():
+                    if records:
+                        # First record date (when it started)
+                        approval_dates[atype] = records[0].created_at.date().isoformat()
+                        # Latest record status (current state)
+                        approval_statuses_from_history[atype] = records[-1].status
+                
+                # Merge: prefer history-based status, fall back to stored approval_status
+                merged_approval_status = {}
+                stored_status = line.approval_status or {}
+                
+                # First, add all from history (source of truth)
+                for key, value in approval_statuses_from_history.items():
                     merged_approval_status[key] = value
-            
-            line_data = {
-                'id': str(line.id),
-                'styleNumber': line.style.style_number if line.style else None,
-                'colorCode': line.color_code,
-                'cadCode': line.cad_code,
-                'description': line.style.description if line.style else None,
-                'quantity': float(line.quantity) if line.quantity else 0,
-                'unit': line.unit,
-                'millPrice': float(line.mill_price) if line.mill_price else None,
-                'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
-                'currency': line.currency,
-                'etd': line.etd.isoformat() if line.etd else None,
-                'status': line.status,
-                'approvalStatus': merged_approval_status,
-                'approvalDates': approval_dates,
-            }
-            result.append(line_data)
+                
+                # Then add any from stored status that aren't in history (edge case)
+                for key, value in stored_status.items():
+                    if key not in merged_approval_status and value and value != 'default':
+                        merged_approval_status[key] = value
+                
+                line_data = {
+                    'id': str(line.id),
+                    'styleNumber': style.style_number,
+                    'colorCode': line.color_code,
+                    'cadCode': line.cad_code,
+                    'description': style.description,
+                    'quantity': float(line.quantity) if line.quantity else 0,
+                    'unit': line.unit,
+                    'millPrice': float(line.mill_price) if line.mill_price else None,
+                    'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
+                    'currency': line.currency,
+                    'etd': line.etd.isoformat() if line.etd else None,
+                    'status': line.status,
+                    'approvalStatus': merged_approval_status,
+                    'approvalDates': approval_dates,
+                }
+                result.append(line_data)
         
         return result
     
     def get_lc_issue_date(self, obj):
-        """Get the earliest LC document upload date for this order"""
-        lc_doc = obj.documents.filter(category='lc').order_by('created_at').first()
-        return lc_doc.created_at.date().isoformat() if lc_doc else None
+        """Get the earliest LC document upload date from prefetched documents"""
+        # Use prefetched documents
+        lc_docs = [d for d in obj.documents.all() if d.category == 'lc']
+        if lc_docs:
+            lc_docs.sort(key=lambda d: d.created_at)
+            return lc_docs[0].created_at.date().isoformat()
+        return None
     
     def get_pi_sent_date(self, obj):
-        """Get the earliest PI document upload date for this order"""
-        pi_doc = obj.documents.filter(category='pi').order_by('created_at').first()
-        return pi_doc.created_at.date().isoformat() if pi_doc else None
+        """Get the earliest PI document upload date from prefetched documents"""
+        # Use prefetched documents
+        pi_docs = [d for d in obj.documents.all() if d.category == 'pi']
+        if pi_docs:
+            pi_docs.sort(key=lambda d: d.created_at)
+            return pi_docs[0].created_at.date().isoformat()
+        return None
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
