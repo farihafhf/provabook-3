@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
@@ -83,6 +83,7 @@ function getFilterKey(filters: OrdersFilterParams): string {
 
 function OrdersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -92,7 +93,22 @@ function OrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState<OrdersFilterParams>({});
+  // Initialize filters from URL params to preserve state on back navigation
+  const [filters, setFilters] = useState<OrdersFilterParams>(() => {
+    if (typeof window !== 'undefined') {
+      const urlStatus = searchParams.get('status');
+      const urlSearch = searchParams.get('search');
+      const urlDateFrom = searchParams.get('order_date_from');
+      const urlDateTo = searchParams.get('order_date_to');
+      return {
+        status: urlStatus || null,
+        search: urlSearch || null,
+        orderDateFrom: urlDateFrom || null,
+        orderDateTo: urlDateTo || null,
+      };
+    }
+    return {};
+  });
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(() => {
     // Restore expanded orders from sessionStorage
