@@ -19,12 +19,17 @@ interface OrderLine {
   id: string;
   styleNumber?: string;
   colorCode?: string;
+  cadCode?: string;
   description?: string;
   quantity: number;
   unit: string;
+  millPrice?: number;
+  millPriceTotal?: number;
+  currency?: string;
   etd?: string;
   status?: string;
   approvalStatus?: Record<string, string>;
+  approvalDates?: Record<string, string>;
 }
 
 interface Order {
@@ -43,6 +48,8 @@ interface Order {
   earliestEtd?: string;
   lineStatusCounts?: Record<string, number>;
   lines?: OrderLine[];
+  lcIssueDate?: string;
+  piSentDate?: string;
 }
 
 interface OrdersFilterParams {
@@ -547,66 +554,136 @@ function OrdersPageContent() {
                           {isExpanded && lines.length > 0 && (
                             <tr>
                               <td colSpan={11} className="p-0">
-                                <div className="bg-gray-50 border-t border-b">
+                                <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
+                                  {/* Order-level document dates */}
+                                  {(order.lcIssueDate || order.piSentDate) && (
+                                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-6 text-xs">
+                                      {order.piSentDate && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-slate-500">PI Sent:</span>
+                                          <Badge className="bg-violet-100 text-violet-700 text-xs font-medium">
+                                            {formatDate(order.piSentDate)}
+                                          </Badge>
+                                        </div>
+                                      )}
+                                      {order.lcIssueDate && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-slate-500">LC Issue:</span>
+                                          <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                            {formatDate(order.lcIssueDate)}
+                                          </Badge>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                   <table className="w-full">
                                     <thead>
-                                      <tr className="text-xs text-gray-500 bg-gray-100">
-                                        <th className="py-2 px-3 text-left font-medium">Style</th>
-                                        <th className="py-2 px-3 text-left font-medium">Color</th>
-                                        <th className="py-2 px-3 text-left font-medium">Description</th>
-                                        <th className="py-2 px-3 text-left font-medium">ETD</th>
-                                        {activeApprovalTypes.map(type => (
-                                          <th key={type} className="py-2 px-3 text-left font-medium">
-                                            {formatApprovalName(type)}
-                                          </th>
-                                        ))}
+                                      <tr className="text-xs text-slate-600 bg-slate-100/50">
+                                        <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Quantity</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Mill Price</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">ETD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {lines.map((line) => (
                                         <tr 
                                           key={line.id} 
-                                          className="text-sm border-t border-gray-200 hover:bg-gray-100 cursor-pointer"
+                                          className="text-sm border-t border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-colors"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             router.push(`/orders/${order.id}`);
                                           }}
                                         >
-                                          <td className="py-2 px-3">
-                                            <Badge className="bg-indigo-100 text-indigo-700 text-xs">
-                                              {line.styleNumber || '-'}
-                                            </Badge>
-                                          </td>
-                                          <td className="py-2 px-3">
-                                            {line.colorCode ? (
-                                              <Badge className="bg-blue-100 text-blue-700 text-xs font-mono">
-                                                {line.colorCode}
+                                          {/* Style / Color / CAD - Stacked badges */}
+                                          <td className="py-3 px-3">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                              <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
+                                                {line.styleNumber || '-'}
                                               </Badge>
+                                              {line.colorCode && (
+                                                <Badge className="bg-sky-100 text-sky-700 text-xs font-mono">
+                                                  {line.colorCode}
+                                                </Badge>
+                                              )}
+                                              {line.cadCode && (
+                                                <Badge className="bg-amber-100 text-amber-700 text-xs font-mono">
+                                                  CAD: {line.cadCode}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </td>
+                                          
+                                          {/* Quantity with unit */}
+                                          <td className="py-3 px-3">
+                                            <span className="font-semibold text-slate-800">
+                                              {line.quantity.toLocaleString()}
+                                            </span>
+                                            <span className="text-slate-500 ml-1 text-xs">{line.unit}</span>
+                                          </td>
+                                          
+                                          {/* Mill Price - Unit and Total stacked */}
+                                          <td className="py-3 px-3">
+                                            {line.millPrice ? (
+                                              <div className="flex flex-col">
+                                                <div className="flex items-baseline gap-1">
+                                                  <span className="text-xs text-slate-500">{line.currency || 'USD'}</span>
+                                                  <span className="font-medium text-slate-700">{line.millPrice.toFixed(2)}</span>
+                                                  <span className="text-xs text-slate-400">/unit</span>
+                                                </div>
+                                                {line.millPriceTotal && (
+                                                  <div className="text-xs text-emerald-600 font-medium mt-0.5">
+                                                    Total: {line.currency || 'USD'} {line.millPriceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                  </div>
+                                                )}
+                                              </div>
                                             ) : (
-                                              <span className="text-gray-400">-</span>
+                                              <span className="text-slate-400 text-xs">-</span>
                                             )}
                                           </td>
-                                          <td className="py-2 px-3 text-gray-600 max-w-xs truncate">
-                                            {line.description || '-'}
+                                          
+                                          {/* ETD */}
+                                          <td className="py-3 px-3">
+                                            {line.etd ? (
+                                              <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
+                                            ) : (
+                                              <span className="text-slate-400 text-xs">-</span>
+                                            )}
                                           </td>
-                                          <td className="py-2 px-3">
-                                            {line.etd ? formatDate(line.etd) : '-'}
+                                          
+                                          {/* Approval Stages - Compact with dates */}
+                                          <td className="py-3 px-3">
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {activeApprovalTypes.map(type => {
+                                                const status = line.approvalStatus?.[type] || 'default';
+                                                const approvalDate = line.approvalDates?.[type];
+                                                const badge = getApprovalBadge(status);
+                                                
+                                                if (status === 'default') return null;
+                                                
+                                                return (
+                                                  <div 
+                                                    key={type} 
+                                                    className="flex flex-col items-center"
+                                                    title={approvalDate ? `${formatApprovalName(type)}: ${badge.label} on ${formatDate(approvalDate)}` : `${formatApprovalName(type)}: ${badge.label}`}
+                                                  >
+                                                    <Badge className={`${badge.bg} ${badge.text} text-[10px] px-2 py-0.5 font-medium`}>
+                                                      {formatApprovalName(type).split(' ')[0]}
+                                                    </Badge>
+                                                    {approvalDate && (
+                                                      <span className="text-[9px] text-slate-400 mt-0.5">
+                                                        {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                              {activeApprovalTypes.every(type => (line.approvalStatus?.[type] || 'default') === 'default') && (
+                                                <span className="text-slate-400 text-xs italic">No approvals yet</span>
+                                              )}
+                                            </div>
                                           </td>
-                                          {activeApprovalTypes.map(type => {
-                                            const status = line.approvalStatus?.[type] || 'default';
-                                            const badge = getApprovalBadge(status);
-                                            return (
-                                              <td key={type} className="py-2 px-3">
-                                                {status !== 'default' ? (
-                                                  <Badge className={`${badge.bg} ${badge.text} text-xs`}>
-                                                    {badge.label}
-                                                  </Badge>
-                                                ) : (
-                                                  <span className="text-gray-400 text-xs">-</span>
-                                                )}
-                                              </td>
-                                            );
-                                          })}
                                         </tr>
                                       ))}
                                     </tbody>

@@ -660,6 +660,8 @@ class OrderListSerializer(serializers.ModelSerializer):
     earliest_etd = serializers.SerializerMethodField()
     line_status_counts = serializers.SerializerMethodField()
     lines = serializers.SerializerMethodField()
+    lc_issue_date = serializers.SerializerMethodField()
+    pi_sent_date = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -668,7 +670,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date',
             'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
-            'line_status_counts', 'lines'
+            'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date'
         ]
     
     def get_merchandiser_name(self, obj):
@@ -700,29 +702,59 @@ class OrderListSerializer(serializers.ModelSerializer):
         return {item['status']: item['count'] for item in status_counts}
     
     def get_lines(self, obj):
-        """Get line details for expandable rows"""
+        """Get line details for expandable rows with approval dates"""
         from .models_order_line import OrderLine
+        from .models import ApprovalHistory
+        from django.db.models import Min
         
         lines = OrderLine.objects.filter(
             style__order=obj
-        ).select_related('style')
+        ).select_related('style').prefetch_related('approval_history')
         
         result = []
         for line in lines:
+            # Get approval dates from ApprovalHistory for this line
+            # For each approval type, get the earliest date when it was set to any status
+            approval_dates = {}
+            approval_types = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample']
+            for approval_type in approval_types:
+                # Get the first record for this approval type (earliest change)
+                first_approval = ApprovalHistory.objects.filter(
+                    order_line=line,
+                    approval_type=approval_type
+                ).order_by('created_at').first()
+                if first_approval:
+                    approval_dates[approval_type] = first_approval.created_at.date().isoformat()
+            
             line_data = {
                 'id': str(line.id),
                 'styleNumber': line.style.style_number if line.style else None,
                 'colorCode': line.color_code,
+                'cadCode': line.cad_code,
                 'description': line.style.description if line.style else None,
                 'quantity': float(line.quantity) if line.quantity else 0,
                 'unit': line.unit,
+                'millPrice': float(line.mill_price) if line.mill_price else None,
+                'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
+                'currency': line.currency,
                 'etd': line.etd.isoformat() if line.etd else None,
                 'status': line.status,
                 'approvalStatus': line.approval_status or {},
+                'approvalDates': approval_dates,
             }
             result.append(line_data)
         
         return result
+    
+    def get_lc_issue_date(self, obj):
+        """Get the earliest LC document upload date for this order"""
+        lc_doc = obj.documents.filter(category='lc').order_by('created_at').first()
+        return lc_doc.created_at.date().isoformat() if lc_doc else None
+    
+    def get_pi_sent_date(self, obj):
+        """Get the earliest PI document upload date for this order"""
+        pi_doc = obj.documents.filter(category='pi').order_by('created_at').first()
+        return pi_doc.created_at.date().isoformat() if pi_doc else None
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -745,6 +777,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'earliestEtd': data.get('earliest_etd'),
             'lineStatusCounts': data.get('line_status_counts') or {},
             'lines': data.get('lines') or [],
+            'lcIssueDate': data.get('lc_issue_date'),
+            'piSentDate': data.get('pi_sent_date'),
         }
 
 
