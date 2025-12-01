@@ -65,10 +65,12 @@ class OrderLine(TimestampedModel):
         help_text='CAD name or description (optional)'
     )
     
-    # Quantity (required for every line)
+    # Quantity (optional)
     quantity = models.DecimalField(
         max_digits=10,
         decimal_places=2,
+        blank=True,
+        null=True,
         help_text='Quantity for this specific line'
     )
     unit = models.CharField(max_length=20, default='yards')
@@ -142,6 +144,105 @@ class OrderLine(TimestampedModel):
     # Notes specific to this line
     notes = models.TextField(blank=True, null=True)
     
+    # ========== Local Order Production Fields ==========
+    # These fields are only relevant for local orders (order.order_type == 'local')
+    
+    # Yarn Fields
+    yarn_required = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Yarn required amount for this line'
+    )
+    yarn_booked_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date when yarn was booked'
+    )
+    yarn_received_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date when yarn was received'
+    )
+    
+    # PP Fields
+    pp_yards = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='PP Yards'
+    )
+    fit_cum_pp_submit_date = models.DateField(
+        blank=True, null=True,
+        help_text='FIT CUM PP Submit Date'
+    )
+    fit_cum_pp_comments_date = models.DateField(
+        blank=True, null=True,
+        help_text='FIT CUM PP Comments Date'
+    )
+    
+    # Knitting Fields (calculated from yarn_received_date but editable)
+    knitting_start_date = models.DateField(
+        blank=True, null=True,
+        help_text='Knitting Start Date (Yarn Received + 11 days)'
+    )
+    knitting_complete_date = models.DateField(
+        blank=True, null=True,
+        help_text='Knitting Complete Date (Knitting Start + 18 days)'
+    )
+    
+    # Dyeing Fields
+    dyeing_start_date = models.DateField(
+        blank=True, null=True,
+        help_text='Dyeing Start Date (Knitting Start + 5 days)'
+    )
+    dyeing_complete_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date when dyeing was completed'
+    )
+    
+    # Cutting Fields
+    bulk_size_set_date = models.DateField(
+        blank=True, null=True,
+        help_text='Bulk Size Set Date'
+    )
+    cutting_start_date = models.DateField(
+        blank=True, null=True,
+        help_text='Cutting Start Date'
+    )
+    cutting_complete_date = models.DateField(
+        blank=True, null=True,
+        help_text='Cutting Complete Date'
+    )
+    
+    # Print Fields (Optional)
+    print_send_date = models.DateField(
+        blank=True, null=True,
+        help_text='Print Send Date (optional)'
+    )
+    print_received_date = models.DateField(
+        blank=True, null=True,
+        help_text='Print Received Date (optional)'
+    )
+    
+    # Sewing Fields
+    sewing_input_date = models.DateField(
+        blank=True, null=True,
+        help_text='Sewing Input Date'
+    )
+    sewing_finish_date = models.DateField(
+        blank=True, null=True,
+        help_text='Sewing Finish Date'
+    )
+    
+    # Final Stage Fields
+    packing_complete_date = models.DateField(
+        blank=True, null=True,
+        help_text='Packing Complete Date'
+    )
+    final_inspection_date = models.DateField(
+        blank=True, null=True,
+        help_text='Final Inspection Date'
+    )
+    ex_factory_date = models.DateField(
+        blank=True, null=True,
+        help_text='Ex-Factory Date'
+    )
+    
     class Meta:
         db_table = 'order_lines'
         verbose_name = 'Order Line'
@@ -160,6 +261,27 @@ class OrderLine(TimestampedModel):
             models.Index(fields=['style', 'cad_code']),
             models.Index(fields=['style', 'color_code', 'cad_code']),
         ]
+    
+    def save(self, *args, **kwargs):
+        """Auto-calculate local order dates based on yarn_received_date if not manually set"""
+        # Only auto-calculate for local orders
+        if self.style and self.style.order and self.style.order.order_type == 'local':
+            if self.yarn_received_date:
+                from datetime import timedelta
+                
+                # Calculate Knitting Start (Yarn Received + 11 days) if not already set
+                if not self.knitting_start_date:
+                    self.knitting_start_date = self.yarn_received_date + timedelta(days=11)
+                
+                # Calculate Knitting Complete (Knitting Start + 18 days) if not already set
+                if not self.knitting_complete_date and self.knitting_start_date:
+                    self.knitting_complete_date = self.knitting_start_date + timedelta(days=18)
+                
+                # Calculate Dyeing Start (Knitting Start + 5 days) if not already set
+                if not self.dyeing_start_date and self.knitting_start_date:
+                    self.dyeing_start_date = self.knitting_start_date + timedelta(days=5)
+        
+        super().save(*args, **kwargs)
     
     def __str__(self):
         parts = [str(self.style.style_number)]

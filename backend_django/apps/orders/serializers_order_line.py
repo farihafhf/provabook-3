@@ -25,6 +25,15 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes',
             'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
+            # Local order production fields
+            'yarn_required', 'yarn_booked_date', 'yarn_received_date',
+            'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'bulk_size_set_date', 'cutting_start_date', 'cutting_complete_date',
+            'print_send_date', 'print_received_date',
+            'sewing_input_date', 'sewing_finish_date',
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -63,6 +72,27 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'totalCommission': data.get('total_commission'),
             'profit': data.get('profit'),
             'lineLabel': data.get('line_label'),
+            # Local order production fields
+            'yarnRequired': float(data['yarn_required']) if data.get('yarn_required') else None,
+            'yarnBookedDate': data.get('yarn_booked_date'),
+            'yarnReceivedDate': data.get('yarn_received_date'),
+            'ppYards': float(data['pp_yards']) if data.get('pp_yards') else None,
+            'fitCumPpSubmitDate': data.get('fit_cum_pp_submit_date'),
+            'fitCumPpCommentsDate': data.get('fit_cum_pp_comments_date'),
+            'knittingStartDate': data.get('knitting_start_date'),
+            'knittingCompleteDate': data.get('knitting_complete_date'),
+            'dyeingStartDate': data.get('dyeing_start_date'),
+            'dyeingCompleteDate': data.get('dyeing_complete_date'),
+            'bulkSizeSetDate': data.get('bulk_size_set_date'),
+            'cuttingStartDate': data.get('cutting_start_date'),
+            'cuttingCompleteDate': data.get('cutting_complete_date'),
+            'printSendDate': data.get('print_send_date'),
+            'printReceivedDate': data.get('print_received_date'),
+            'sewingInputDate': data.get('sewing_input_date'),
+            'sewingFinishDate': data.get('sewing_finish_date'),
+            'packingCompleteDate': data.get('packing_complete_date'),
+            'finalInspectionDate': data.get('final_inspection_date'),
+            'exFactoryDate': data.get('ex_factory_date'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }
@@ -81,6 +111,27 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'submissionDate': 'submission_date',
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
+            # Local order production field mappings
+            'yarnRequired': 'yarn_required',
+            'yarnBookedDate': 'yarn_booked_date',
+            'yarnReceivedDate': 'yarn_received_date',
+            'ppYards': 'pp_yards',
+            'fitCumPpSubmitDate': 'fit_cum_pp_submit_date',
+            'fitCumPpCommentsDate': 'fit_cum_pp_comments_date',
+            'knittingStartDate': 'knitting_start_date',
+            'knittingCompleteDate': 'knitting_complete_date',
+            'dyeingStartDate': 'dyeing_start_date',
+            'dyeingCompleteDate': 'dyeing_complete_date',
+            'bulkSizeSetDate': 'bulk_size_set_date',
+            'cuttingStartDate': 'cutting_start_date',
+            'cuttingCompleteDate': 'cutting_complete_date',
+            'printSendDate': 'print_send_date',
+            'printReceivedDate': 'print_received_date',
+            'sewingInputDate': 'sewing_input_date',
+            'sewingFinishDate': 'sewing_finish_date',
+            'packingCompleteDate': 'packing_complete_date',
+            'finalInspectionDate': 'final_inspection_date',
+            'exFactoryDate': 'ex_factory_date',
         }
         
         converted_data = {}
@@ -101,7 +152,16 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'quantity', 'unit',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'etd', 'eta', 'submission_date', 'approval_date',
-            'approval_status', 'status', 'notes'
+            'approval_status', 'status', 'notes',
+            # Local order production fields
+            'yarn_required', 'yarn_booked_date', 'yarn_received_date',
+            'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'bulk_size_set_date', 'cutting_start_date', 'cutting_complete_date',
+            'print_send_date', 'print_received_date',
+            'sewing_input_date', 'sewing_finish_date',
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date'
         ]
         # CRITICAL: Make 'id' writable so nested update logic can identify existing lines
         extra_kwargs = {
@@ -121,6 +181,27 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'submissionDate': 'submission_date',
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
+            # Local order production field mappings
+            'yarnRequired': 'yarn_required',
+            'yarnBookedDate': 'yarn_booked_date',
+            'yarnReceivedDate': 'yarn_received_date',
+            'ppYards': 'pp_yards',
+            'fitCumPpSubmitDate': 'fit_cum_pp_submit_date',
+            'fitCumPpCommentsDate': 'fit_cum_pp_comments_date',
+            'knittingStartDate': 'knitting_start_date',
+            'knittingCompleteDate': 'knitting_complete_date',
+            'dyeingStartDate': 'dyeing_start_date',
+            'dyeingCompleteDate': 'dyeing_complete_date',
+            'bulkSizeSetDate': 'bulk_size_set_date',
+            'cuttingStartDate': 'cutting_start_date',
+            'cuttingCompleteDate': 'cutting_complete_date',
+            'printSendDate': 'print_send_date',
+            'printReceivedDate': 'print_received_date',
+            'sewingInputDate': 'sewing_input_date',
+            'sewingFinishDate': 'sewing_finish_date',
+            'packingCompleteDate': 'packing_complete_date',
+            'finalInspectionDate': 'final_inspection_date',
+            'exFactoryDate': 'ex_factory_date',
         }
         
         converted_data = {}

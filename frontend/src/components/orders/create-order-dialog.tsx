@@ -22,7 +22,7 @@ import { useToast } from '@/components/ui/use-toast';
 type OrderType = 'foreign' | 'local' | null;
 
 interface OrderLineFormData {
-  // Required
+  // Basic info (all optional)
   styleNumber: string;
   quantity: string;
   unit: string;
@@ -55,27 +55,25 @@ interface OrderLineFormData {
   
   // Optional Notes
   notes?: string;
-}
-
-// Local order specific fields interface
-interface LocalOrderFormData {
-  yarnRequired: string;
-  yarnBookedDate: string;
-  yarnReceivedDate: string;
-  ppYards: string;
-  fitCumPpSubmitDate: string;
-  fitCumPpCommentsDate: string;
-  dyeingCompleteDate: string;
-  bulkSizeSetDate: string;
-  cuttingStartDate: string;
-  cuttingCompleteDate: string;
-  printSendDate: string;
-  printReceivedDate: string;
-  sewingInputDate: string;
-  sewingFinishDate: string;
-  packingCompleteDate: string;
-  finalInspectionDate: string;
-  exFactoryDate: string;
+  
+  // Local Order Production Fields (only used for local orders)
+  yarnRequired?: string;
+  yarnBookedDate?: string;
+  yarnReceivedDate?: string;
+  ppYards?: string;
+  fitCumPpSubmitDate?: string;
+  fitCumPpCommentsDate?: string;
+  dyeingCompleteDate?: string;
+  bulkSizeSetDate?: string;
+  cuttingStartDate?: string;
+  cuttingCompleteDate?: string;
+  printSendDate?: string;
+  printReceivedDate?: string;
+  sewingInputDate?: string;
+  sewingFinishDate?: string;
+  packingCompleteDate?: string;
+  finalInspectionDate?: string;
+  exFactoryDate?: string;
 }
 
 interface CreateOrderDialogProps {
@@ -100,27 +98,6 @@ export function CreateOrderDialog({
     fabricType: '',
     orderDate: '',
     notes: '',
-  });
-  
-  // Local order specific fields
-  const [localOrderData, setLocalOrderData] = useState<LocalOrderFormData>({
-    yarnRequired: '',
-    yarnBookedDate: '',
-    yarnReceivedDate: '',
-    ppYards: '',
-    fitCumPpSubmitDate: '',
-    fitCumPpCommentsDate: '',
-    dyeingCompleteDate: '',
-    bulkSizeSetDate: '',
-    cuttingStartDate: '',
-    cuttingCompleteDate: '',
-    printSendDate: '',
-    printReceivedDate: '',
-    sewingInputDate: '',
-    sewingFinishDate: '',
-    packingCompleteDate: '',
-    finalInspectionDate: '',
-    exFactoryDate: '',
   });
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([
@@ -207,24 +184,7 @@ export function CreateOrderDialog({
   };
 
   const validateForm = () => {
-    if (!formData.customerName.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Vendor name is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
-    if (!formData.fabricType.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Fabric type is required',
-        variant: 'destructive',
-      });
-      return false;
-    }
-
+    // All fields are optional - only basic validation
     if (orderLines.length === 0) {
       toast({
         title: 'Validation Error',
@@ -234,26 +194,15 @@ export function CreateOrderDialog({
       return false;
     }
 
-    for (let i = 0; i < orderLines.length; i++) {
-      const line = orderLines[i];
-
-      if (!line.styleNumber.trim()) {
-        toast({
-          title: 'Validation Error',
-          description: `Line ${i + 1}: Style number is required`,
-          variant: 'destructive',
-        });
-        return false;
-      }
-
-      if (!line.quantity || parseFloat(line.quantity) <= 0) {
-        toast({
-          title: 'Validation Error',
-          description: `Line ${i + 1}: Valid quantity is required`,
-          variant: 'destructive',
-        });
-        return false;
-      }
+    // Check if at least one line has a style number (soft requirement)
+    const hasAnyStyle = orderLines.some(line => line.styleNumber.trim());
+    if (!hasAnyStyle) {
+      toast({
+        title: 'Validation Error',
+        description: 'At least one line should have a style number',
+        variant: 'destructive',
+      });
+      return false;
     }
 
     return true;
@@ -309,45 +258,49 @@ export function CreateOrderDialog({
             etd: firstLine.etd || undefined,
             eta: firstLine.eta || undefined,
             submissionDate: firstLine.submissionDate || undefined,
-            lines: lines.map((line) => ({
-              colorCode: line.colorCode || undefined,
-              cadCode: line.cadCode || undefined,
-              quantity: parseFloat(line.quantity),
-              unit: line.unit,
-              millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
-              provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
-              commission: line.commission ? parseFloat(line.commission) : undefined,
-              currency: line.currency || undefined,
-              etd: line.etd || undefined,
-              eta: line.eta || undefined,
-              submissionDate: line.submissionDate || undefined,
-              approvalDate: line.approvalDate || undefined,
-              notes: line.notes || undefined,
-            })),
+            lines: lines.map((line) => {
+              const lineData: any = {
+                colorCode: line.colorCode || undefined,
+                cadCode: line.cadCode || undefined,
+                quantity: line.quantity ? parseFloat(line.quantity) : undefined,
+                unit: line.unit,
+                millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
+                provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
+                commission: line.commission ? parseFloat(line.commission) : undefined,
+                currency: line.currency || undefined,
+                etd: line.etd || undefined,
+                eta: line.eta || undefined,
+                submissionDate: line.submissionDate || undefined,
+                approvalDate: line.approvalDate || undefined,
+                notes: line.notes || undefined,
+              };
+              
+              // Add local order production fields at line level for local orders
+              if (orderType === 'local') {
+                lineData.yarnRequired = line.yarnRequired ? parseFloat(line.yarnRequired) : undefined;
+                lineData.yarnBookedDate = line.yarnBookedDate || undefined;
+                lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
+                lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
+                lineData.fitCumPpSubmitDate = line.fitCumPpSubmitDate || undefined;
+                lineData.fitCumPpCommentsDate = line.fitCumPpCommentsDate || undefined;
+                lineData.dyeingCompleteDate = line.dyeingCompleteDate || undefined;
+                lineData.bulkSizeSetDate = line.bulkSizeSetDate || undefined;
+                lineData.cuttingStartDate = line.cuttingStartDate || undefined;
+                lineData.cuttingCompleteDate = line.cuttingCompleteDate || undefined;
+                lineData.printSendDate = line.printSendDate || undefined;
+                lineData.printReceivedDate = line.printReceivedDate || undefined;
+                lineData.sewingInputDate = line.sewingInputDate || undefined;
+                lineData.sewingFinishDate = line.sewingFinishDate || undefined;
+                lineData.packingCompleteDate = line.packingCompleteDate || undefined;
+                lineData.finalInspectionDate = line.finalInspectionDate || undefined;
+                lineData.exFactoryDate = line.exFactoryDate || undefined;
+              }
+              
+              return lineData;
+            }),
           };
         }),
       };
-      
-      // Add local order specific fields if this is a local order
-      if (orderType === 'local') {
-        orderData.yarnRequired = localOrderData.yarnRequired ? parseFloat(localOrderData.yarnRequired) : undefined;
-        orderData.yarnBookedDate = localOrderData.yarnBookedDate || undefined;
-        orderData.yarnReceivedDate = localOrderData.yarnReceivedDate || undefined;
-        orderData.ppYards = localOrderData.ppYards ? parseFloat(localOrderData.ppYards) : undefined;
-        orderData.fitCumPpSubmitDate = localOrderData.fitCumPpSubmitDate || undefined;
-        orderData.fitCumPpCommentsDate = localOrderData.fitCumPpCommentsDate || undefined;
-        orderData.dyeingCompleteDate = localOrderData.dyeingCompleteDate || undefined;
-        orderData.bulkSizeSetDate = localOrderData.bulkSizeSetDate || undefined;
-        orderData.cuttingStartDate = localOrderData.cuttingStartDate || undefined;
-        orderData.cuttingCompleteDate = localOrderData.cuttingCompleteDate || undefined;
-        orderData.printSendDate = localOrderData.printSendDate || undefined;
-        orderData.printReceivedDate = localOrderData.printReceivedDate || undefined;
-        orderData.sewingInputDate = localOrderData.sewingInputDate || undefined;
-        orderData.sewingFinishDate = localOrderData.sewingFinishDate || undefined;
-        orderData.packingCompleteDate = localOrderData.packingCompleteDate || undefined;
-        orderData.finalInspectionDate = localOrderData.finalInspectionDate || undefined;
-        orderData.exFactoryDate = localOrderData.exFactoryDate || undefined;
-      }
 
       console.log('Creating order with data:', orderData);
 
@@ -375,25 +328,6 @@ export function CreateOrderDialog({
           currency: 'USD',
         },
       ]);
-      setLocalOrderData({
-        yarnRequired: '',
-        yarnBookedDate: '',
-        yarnReceivedDate: '',
-        ppYards: '',
-        fitCumPpSubmitDate: '',
-        fitCumPpCommentsDate: '',
-        dyeingCompleteDate: '',
-        bulkSizeSetDate: '',
-        cuttingStartDate: '',
-        cuttingCompleteDate: '',
-        printSendDate: '',
-        printReceivedDate: '',
-        sewingInputDate: '',
-        sewingFinishDate: '',
-        packingCompleteDate: '',
-        finalInspectionDate: '',
-        exFactoryDate: '',
-      });
       setOrderType(null);
       setShowTypeSelection(true);
 
@@ -586,221 +520,6 @@ export function CreateOrderDialog({
             </CardContent>
           </Card>
 
-          {/* Local Order Specific Fields */}
-          {orderType === 'local' && (
-            <Card className="border-l-4 border-l-green-500">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-green-600" />
-                  Local Order Production Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-4">
-                {/* Yarn Section */}
-                <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Yarn Information</Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="yarnRequired">Yarn Required (Amount)</Label>
-                      <Input
-                        id="yarnRequired"
-                        type="number"
-                        step="0.01"
-                        value={localOrderData.yarnRequired}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnRequired: e.target.value })}
-                        placeholder="e.g., 500"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="yarnBookedDate">Yarn Booked Date</Label>
-                      <Input
-                        id="yarnBookedDate"
-                        type="date"
-                        value={localOrderData.yarnBookedDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnBookedDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="yarnReceivedDate">Yarn Received Date</Label>
-                      <Input
-                        id="yarnReceivedDate"
-                        type="date"
-                        value={localOrderData.yarnReceivedDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnReceivedDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* PP Section */}
-                <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">PP & FIT Information</Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="ppYards">PP Yards</Label>
-                      <Input
-                        id="ppYards"
-                        type="number"
-                        step="0.01"
-                        value={localOrderData.ppYards}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, ppYards: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fitCumPpSubmitDate">FIT CUM PP Submit Date</Label>
-                      <Input
-                        id="fitCumPpSubmitDate"
-                        type="date"
-                        value={localOrderData.fitCumPpSubmitDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpSubmitDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fitCumPpCommentsDate">FIT CUM PP Comments Date</Label>
-                      <Input
-                        id="fitCumPpCommentsDate"
-                        type="date"
-                        value={localOrderData.fitCumPpCommentsDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpCommentsDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Production Dates Section */}
-                <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Production Dates</Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="dyeingCompleteDate">Dyeing Complete Date</Label>
-                      <Input
-                        id="dyeingCompleteDate"
-                        type="date"
-                        value={localOrderData.dyeingCompleteDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, dyeingCompleteDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="bulkSizeSetDate">Bulk Size Set Date</Label>
-                      <Input
-                        id="bulkSizeSetDate"
-                        type="date"
-                        value={localOrderData.bulkSizeSetDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, bulkSizeSetDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cuttingStartDate">Cutting Start Date</Label>
-                      <Input
-                        id="cuttingStartDate"
-                        type="date"
-                        value={localOrderData.cuttingStartDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingStartDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cuttingCompleteDate">Cutting Complete Date</Label>
-                      <Input
-                        id="cuttingCompleteDate"
-                        type="date"
-                        value={localOrderData.cuttingCompleteDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingCompleteDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Print Section (Optional) */}
-                <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Print Information (Optional)</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="printSendDate">Print Send Date</Label>
-                      <Input
-                        id="printSendDate"
-                        type="date"
-                        value={localOrderData.printSendDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, printSendDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="printReceivedDate">Print Received Date</Label>
-                      <Input
-                        id="printReceivedDate"
-                        type="date"
-                        value={localOrderData.printReceivedDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, printReceivedDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sewing Section */}
-                <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Sewing Dates</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="sewingInputDate">Sewing Input Date</Label>
-                      <Input
-                        id="sewingInputDate"
-                        type="date"
-                        value={localOrderData.sewingInputDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingInputDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="sewingFinishDate">Sewing Finish Date</Label>
-                      <Input
-                        id="sewingFinishDate"
-                        type="date"
-                        value={localOrderData.sewingFinishDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingFinishDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Final Stage Section */}
-                <div>
-                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Final Stage Dates</Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="packingCompleteDate">Packing Complete Date</Label>
-                      <Input
-                        id="packingCompleteDate"
-                        type="date"
-                        value={localOrderData.packingCompleteDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, packingCompleteDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="finalInspectionDate">Final Inspection Date</Label>
-                      <Input
-                        id="finalInspectionDate"
-                        type="date"
-                        value={localOrderData.finalInspectionDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, finalInspectionDate: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="exFactoryDate">Ex-Factory Date</Label>
-                      <Input
-                        id="exFactoryDate"
-                        type="date"
-                        value={localOrderData.exFactoryDate}
-                        onChange={(e) => setLocalOrderData({ ...localOrderData, exFactoryDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-gray-500 italic mt-4">
-                  Note: Knitting Start, Knitting Complete, and Dyeing Start dates will be automatically calculated based on Yarn Received date and can be edited from the Edit Order page.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Order Lines */}
           {orderLines.map((line, lineIndex) => (
             <Card key={lineIndex} className="relative border-l-4 border-l-indigo-500">
@@ -845,33 +564,27 @@ export function CreateOrderDialog({
               </CardHeader>
               {expandedLines.has(lineIndex) && (
                 <CardContent className="space-y-4 pt-4">
-                {/* Required Fields */}
+                {/* Basic Fields */}
                 <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Required Information</Label>
+                  <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Basic Information</Label>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <Label htmlFor={`line-${lineIndex}-styleNumber`}>
-                        Style Number <span className="text-red-500">*</span>
-                      </Label>
+                      <Label htmlFor={`line-${lineIndex}-styleNumber`}>Style Number</Label>
                       <Input
                         id={`line-${lineIndex}-styleNumber`}
                         value={line.styleNumber}
                         onChange={(e) => updateOrderLine(lineIndex, 'styleNumber', e.target.value)}
                         placeholder="e.g., ST-2024-01"
-                        required
                       />
                     </div>
                     <div>
-                      <Label htmlFor={`line-${lineIndex}-quantity`}>
-                        Quantity <span className="text-red-500">*</span>
-                      </Label>
+                      <Label htmlFor={`line-${lineIndex}-quantity`}>Quantity</Label>
                       <Input
                         id={`line-${lineIndex}-quantity`}
                         type="number"
                         step="0.01"
                         value={line.quantity}
                         onChange={(e) => updateOrderLine(lineIndex, 'quantity', e.target.value)}
-                        required
                       />
                     </div>
                     <div>
@@ -1123,6 +836,200 @@ export function CreateOrderDialog({
                     rows={2}
                   />
                 </div>
+
+                {/* Local Order Production Fields - Only shown for local orders */}
+                {orderType === 'local' && (
+                  <details className="border-t pt-4 mt-4">
+                    <summary className="text-sm font-semibold text-green-700 cursor-pointer mb-2 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Production Tracking (Local Order)
+                    </summary>
+                    <div className="space-y-4 mt-3">
+                      {/* Yarn Section */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-yarnRequired`}>Yarn Required</Label>
+                          <Input
+                            id={`line-${lineIndex}-yarnRequired`}
+                            type="number"
+                            step="0.01"
+                            value={line.yarnRequired || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'yarnRequired', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-yarnBookedDate`}>Yarn Booked</Label>
+                          <Input
+                            id={`line-${lineIndex}-yarnBookedDate`}
+                            type="date"
+                            value={line.yarnBookedDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'yarnBookedDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-yarnReceivedDate`}>Yarn Received</Label>
+                          <Input
+                            id={`line-${lineIndex}-yarnReceivedDate`}
+                            type="date"
+                            value={line.yarnReceivedDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'yarnReceivedDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* PP & FIT Section */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-ppYards`}>PP Yards</Label>
+                          <Input
+                            id={`line-${lineIndex}-ppYards`}
+                            type="number"
+                            step="0.01"
+                            value={line.ppYards || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'ppYards', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-fitCumPpSubmitDate`}>FIT CUM PP Submit</Label>
+                          <Input
+                            id={`line-${lineIndex}-fitCumPpSubmitDate`}
+                            type="date"
+                            value={line.fitCumPpSubmitDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'fitCumPpSubmitDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-fitCumPpCommentsDate`}>FIT CUM PP Comments</Label>
+                          <Input
+                            id={`line-${lineIndex}-fitCumPpCommentsDate`}
+                            type="date"
+                            value={line.fitCumPpCommentsDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'fitCumPpCommentsDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Production Dates */}
+                      <div className="grid grid-cols-4 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-dyeingCompleteDate`}>Dyeing Complete</Label>
+                          <Input
+                            id={`line-${lineIndex}-dyeingCompleteDate`}
+                            type="date"
+                            value={line.dyeingCompleteDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'dyeingCompleteDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-bulkSizeSetDate`}>Bulk Size Set</Label>
+                          <Input
+                            id={`line-${lineIndex}-bulkSizeSetDate`}
+                            type="date"
+                            value={line.bulkSizeSetDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'bulkSizeSetDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-cuttingStartDate`}>Cutting Start</Label>
+                          <Input
+                            id={`line-${lineIndex}-cuttingStartDate`}
+                            type="date"
+                            value={line.cuttingStartDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'cuttingStartDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-cuttingCompleteDate`}>Cutting Complete</Label>
+                          <Input
+                            id={`line-${lineIndex}-cuttingCompleteDate`}
+                            type="date"
+                            value={line.cuttingCompleteDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'cuttingCompleteDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Print Section */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-printSendDate`}>Print Send</Label>
+                          <Input
+                            id={`line-${lineIndex}-printSendDate`}
+                            type="date"
+                            value={line.printSendDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'printSendDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-printReceivedDate`}>Print Received</Label>
+                          <Input
+                            id={`line-${lineIndex}-printReceivedDate`}
+                            type="date"
+                            value={line.printReceivedDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'printReceivedDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Sewing Section */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-sewingInputDate`}>Sewing Input</Label>
+                          <Input
+                            id={`line-${lineIndex}-sewingInputDate`}
+                            type="date"
+                            value={line.sewingInputDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'sewingInputDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-sewingFinishDate`}>Sewing Finish</Label>
+                          <Input
+                            id={`line-${lineIndex}-sewingFinishDate`}
+                            type="date"
+                            value={line.sewingFinishDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'sewingFinishDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Final Stage Section */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-packingCompleteDate`}>Packing Complete</Label>
+                          <Input
+                            id={`line-${lineIndex}-packingCompleteDate`}
+                            type="date"
+                            value={line.packingCompleteDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'packingCompleteDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-finalInspectionDate`}>Final Inspection</Label>
+                          <Input
+                            id={`line-${lineIndex}-finalInspectionDate`}
+                            type="date"
+                            value={line.finalInspectionDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'finalInspectionDate', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`line-${lineIndex}-exFactoryDate`}>Ex-Factory</Label>
+                          <Input
+                            id={`line-${lineIndex}-exFactoryDate`}
+                            type="date"
+                            value={line.exFactoryDate || ''}
+                            onChange={(e) => updateOrderLine(lineIndex, 'exFactoryDate', e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-500 italic">
+                        Note: Knitting Start, Knitting Complete, and Dyeing Start dates will be auto-calculated based on Yarn Received date.
+                      </p>
+                    </div>
+                  </details>
+                )}
               </CardContent>
               )}
             </Card>
