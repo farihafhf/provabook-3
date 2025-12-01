@@ -1,13 +1,59 @@
 from typing import Iterable
-from datetime import datetime
+from datetime import datetime, date
 import pytz
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+
+# ============================================================================
+# COLOR DEFINITIONS FOR EXCEL EXPORT
+# ============================================================================
+
+# ETD colors (urgency-based)
+ETD_URGENT_FILL = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")  # Light red
+ETD_URGENT_FONT = Font(color="CC0000")  # Dark red
+ETD_SOON_FILL = PatternFill(start_color="FFFFCC", end_color="FFFFCC", fill_type="solid")  # Light yellow
+ETD_SOON_FONT = Font(color="B8860B")  # Dark amber
+
+# Order Placement Date colors (recency-based)
+RECENT_ORDER_FILL = PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="solid")  # Light blue
+RECENT_ORDER_FONT = Font(color="0066CC")  # Dark blue
+SOMEWHAT_RECENT_FILL = PatternFill(start_color="E6F2FF", end_color="E6F2FF", fill_type="solid")  # Very pale blue
+SOMEWHAT_RECENT_FONT = Font(color="666666")  # Dark gray
+
+# Submission/Approval colors
+PENDING_SUBMISSION_FILL = PatternFill(start_color="FFFFCC", end_color="FFFFCC", fill_type="solid")  # Light yellow
+PENDING_SUBMISSION_FONT = Font(color="B8860B")  # Dark amber
+CLOSED_SUBMISSION_FILL = PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="solid")  # Light blue
+CLOSED_SUBMISSION_FONT = Font(color="0066CC")  # Dark blue
+APPROVED_FILL = PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid")  # Light green
+APPROVED_FONT = Font(color="006600")  # Dark green
+REJECTED_FILL = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")  # Light red
+REJECTED_FONT = Font(color="CC0000")  # Dark red
+
+# PP Sample special highlight (stronger orange for pending)
+PP_SAMPLE_PENDING_FILL = PatternFill(start_color="FFD9B3", end_color="FFD9B3", fill_type="solid")  # Stronger orange
+PP_SAMPLE_PENDING_FONT = Font(color="CC6600")  # Dark orange
+
+# Bulk Start Date colors
+BULK_ACTIVE_FILL = PatternFill(start_color="FFE5CC", end_color="FFE5CC", fill_type="solid")  # Light orange
+BULK_ACTIVE_FONT = Font(color="CC6600")  # Dark orange
+
+# Status-based colors
+STATUS_COLORS = {
+    'upcoming': (PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid"), Font(color="666666")),
+    'in_development': (PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="solid"), Font(color="0066CC")),
+    'running': (PatternFill(start_color="FFFFCC", end_color="FFFFCC", fill_type="solid"), Font(color="B8860B")),
+    'bulk': (PatternFill(start_color="E5CCFF", end_color="E5CCFF", fill_type="solid"), Font(color="660099")),
+    'completed': (PatternFill(start_color="CCFFCC", end_color="CCFFCC", fill_type="solid"), Font(color="006600")),
+    'archived': (PatternFill(start_color="C0C0C0", end_color="C0C0C0", fill_type="solid"), Font(color="666666")),
+}
+
+# ============================================================================
 
 APPROVAL_HEADER_LABELS = {
     'aop': 'AOP Approval Date',
@@ -154,6 +200,9 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
                             order, style, line, visible_approval_types, dhaka_tz
                         )
                         worksheet.append(row_data)
+    
+    # Apply color coding to the worksheet
+    _apply_color_coding(worksheet, headers, visible_approval_types, dhaka_tz)
     
     # Auto-size columns
     for idx, column in enumerate(worksheet.columns, start=1):
@@ -464,6 +513,161 @@ def _generate_filename(filters, dhaka_tz):
     filename = f"prova_orders_export_{filter_desc}_{date_str}_{time_str}.xlsx"
     
     return filename
+
+
+def _apply_color_coding(worksheet, headers, approval_types, dhaka_tz):
+    """
+    Apply color coding to the worksheet based on business rules.
+    
+    Colors applied:
+    - ETD Date: urgency-based (red for overdue/urgent, yellow for soon)
+    - Order Placement Date: recency-based (blue for recent)
+    - Submission/Approval pairs: pending/approved status colors
+    - Bulk Start Date: orange when present
+    - Order Status: status-specific colors
+    """
+    # Get today's date in Dhaka timezone
+    today = datetime.now(dhaka_tz).date()
+    
+    # Helper function to parse date from cell value
+    def parse_date_from_cell(cell_value):
+        if not cell_value or cell_value == "":
+            return None
+        try:
+            # Format is "YYYY-MM-DD HH:MM AM/PM" or "YYYY-MM-DD"
+            date_str = str(cell_value).split(" ")[0]
+            return datetime.strptime(date_str, "%Y-%m-%d").date()
+        except (ValueError, IndexError):
+            return None
+    
+    # Get column indices (1-indexed for openpyxl)
+    col_indices = {}
+    for idx, header in enumerate(headers, start=1):
+        col_indices[header] = idx
+    
+    # Get specific column indices
+    etd_col = col_indices.get("ETD Date")
+    order_placement_col = col_indices.get("Order Placement Date")
+    bulk_start_col = col_indices.get("Bulk Start Date")
+    status_col = col_indices.get("Order Status")
+    
+    # Get submission/approval column pairs
+    approval_col_pairs = {}
+    for approval_type in approval_types:
+        submission_header = SUBMISSION_HEADER_LABELS.get(
+            approval_type,
+            f"approval_stage_{approval_type}_submission_date"
+        )
+        approval_header = APPROVAL_HEADER_LABELS.get(
+            approval_type,
+            f"approval_stage_{approval_type}_date"
+        )
+        
+        sub_col = col_indices.get(submission_header)
+        app_col = col_indices.get(approval_header)
+        
+        if sub_col and app_col:
+            approval_col_pairs[approval_type] = (sub_col, app_col)
+    
+    # Status value to key mapping (display value -> internal key)
+    status_display_to_key = {
+        'Upcoming': 'upcoming',
+        'In Development': 'in_development',
+        'Running Order': 'running',
+        'Bulk': 'bulk',
+        'Completed': 'completed',
+        'Archived': 'archived',
+    }
+    
+    # Iterate through data rows (skip header row)
+    for row_idx in range(2, worksheet.max_row + 1):
+        # -----------------------------------------------------------------
+        # 1. ETD Date coloring (urgency-based)
+        # -----------------------------------------------------------------
+        if etd_col:
+            etd_cell = worksheet.cell(row=row_idx, column=etd_col)
+            etd_date = parse_date_from_cell(etd_cell.value)
+            
+            if etd_date:
+                diff_days = (etd_date - today).days
+                
+                if diff_days <= 5:  # Past or within 5 days - urgent
+                    etd_cell.fill = ETD_URGENT_FILL
+                    etd_cell.font = ETD_URGENT_FONT
+                elif 6 <= diff_days <= 10:  # 6-10 days - upcoming soon
+                    etd_cell.fill = ETD_SOON_FILL
+                    etd_cell.font = ETD_SOON_FONT
+                # else: no special fill
+        
+        # -----------------------------------------------------------------
+        # 2. Order Placement Date coloring (recency-based)
+        # -----------------------------------------------------------------
+        if order_placement_col:
+            placement_cell = worksheet.cell(row=row_idx, column=order_placement_col)
+            placement_date = parse_date_from_cell(placement_cell.value)
+            
+            if placement_date:
+                days_ago = (today - placement_date).days
+                
+                if days_ago <= 7:  # Last 7 days - very recent
+                    placement_cell.fill = RECENT_ORDER_FILL
+                    placement_cell.font = RECENT_ORDER_FONT
+                elif 8 <= days_ago <= 30:  # 8-30 days - recent but not new
+                    placement_cell.fill = SOMEWHAT_RECENT_FILL
+                    placement_cell.font = SOMEWHAT_RECENT_FONT
+                # else: no fill for older
+        
+        # -----------------------------------------------------------------
+        # 3. Submission/Approval Date pair coloring
+        # -----------------------------------------------------------------
+        for approval_type, (sub_col, app_col) in approval_col_pairs.items():
+            sub_cell = worksheet.cell(row=row_idx, column=sub_col)
+            app_cell = worksheet.cell(row=row_idx, column=app_col)
+            
+            has_submission = sub_cell.value and str(sub_cell.value).strip() != ""
+            has_approval = app_cell.value and str(app_cell.value).strip() != ""
+            
+            if has_submission and has_approval:
+                # Both present - submission closed, approved
+                sub_cell.fill = CLOSED_SUBMISSION_FILL
+                sub_cell.font = CLOSED_SUBMISSION_FONT
+                app_cell.fill = APPROVED_FILL
+                app_cell.font = APPROVED_FONT
+            elif has_submission and not has_approval:
+                # Submission pending approval
+                if approval_type == 'ppSample':
+                    # Special highlight for PP Sample pending
+                    sub_cell.fill = PP_SAMPLE_PENDING_FILL
+                    sub_cell.font = PP_SAMPLE_PENDING_FONT
+                else:
+                    sub_cell.fill = PENDING_SUBMISSION_FILL
+                    sub_cell.font = PENDING_SUBMISSION_FONT
+            # else: neither present - no fill
+        
+        # -----------------------------------------------------------------
+        # 4. Bulk Start Date coloring
+        # -----------------------------------------------------------------
+        if bulk_start_col:
+            bulk_cell = worksheet.cell(row=row_idx, column=bulk_start_col)
+            
+            if bulk_cell.value and str(bulk_cell.value).strip() != "":
+                bulk_cell.fill = BULK_ACTIVE_FILL
+                bulk_cell.font = BULK_ACTIVE_FONT
+        
+        # -----------------------------------------------------------------
+        # 5. Order Status coloring
+        # -----------------------------------------------------------------
+        if status_col:
+            status_cell = worksheet.cell(row=row_idx, column=status_col)
+            status_display = str(status_cell.value) if status_cell.value else ""
+            
+            # Map display value to internal key
+            status_key = status_display_to_key.get(status_display)
+            
+            if status_key and status_key in STATUS_COLORS:
+                fill, font = STATUS_COLORS[status_key]
+                status_cell.fill = fill
+                status_cell.font = font
 
 
 def generate_purchase_order_pdf(order, buffer):
