@@ -38,18 +38,6 @@ export interface OrderFiltersProps {
   }) => void;
 }
 
-const ORDERS_FILTERS_KEY = 'orders_filters';
-
-// Helper to get saved filters from sessionStorage
-function getSavedFilters(): { search?: string; status?: string; orderDateFrom?: string; orderDateTo?: string } | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = sessionStorage.getItem(ORDERS_FILTERS_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch { /* ignore */ }
-  return null;
-}
-
 export function OrderFilters({
   className,
   initialSearch,
@@ -62,22 +50,17 @@ export function OrderFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialize from sessionStorage first, then URL params, then props
   const [search, setSearch] = React.useState<string>(() => {
-    const saved = getSavedFilters();
-    return saved?.search || searchParams.get('search') || initialSearch || '';
+    return searchParams.get('search') ?? initialSearch ?? '';
   });
   const [status, setStatus] = React.useState<string>(() => {
-    const saved = getSavedFilters();
-    return saved?.status || searchParams.get('status') || initialStatus || 'all';
+    return searchParams.get('status') ?? initialStatus ?? 'all';
   });
   const [orderDateFrom, setOrderDateFrom] = React.useState<string>(() => {
-    const saved = getSavedFilters();
-    return saved?.orderDateFrom || searchParams.get('order_date_from') || initialOrderDateFrom || '';
+    return searchParams.get('order_date_from') ?? initialOrderDateFrom ?? '';
   });
   const [orderDateTo, setOrderDateTo] = React.useState<string>(() => {
-    const saved = getSavedFilters();
-    return saved?.orderDateTo || searchParams.get('order_date_to') || initialOrderDateTo || '';
+    return searchParams.get('order_date_to') ?? initialOrderDateTo ?? '';
   });
 
   const emitFilterChange = React.useCallback(
@@ -119,24 +102,13 @@ export function OrderFilters({
 
   const handleStatusChange = (value: string) => {
     setStatus(value);
-    // Emit immediately when status changes
+    // Optionally emit immediately when status changes
     emitFilterChange({
       search,
       status: value,
       orderDateFrom,
       orderDateTo,
     });
-
-    // Also update URL to preserve filter state on back navigation
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (value && value !== 'all') params.set('status', value);
-    if (orderDateFrom) params.set('order_date_from', orderDateFrom);
-    if (orderDateTo) params.set('order_date_to', orderDateTo);
-
-    const query = params.toString();
-    const url = query ? `${pathname}?${query}` : pathname;
-    router.replace(url, { scroll: false });
   };
 
   const handleOrderDateFromChange = (value: string) => {

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
@@ -63,7 +63,6 @@ interface OrdersFilterParams {
 const ORDERS_CACHE_KEY = 'orders_cache';
 const ORDERS_SCROLL_KEY = 'orders_scroll_position';
 const ORDERS_EXPANDED_KEY = 'orders_expanded';
-const ORDERS_FILTERS_KEY = 'orders_filters';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 interface OrdersCache {
@@ -84,7 +83,6 @@ function getFilterKey(filters: OrdersFilterParams): string {
 
 function OrdersPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -94,36 +92,7 @@ function OrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Initialize filters from sessionStorage (primary) or URL params (fallback)
-  const [filters, setFilters] = useState<OrdersFilterParams>(() => {
-    if (typeof window !== 'undefined') {
-      // First try sessionStorage (most reliable for back navigation)
-      try {
-        const saved = sessionStorage.getItem(ORDERS_FILTERS_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && (parsed.status || parsed.search || parsed.orderDateFrom || parsed.orderDateTo)) {
-            return parsed;
-          }
-        }
-      } catch { /* ignore */ }
-      
-      // Fallback to URL params
-      const urlStatus = searchParams.get('status');
-      const urlSearch = searchParams.get('search');
-      const urlDateFrom = searchParams.get('order_date_from');
-      const urlDateTo = searchParams.get('order_date_to');
-      if (urlStatus || urlSearch || urlDateFrom || urlDateTo) {
-        return {
-          status: urlStatus || null,
-          search: urlSearch || null,
-          orderDateFrom: urlDateFrom || null,
-          orderDateTo: urlDateTo || null,
-        };
-      }
-    }
-    return {};
-  });
+  const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(() => {
     // Restore expanded orders from sessionStorage
@@ -173,10 +142,6 @@ function OrdersPageContent() {
       ) {
         return prev;
       }
-      // Save filters to sessionStorage for back navigation persistence
-      try {
-        sessionStorage.setItem(ORDERS_FILTERS_KEY, JSON.stringify(newFilters));
-      } catch { /* ignore */ }
       return newFilters;
     });
   };
