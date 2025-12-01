@@ -18,6 +18,15 @@ APPROVAL_HEADER_LABELS = {
     'quality': 'Quality Approval Date',
 }
 
+SUBMISSION_HEADER_LABELS = {
+    'aop': 'AOP Submission Date',
+    'handloom': 'Handloom Submission Date',
+    'labDip': 'Lab Dip Submission Date',
+    'ppSample': 'PP Sample Submission Date',
+    'price': 'Price Submission Date',
+    'quality': 'Quality Submission Date',
+}
+
 
 def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
     """
@@ -70,11 +79,20 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         "ETD Date",
         "ETA Date",
         "ETD Quantity",
+        "Order Placement Date",
         "Delivery Excess/Shortage",
     ]
     
-    # Add dynamic approval stage columns
+    # Add dynamic approval stage columns (submission date before approval date)
     for approval_type in visible_approval_types:
+        # Add submission date column first
+        submission_label = SUBMISSION_HEADER_LABELS.get(
+            approval_type,
+            f"approval_stage_{approval_type}_submission_date",
+        )
+        headers.append(submission_label)
+        
+        # Then add approval date column
         header_label = APPROVAL_HEADER_LABELS.get(
             approval_type,
             f"approval_stage_{approval_type}_date",
@@ -271,12 +289,42 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
     etd_quantity = sum(float(d.delivered_quantity) for d in deliveries)
     etd_total_quantity = float(order.total_delivered_quantity)
     
+    # Order Placement Date
+    order_placement_date = format_datetime(order.order_date) if order.order_date else ""
+    
     # Delivery Excess/Shortage
     delivery_excess_shortage = etd_quantity - quantity_expected
     
-    # Approval stage dates (dynamic columns)
-    approval_dates = []
+    # Approval stage dates (dynamic columns - submission date before approval date)
+    approval_data = []  # Will contain pairs of (submission_date, approval_date)
     for approval_type in approval_types:
+        # Get the submission date (first 'submission' status)
+        submission_date = ""
+        
+        # Check line-level submission first
+        if line:
+            submission_history = ApprovalHistory.objects.filter(
+                order=order,
+                order_line=line,
+                approval_type=approval_type,
+                status='submission'
+            ).order_by('created_at').first()
+            
+            if submission_history:
+                submission_date = format_datetime(submission_history.created_at)
+        
+        # Fallback to order-level submission
+        if not submission_date:
+            submission_history = ApprovalHistory.objects.filter(
+                order=order,
+                order_line__isnull=True,
+                approval_type=approval_type,
+                status='submission'
+            ).order_by('created_at').first()
+            
+            if submission_history:
+                submission_date = format_datetime(submission_history.created_at)
+        
         # Get the latest approved date for this approval type
         approval_date = ""
         
@@ -304,7 +352,9 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
             if history:
                 approval_date = format_datetime(history.created_at)
         
-        approval_dates.append(approval_date)
+        # Add both submission and approval dates
+        approval_data.append(submission_date)
+        approval_data.append(approval_date)
     
     # Order Status (use order-level status)
     order_status = order.get_status_display()
@@ -364,11 +414,12 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         etd_date,
         eta_date,
         etd_quantity,
+        order_placement_date,
         delivery_excess_shortage,
     ]
     
-    # Add approval dates
-    row.extend(approval_dates)
+    # Add approval data (submission date + approval date pairs)
+    row.extend(approval_data)
     
     # Add remaining columns with prices moved before Total Commission
     row.extend([

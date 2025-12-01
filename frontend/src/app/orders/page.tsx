@@ -426,6 +426,7 @@ function OrdersPageContent() {
                 <table className="w-full">
                   <thead className="border-b">
                     <tr className="text-left text-sm text-gray-600">
+                      <th className="pb-3 font-medium w-12">S/N</th>
                       <th className="pb-3 font-medium w-8"></th>
                       <th className="pb-3 font-medium">PO #</th>
                       <th className="pb-3 font-medium">Vendor</th>
@@ -447,7 +448,7 @@ function OrdersPageContent() {
                           return new Date(a.earliestEtd).getTime() - new Date(b.earliestEtd).getTime();
                         })
                       : orders
-                    ).map((order) => {
+                    ).map((order, index) => {
                       const isExpanded = expandedOrders.has(order.id);
                       const lines = order.lines || [];
                       const activeApprovalTypes = getActiveApprovalTypes(lines);
@@ -459,6 +460,7 @@ function OrdersPageContent() {
                             className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
                             onClick={() => router.push(`/orders/${order.id}`)}
                           >
+                            <td className="py-4 text-gray-500 font-medium">{index + 1}</td>
                             <td className="py-4">
                               {lines.length > 0 && (
                                 <Button
@@ -544,7 +546,7 @@ function OrdersPageContent() {
                           {/* Expanded line items */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={10} className="p-0">
+                              <td colSpan={11} className="p-0">
                                 <div className="bg-gray-50 border-t border-b">
                                   <table className="w-full">
                                     <thead>
