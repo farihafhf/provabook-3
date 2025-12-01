@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { Package, TrendingUp, Clock, Archive, Activity } from 'lucide-react';
+import { Package, TrendingUp, Activity, Plus, Sparkles } from 'lucide-react';
+import { CreateOrderDialog } from '@/components/orders/create-order-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import OrdersByStageChart from '@/components/dashboard/charts/OrdersByStageChart';
@@ -78,6 +80,7 @@ export default function DashboardPage() {
   const [isManager, setIsManager] = useState(false);
   const [chartData, setChartData] = useState<DashboardStats | null>(null);
   const [chartLoading, setChartLoading] = useState(true);
+  const [createOrderOpen, setCreateOrderOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -159,10 +162,43 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">Manager Dashboard</h1>
-            <p className="text-gray-500 mt-2">Company-wide overview and activity</p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Manager Dashboard</h1>
+              <p className="text-gray-500 mt-2">Company-wide overview and activity</p>
+            </div>
+            
+            {/* Create Order Button - Visually Appealing */}
+            <Button
+              onClick={() => setCreateOrderOpen(true)}
+              className="group relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 h-auto"
+              size="lg"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="relative flex items-center gap-3">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold flex items-center gap-1">
+                    Create New Order
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                  </div>
+                  <div className="text-xs opacity-90">Local or Foreign</div>
+                </div>
+              </div>
+            </Button>
           </div>
+          
+          {/* Create Order Dialog - Shows type selection popup */}
+          <CreateOrderDialog
+            open={createOrderOpen}
+            onOpenChange={setCreateOrderOpen}
+            onSuccess={() => {
+              fetchDashboard();
+              fetchChartData();
+            }}
+          />
 
           {/* Key Metrics & Charts - Top Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -378,10 +414,43 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold">My Dashboard</h1>
-            <p className="text-gray-500 mt-2">Your assigned orders and recent activity</p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">My Dashboard</h1>
+              <p className="text-gray-500 mt-2">Your assigned orders and recent activity</p>
+            </div>
+            
+            {/* Create Order Button - Visually Appealing */}
+            <Button
+              onClick={() => setCreateOrderOpen(true)}
+              className="group relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 h-auto"
+              size="lg"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="relative flex items-center gap-3">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold flex items-center gap-1">
+                    Create New Order
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                  </div>
+                  <div className="text-xs opacity-90">Local or Foreign</div>
+                </div>
+              </div>
+            </Button>
           </div>
+          
+          {/* Create Order Dialog - Shows type selection popup */}
+          <CreateOrderDialog
+            open={createOrderOpen}
+            onOpenChange={setCreateOrderOpen}
+            onSuccess={() => {
+              fetchDashboard();
+              fetchChartData();
+            }}
+          />
 
           {/* Key Metrics & Charts - Top Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

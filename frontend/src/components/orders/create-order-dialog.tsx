@@ -80,17 +80,19 @@ interface CreateOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  defaultOrderType?: 'foreign' | 'local'; // Pre-set order type (skip selection if provided)
 }
 
 export function CreateOrderDialog({
   open,
   onOpenChange,
   onSuccess,
+  defaultOrderType,
 }: CreateOrderDialogProps) {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
-  const [orderType, setOrderType] = useState<OrderType>(null);
-  const [showTypeSelection, setShowTypeSelection] = useState(true);
+  const [orderType, setOrderType] = useState<OrderType>(defaultOrderType || null);
+  const [showTypeSelection, setShowTypeSelection] = useState(!defaultOrderType);
   const [formData, setFormData] = useState({
     poNumber: '',
     customerName: '',
@@ -328,8 +330,8 @@ export function CreateOrderDialog({
           currency: 'USD',
         },
       ]);
-      setOrderType(null);
-      setShowTypeSelection(true);
+      setOrderType(defaultOrderType || null);
+      setShowTypeSelection(!defaultOrderType);
 
       onOpenChange(false);
       onSuccess();
@@ -354,8 +356,8 @@ export function CreateOrderDialog({
   // Handle dialog close - reset state
   const handleDialogClose = (isOpen: boolean) => {
     if (!isOpen) {
-      setOrderType(null);
-      setShowTypeSelection(true);
+      setOrderType(defaultOrderType || null);
+      setShowTypeSelection(!defaultOrderType);
     }
     onOpenChange(isOpen);
   };
@@ -421,15 +423,17 @@ export function CreateOrderDialog({
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToTypeSelection}
-                  className="mr-2"
-                >
-                  ← Back
-                </Button>
+                {!defaultOrderType && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToTypeSelection}
+                    className="mr-2"
+                  >
+                    ← Back
+                  </Button>
+                )}
                 Create New {orderType === 'local' ? 'Local' : 'Foreign'} Order
               </DialogTitle>
               <DialogDescription>

@@ -851,6 +851,27 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'status': line.status,
                     'approvalStatus': merged_approval_status,
                     'approvalDates': approval_dates,
+                    # Local order production fields (line-level)
+                    'yarnRequired': float(line.yarn_required) if line.yarn_required else None,
+                    'yarnBookedDate': line.yarn_booked_date.isoformat() if line.yarn_booked_date else None,
+                    'yarnReceivedDate': line.yarn_received_date.isoformat() if line.yarn_received_date else None,
+                    'ppYards': float(line.pp_yards) if line.pp_yards else None,
+                    'fitCumPpSubmitDate': line.fit_cum_pp_submit_date.isoformat() if line.fit_cum_pp_submit_date else None,
+                    'fitCumPpCommentsDate': line.fit_cum_pp_comments_date.isoformat() if line.fit_cum_pp_comments_date else None,
+                    'knittingStartDate': line.knitting_start_date.isoformat() if line.knitting_start_date else None,
+                    'knittingCompleteDate': line.knitting_complete_date.isoformat() if line.knitting_complete_date else None,
+                    'dyeingStartDate': line.dyeing_start_date.isoformat() if line.dyeing_start_date else None,
+                    'dyeingCompleteDate': line.dyeing_complete_date.isoformat() if line.dyeing_complete_date else None,
+                    'bulkSizeSetDate': line.bulk_size_set_date.isoformat() if line.bulk_size_set_date else None,
+                    'cuttingStartDate': line.cutting_start_date.isoformat() if line.cutting_start_date else None,
+                    'cuttingCompleteDate': line.cutting_complete_date.isoformat() if line.cutting_complete_date else None,
+                    'printSendDate': line.print_send_date.isoformat() if line.print_send_date else None,
+                    'printReceivedDate': line.print_received_date.isoformat() if line.print_received_date else None,
+                    'sewingInputDate': line.sewing_input_date.isoformat() if line.sewing_input_date else None,
+                    'sewingFinishDate': line.sewing_finish_date.isoformat() if line.sewing_finish_date else None,
+                    'packingCompleteDate': line.packing_complete_date.isoformat() if line.packing_complete_date else None,
+                    'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
+                    'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
                 }
                 result.append(line_data)
         

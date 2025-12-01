@@ -229,7 +229,10 @@ function OrdersPageContent() {
         }
       }
 
-      const params: Record<string, string> = { _t: String(Date.now()) }; // Cache bust
+      const params: Record<string, string> = { 
+        _t: String(Date.now()),
+        order_type: 'foreign', // Filter for foreign orders only on this page
+      };
       if (filtersToUse?.search) params.search = filtersToUse.search;
       if (filtersToUse?.status) params.status = filtersToUse.status;
       if (filtersToUse?.orderDateFrom) params.order_date_from = filtersToUse.orderDateFrom;
@@ -260,7 +263,9 @@ function OrdersPageContent() {
       setExporting(true);
 
       // Use the filters state (same source as fetchOrders) to ensure export matches displayed orders
-      const queryParams: Record<string, string> = {};
+      const queryParams: Record<string, string> = {
+        order_type: 'foreign', // Export foreign orders only
+      };
       if (filters.search) queryParams.search = filters.search;
       if (filters.status) queryParams.status = filters.status;
       if (filters.orderDateFrom) queryParams.order_date_from = filters.orderDateFrom;
@@ -543,11 +548,12 @@ function OrdersPageContent() {
           </div>
         </div>
 
-        {/* Create Order Dialog */}
+        {/* Create Order Dialog - Foreign orders only on this page */}
         <CreateOrderDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           onSuccess={() => fetchOrders(filters)}
+          defaultOrderType="foreign"
         />
 
         <Suspense fallback={null}>

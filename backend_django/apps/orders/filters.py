@@ -3,7 +3,7 @@ Orders filters
 """
 from django_filters import rest_framework as filters
 from django.db.models import Exists, OuterRef
-from .models import Order, OrderStatus, OrderCategory
+from .models import Order, OrderStatus, OrderCategory, OrderType
 
 
 class OrderFilter(filters.FilterSet):
@@ -14,6 +14,9 @@ class OrderFilter(filters.FilterSet):
     # This ensures orders are filtered based on their line statuses (aggregated status)
     status = filters.CharFilter(method='filter_by_line_status')
     category = filters.ChoiceFilter(choices=OrderCategory.choices)
+    
+    # Order type filter - filters by order type (local or foreign)
+    order_type = filters.ChoiceFilter(choices=OrderType.choices)
     
     def filter_by_line_status(self, queryset, name, value):
         """
@@ -70,6 +73,6 @@ class OrderFilter(filters.FilterSet):
     class Meta:
         model = Order
         fields = [
-            'status', 'category', 'merchandiser_id', 'current_stage',
+            'status', 'category', 'order_type', 'merchandiser_id', 'current_stage',
             'customer_name', 'buyer_name', 'fabric_type', 'order_number'
         ]

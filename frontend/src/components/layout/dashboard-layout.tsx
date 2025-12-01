@@ -54,8 +54,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Foreign Orders', href: '/orders', icon: ShoppingCart },
+    { name: 'Local Orders', href: '/production', icon: Factory },
     { name: 'Samples', href: '/samples', icon: Beaker },
-    { name: 'Production', href: '/production', icon: Factory },
     { name: 'Incidents', href: '/incidents', icon: AlertTriangle },
     { name: 'Shipments', href: '/shipments', icon: Truck },
     { name: 'Notifications', href: '/notifications', icon: Bell, badge: unreadCount },
