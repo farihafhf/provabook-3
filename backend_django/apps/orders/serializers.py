@@ -702,10 +702,9 @@ class OrderListSerializer(serializers.ModelSerializer):
         return {item['status']: item['count'] for item in status_counts}
     
     def get_lines(self, obj):
-        """Get line details for expandable rows with approval dates"""
+        """Get line details for expandable rows with approval dates and statuses from history"""
         from .models_order_line import OrderLine
         from .models import ApprovalHistory
-        from django.db.models import Min
         
         lines = OrderLine.objects.filter(
             style__order=obj
@@ -713,18 +712,45 @@ class OrderListSerializer(serializers.ModelSerializer):
         
         result = []
         for line in lines:
-            # Get approval dates from ApprovalHistory for this line
-            # For each approval type, get the earliest date when it was set to any status
+            # Get approval data from ApprovalHistory for this line
+            # For each approval type, get:
+            # - earliest date (when approval process started)
+            # - latest status (current state from history)
             approval_dates = {}
-            approval_types = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample']
+            approval_statuses_from_history = {}
+            
+            # Get all approval types that have ANY history for this line
+            approval_types = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample', 'aop', 'qualityTest', 'bulkSwatch']
+            
             for approval_type in approval_types:
-                # Get the first record for this approval type (earliest change)
-                first_approval = ApprovalHistory.objects.filter(
+                # Get all records for this approval type, ordered by date
+                history_records = ApprovalHistory.objects.filter(
                     order_line=line,
                     approval_type=approval_type
-                ).order_by('created_at').first()
-                if first_approval:
-                    approval_dates[approval_type] = first_approval.created_at.date().isoformat()
+                ).order_by('created_at')
+                
+                if history_records.exists():
+                    # First record date (when it started)
+                    first_record = history_records.first()
+                    approval_dates[approval_type] = first_record.created_at.date().isoformat()
+                    
+                    # Latest record status (current state)
+                    latest_record = history_records.last()
+                    approval_statuses_from_history[approval_type] = latest_record.status
+            
+            # Merge: prefer history-based status, fall back to stored approval_status
+            # This ensures old records show correct status from history
+            merged_approval_status = {}
+            stored_status = line.approval_status or {}
+            
+            # First, add all from history (source of truth)
+            for key, value in approval_statuses_from_history.items():
+                merged_approval_status[key] = value
+            
+            # Then add any from stored status that aren't in history (edge case)
+            for key, value in stored_status.items():
+                if key not in merged_approval_status and value and value != 'default':
+                    merged_approval_status[key] = value
             
             line_data = {
                 'id': str(line.id),
@@ -739,7 +765,7 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'currency': line.currency,
                 'etd': line.etd.isoformat() if line.etd else None,
                 'status': line.status,
-                'approvalStatus': line.approval_status or {},
+                'approvalStatus': merged_approval_status,
                 'approvalDates': approval_dates,
             }
             result.append(line_data)
