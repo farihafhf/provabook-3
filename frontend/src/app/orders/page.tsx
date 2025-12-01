@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,30 @@ function OrdersPageContent() {
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const scrollContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
+
+  // Setup wheel event listener with { passive: false } to allow preventDefault
+  const setupScrollHandler = useCallback((element: HTMLDivElement | null, orderId: string) => {
+    if (element) {
+      scrollContainerRefs.current.set(orderId, element);
+      
+      const handleWheel = (e: WheelEvent) => {
+        // Allow horizontal scroll with shift key OR when scrolling horizontally on touchpad
+        if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          e.preventDefault();
+          element.scrollLeft += e.shiftKey ? e.deltaY : e.deltaX;
+        }
+      };
+      
+      element.addEventListener('wheel', handleWheel, { passive: false });
+      
+      // Store cleanup function
+      (element as any)._wheelCleanup = () => {
+        element.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, []);
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
@@ -287,11 +310,19 @@ function OrdersPageContent() {
       price: 'Price',
       quality: 'Quality',
       labDip: 'Lab Dip',
+      lab_dip: 'Lab Dip',
       strikeOff: 'Strike Off',
+      strike_off: 'Strike Off',
       handloom: 'Handloom',
       ppSample: 'PP Sample',
+      pp_sample: 'PP Sample',
+      aop: 'AOP',
+      qualityTest: 'Quality Test',
+      quality_test: 'Quality Test',
+      bulkSwatch: 'Bulk Swatch',
+      bulk_swatch: 'Bulk Swatch',
     };
-    return names[key] || key;
+    return names[key] || key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
   };
 
   // Short abbreviations for compact display
@@ -300,9 +331,17 @@ function OrdersPageContent() {
       price: 'PRC',
       quality: 'QTY',
       labDip: 'LAB',
+      lab_dip: 'LAB',
       strikeOff: 'S/O',
+      strike_off: 'S/O',
       handloom: 'H/L',
       ppSample: 'PP',
+      pp_sample: 'PP',
+      aop: 'AOP',
+      qualityTest: 'QT',
+      quality_test: 'QT',
+      bulkSwatch: 'B/S',
+      bulk_swatch: 'B/S',
     };
     return abbrevs[key] || key.substring(0, 3).toUpperCase();
   };
@@ -594,23 +633,24 @@ function OrdersPageContent() {
                                     </div>
                                   )}
                                   <div 
-                                    className="overflow-x-auto scroll-smooth"
+                                    className="overflow-x-auto scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
                                     tabIndex={0}
+                                    ref={(el) => setupScrollHandler(el, order.id)}
                                     onKeyDown={(e) => {
                                       const container = e.currentTarget;
                                       if (e.key === 'ArrowRight') {
-                                        container.scrollLeft += 100;
-                                      } else if (e.key === 'ArrowLeft') {
-                                        container.scrollLeft -= 100;
-                                      }
-                                    }}
-                                    onWheel={(e) => {
-                                      if (e.shiftKey) {
                                         e.preventDefault();
-                                        e.currentTarget.scrollLeft += e.deltaY;
+                                        container.scrollLeft += 150;
+                                      } else if (e.key === 'ArrowLeft') {
+                                        e.preventDefault();
+                                        container.scrollLeft -= 150;
                                       }
                                     }}
                                   >
+                                  {/* Scroll hint */}
+                                  <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                                    <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
+                                  </div>
                                   <table className="w-full min-w-[900px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
@@ -696,31 +736,39 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Approval Stages - Show all stages for this line */}
-                                          <td className="py-3 px-3">
-                                            <div className="flex flex-wrap gap-2">
+                                          <td className="py-3 px-3 min-w-[400px]">
+                                            <div className="flex flex-nowrap gap-2">
                                               {(() => {
-                                                // Get all approval types that have a status for THIS line
-                                                const lineApprovalTypes = Object.entries(line.approvalStatus || {})
-                                                  .filter(([, value]) => value && value !== 'default')
-                                                  .map(([key]) => key);
+                                                // Get ALL approval types that have a non-default status
+                                                const lineApprovals = Object.entries(line.approvalStatus || {})
+                                                  .filter(([, value]) => value && value !== 'default' && value !== 'pending');
                                                 
-                                                // Sort by priority
-                                                const priority = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample'];
-                                                const sortedTypes = priority.filter(type => lineApprovalTypes.includes(type));
-                                                
-                                                if (sortedTypes.length === 0) {
+                                                if (lineApprovals.length === 0) {
                                                   return <span className="text-slate-400 text-xs italic">No approvals yet</span>;
                                                 }
                                                 
-                                                return sortedTypes.map(type => {
-                                                  const status = line.approvalStatus?.[type] || 'default';
+                                                // Sort by priority order, but include ALL types
+                                                const priorityOrder: Record<string, number> = {
+                                                  price: 1, labDip: 2, lab_dip: 2,
+                                                  strikeOff: 3, strike_off: 3,
+                                                  handloom: 4, quality: 5,
+                                                  ppSample: 6, pp_sample: 6,
+                                                  aop: 7, qualityTest: 8, quality_test: 8,
+                                                  bulkSwatch: 9, bulk_swatch: 9
+                                                };
+                                                
+                                                const sortedApprovals = lineApprovals.sort(([a], [b]) => {
+                                                  return (priorityOrder[a] || 99) - (priorityOrder[b] || 99);
+                                                });
+                                                
+                                                return sortedApprovals.map(([type, status]) => {
                                                   const approvalDate = line.approvalDates?.[type];
-                                                  const badge = getApprovalBadge(status);
+                                                  const badge = getApprovalBadge(status as string);
                                                   
                                                   return (
                                                     <div 
                                                       key={type} 
-                                                      className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200"
+                                                      className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200 whitespace-nowrap"
                                                       title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
                                                     >
                                                       <span className="text-[10px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
