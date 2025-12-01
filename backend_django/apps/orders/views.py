@@ -19,7 +19,7 @@ from .serializers import (
     StageChangeSerializer, DocumentSerializer
 )
 from .filters import OrderFilter
-from .utils.export import generate_orders_excel, generate_purchase_order_pdf
+from .utils.export import generate_orders_excel, generate_purchase_order_pdf, generate_tna_excel
 from apps.core.permissions import IsMerchandiser, IsAdminOrManager
 
 
@@ -632,6 +632,37 @@ class OrderViewSet(viewsets.ModelViewSet):
         }
         
         workbook, filename = generate_orders_excel(queryset, filters)
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export-tna')
+    def export_tna(self, request):
+        """
+        GET /orders/export-tna/
+        Export TnA (Time and Action) Excel for local orders.
+        Format matches the TNA-Tubulor.xls template.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Filter for local orders only
+        queryset = queryset.filter(order_type='local')
+        
+        # Extract filters for filename generation
+        filters = {
+            'status': request.query_params.get('status'),
+            'search': request.query_params.get('search'),
+        }
+        
+        workbook, filename = generate_tna_excel(queryset, filters)
 
         output = BytesIO()
         workbook.save(output)

@@ -3,7 +3,7 @@ from datetime import datetime, date
 import pytz
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -768,3 +768,295 @@ def generate_purchase_order_pdf(order, buffer):
 
     pdf.showPage()
     pdf.save()
+
+
+def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
+    """
+    Generate a TnA (Time and Action) Excel workbook for local orders.
+    Format matches TNA-Tubulor.xls template.
+    
+    Returns (workbook, filename) tuple.
+    
+    Args:
+        queryset: QuerySet of Order objects (filtered for local orders)
+        filters: Dictionary of applied filters for filename generation
+    """
+    from apps.orders.models_style_color import OrderStyle
+    from apps.orders.models_order_line import OrderLine
+    from apps.orders.models import ApprovalHistory
+    
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "TnA Export"
+    
+    dhaka_tz = pytz.timezone('Asia/Dhaka')
+    today = datetime.now(dhaka_tz)
+    
+    # Define styles
+    header_font = Font(bold=True, size=12)
+    title_font = Font(bold=True, size=14)
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    header_fill = PatternFill(start_color="D9EAD3", end_color="D9EAD3", fill_type="solid")
+    total_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+    
+    # Helper function to format date
+    def format_date(dt):
+        if dt is None:
+            return ""
+        if isinstance(dt, datetime):
+            return dt.strftime("%Y-%m-%d")
+        return dt.strftime("%Y-%m-%d") if dt else ""
+    
+    # Get unique buyer names from the orders
+    buyer_names = set()
+    for order in queryset:
+        buyer_name = order.buyer_name or order.customer_name
+        if buyer_name:
+            buyer_names.add(buyer_name)
+    
+    buyer_display = ", ".join(sorted(buyer_names)) if buyer_names else "All Buyers"
+    
+    # Row 1: Company name
+    worksheet['A1'] = "Prova Fashion & Accessories"
+    worksheet['A1'].font = title_font
+    worksheet.merge_cells('A1:E1')
+    
+    # Row 2: Buyer
+    worksheet['A2'] = f"Buyer: {buyer_display}"
+    worksheet['A2'].font = Font(bold=True)
+    worksheet.merge_cells('A2:E2')
+    
+    # Row 3: Date
+    worksheet['A3'] = f"DATE :"
+    worksheet['A3'].font = Font(bold=True)
+    worksheet['B3'] = today.strftime("%Y-%m-%d")
+    
+    # Row 4: Empty
+    # Row 5: Headers
+    headers = [
+        "STYLE NAME",           # A
+        "FABRICS",              # B
+        "COLOR",                # C
+        "ORDER QTY",            # D
+        "YARN\nREQ",            # E
+        "YARN\nBOOKED",         # F
+        "YARN\nRCVD",           # G
+        "LABDIP\nSUB",          # H
+        "LABDIP\nAPPROVED",     # I
+        "PP Yds",               # J
+        "FIT CUM PP \nSUBMITE", # K
+        "FIT CUM PP \nCOMMENTS",# L
+        "KNITTING\nSTART",      # M
+        "KNITTING\nCOMPLTE",    # N
+        "DYEING\nSTART",        # O
+        "DYEING\nCOMPLTE",      # P
+        "1st BULK SUBMISSION",  # Q
+        "LINE",                 # R
+        "BULK SIZE SET",        # S
+        "CUTTING\nSTART",       # T
+        "CUTTING\nCOMPLTE",     # U
+        "PRINT\nSEND",          # V
+        "PRINT\nRCVD",          # W
+        "SEWING\nINPUT",        # X
+        "SEWING\nFINISH",       # Y
+        "PACKING\nCOMPLTE",     # Z
+        "FINAL\nINSPECTION",    # AA
+        "EX-FACTORY",           # AB
+        "REMARKS",              # AC
+    ]
+    
+    header_row = 5
+    for col_idx, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=header_row, column=col_idx, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border = thin_border
+    
+    # Process orders and lines
+    data_row = 6
+    total_quantity = 0
+    line_counter = 0
+    
+    for order in queryset:
+        # Get all styles for this order
+        styles = OrderStyle.objects.filter(order=order).prefetch_related('lines')
+        
+        for style in styles:
+            lines = style.lines.all()
+            
+            if not lines.exists():
+                # Style has no lines - skip
+                continue
+            
+            for line in lines:
+                line_counter += 1
+                
+                # Get fabric info (style-level or order-level)
+                fabric_parts = []
+                fabric_composition = style.fabric_composition or order.fabric_composition
+                gsm = style.gsm or order.gsm
+                if fabric_composition:
+                    fabric_parts.append(fabric_composition)
+                if gsm:
+                    fabric_parts.append(f"{gsm} GSM")
+                fabric_info = " ".join(fabric_parts) if fabric_parts else (order.fabric_type or "")
+                
+                # Get labdip dates from approval history
+                labdip_sub_date = ""
+                labdip_approved_date = ""
+                
+                # Check line-level approval history first
+                labdip_sub_history = ApprovalHistory.objects.filter(
+                    order=order,
+                    order_line=line,
+                    approval_type__in=['labDip', 'lab_dip'],
+                    status='submission'
+                ).order_by('created_at').first()
+                
+                if labdip_sub_history:
+                    labdip_sub_date = format_date(labdip_sub_history.created_at)
+                
+                labdip_approved_history = ApprovalHistory.objects.filter(
+                    order=order,
+                    order_line=line,
+                    approval_type__in=['labDip', 'lab_dip'],
+                    status='approved'
+                ).order_by('-created_at').first()
+                
+                if labdip_approved_history:
+                    labdip_approved_date = format_date(labdip_approved_history.created_at)
+                
+                # Fallback to order-level if no line-level history
+                if not labdip_sub_date:
+                    order_labdip_sub = ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line__isnull=True,
+                        approval_type__in=['labDip', 'lab_dip'],
+                        status='submission'
+                    ).order_by('created_at').first()
+                    if order_labdip_sub:
+                        labdip_sub_date = format_date(order_labdip_sub.created_at)
+                
+                if not labdip_approved_date:
+                    order_labdip_approved = ApprovalHistory.objects.filter(
+                        order=order,
+                        order_line__isnull=True,
+                        approval_type__in=['labDip', 'lab_dip'],
+                        status='approved'
+                    ).order_by('-created_at').first()
+                    if order_labdip_approved:
+                        labdip_approved_date = format_date(order_labdip_approved.created_at)
+                
+                # Get bulk submission date
+                bulk_submission_date = ""
+                bulk_history = ApprovalHistory.objects.filter(
+                    order=order,
+                    approval_type__in=['bulkSwatch', 'bulk_swatch'],
+                    status='submission'
+                ).order_by('created_at').first()
+                if bulk_history:
+                    bulk_submission_date = format_date(bulk_history.created_at)
+                
+                # Build row data
+                quantity = float(line.quantity) if line.quantity else 0
+                total_quantity += quantity
+                
+                row_data = [
+                    style.style_number or "",                           # STYLE NAME
+                    fabric_info,                                        # FABRICS
+                    line.color_code or "",                              # COLOR
+                    quantity if quantity > 0 else "",                   # ORDER QTY
+                    float(line.yarn_required) if line.yarn_required else "",  # YARN REQ
+                    format_date(line.yarn_booked_date),                 # YARN BOOKED
+                    format_date(line.yarn_received_date),               # YARN RCVD
+                    labdip_sub_date,                                    # LABDIP SUB
+                    labdip_approved_date,                               # LABDIP APPROVED
+                    float(line.pp_yards) if line.pp_yards else "",      # PP Yds
+                    format_date(line.fit_cum_pp_submit_date),           # FIT CUM PP SUBMITE
+                    format_date(line.fit_cum_pp_comments_date),         # FIT CUM PP COMMENTS
+                    format_date(line.knitting_start_date),              # KNITTING START
+                    format_date(line.knitting_complete_date),           # KNITTING COMPLTE
+                    format_date(line.dyeing_start_date),                # DYEING START
+                    format_date(line.dyeing_complete_date),             # DYEING COMPLTE
+                    bulk_submission_date,                               # 1st BULK SUBMISSION
+                    chr(64 + (line_counter % 26) + 1) if line_counter <= 26 else str(line_counter),  # LINE (A, B, C...)
+                    format_date(line.bulk_size_set_date),               # BULK SIZE SET
+                    format_date(line.cutting_start_date),               # CUTTING START
+                    format_date(line.cutting_complete_date),            # CUTTING COMPLTE
+                    format_date(line.print_send_date),                  # PRINT SEND
+                    format_date(line.print_received_date),              # PRINT RCVD
+                    format_date(line.sewing_input_date),                # SEWING INPUT
+                    format_date(line.sewing_finish_date),               # SEWING FINISH
+                    format_date(line.packing_complete_date),            # PACKING COMPLTE
+                    format_date(line.final_inspection_date),            # FINAL INSPECTION
+                    format_date(line.ex_factory_date),                  # EX-FACTORY
+                    line.notes or "",                                   # REMARKS
+                ]
+                
+                for col_idx, value in enumerate(row_data, start=1):
+                    cell = worksheet.cell(row=data_row, column=col_idx, value=value)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal='left', vertical='center')
+                
+                data_row += 1
+    
+    # Total row
+    total_row = data_row
+    worksheet.cell(row=total_row, column=1, value="TOTAL QYUANTITY =")
+    worksheet.cell(row=total_row, column=1).font = Font(bold=True)
+    worksheet.cell(row=total_row, column=1).fill = total_fill
+    worksheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=3)
+    
+    worksheet.cell(row=total_row, column=4, value=total_quantity)
+    worksheet.cell(row=total_row, column=4).font = Font(bold=True)
+    worksheet.cell(row=total_row, column=4).fill = total_fill
+    
+    # Apply borders to total row
+    for col_idx in range(1, len(headers) + 1):
+        cell = worksheet.cell(row=total_row, column=col_idx)
+        cell.border = thin_border
+    
+    # Auto-size columns
+    for idx, column in enumerate(worksheet.columns, start=1):
+        max_length = 0
+        column_letter = get_column_letter(idx)
+        
+        for cell in column:
+            try:
+                if cell.value:
+                    cell_value = str(cell.value)
+                    # Handle multi-line headers
+                    lines = cell_value.split('\n')
+                    max_line_length = max(len(line) for line in lines)
+                    max_length = max(max_length, max_line_length)
+            except:
+                pass
+        
+        # Set minimum width and cap at 20
+        adjusted_width = max(min(max_length + 2, 20), 10)
+        worksheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # Set row height for header row to accommodate multi-line text
+    worksheet.row_dimensions[header_row].height = 35
+    
+    # Generate filename
+    filename = _generate_tna_filename(filters, dhaka_tz)
+    
+    return workbook, filename
+
+
+def _generate_tna_filename(filters, dhaka_tz):
+    """Generate filename for TnA export based on current timestamp."""
+    now = datetime.now(dhaka_tz)
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%I%M%p")
+    
+    filename = f"TnA_Export_{date_str}_{time_str}.xlsx"
+    
+    return filename

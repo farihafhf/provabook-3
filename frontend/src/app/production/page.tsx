@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
-import { formatDate } from '@/lib/utils';
+import { formatDate, downloadBlob } from '@/lib/utils';
 import { 
   Loader2, 
   Plus, 
@@ -25,6 +25,7 @@ import {
   Scissors,
   Droplets,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { OrderFilters } from '@/components/orders/order-filters';
@@ -214,6 +215,7 @@ export default function LocalOrdersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
@@ -262,6 +264,49 @@ export default function LocalOrdersPage() {
       console.error('Failed to fetch local orders:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportTnA = async () => {
+    try {
+      setExporting(true);
+
+      // Use the filters state to ensure export matches displayed orders
+      const queryParams: Record<string, string> = {
+        order_type: 'local', // Export local orders only
+      };
+      if (filters.search) queryParams.search = filters.search;
+      if (filters.status) queryParams.status = filters.status;
+      if (filters.orderDateFrom) queryParams.order_date_from = filters.orderDateFrom;
+      if (filters.orderDateTo) queryParams.order_date_to = filters.orderDateTo;
+
+      const response = await api.get('/orders/export-tna', {
+        params: queryParams,
+        responseType: 'blob',
+      });
+
+      const disposition =
+        response.headers['content-disposition'] || response.headers['Content-Disposition'];
+      let filename = 'TnA_Export.xlsx';
+
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      downloadBlob(response.data, filename);
+    } catch (error: any) {
+      console.error('Failed to export TnA:', error);
+      const message = error.response?.data?.message || 'Failed to export TnA';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -404,10 +449,21 @@ export default function LocalOrdersPage() {
             <h1 className="text-3xl font-bold">Local Orders</h1>
             <p className="text-gray-500 mt-2">Manage local production orders with stage tracking</p>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Local Order
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportTnA}
+              disabled={exporting}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? 'Exporting...' : 'Export TnA'}
+            </Button>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Local Order
+            </Button>
+          </div>
         </div>
 
         {/* Create Order Dialog - defaults to local type */}
