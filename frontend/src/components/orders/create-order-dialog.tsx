@@ -15,9 +15,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar, Copy, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Calendar, Copy, ChevronDown, ChevronRight, Globe, MapPin } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
+
+type OrderType = 'foreign' | 'local' | null;
 
 interface OrderLineFormData {
   // Required
@@ -55,6 +57,27 @@ interface OrderLineFormData {
   notes?: string;
 }
 
+// Local order specific fields interface
+interface LocalOrderFormData {
+  yarnRequired: string;
+  yarnBookedDate: string;
+  yarnReceivedDate: string;
+  ppYards: string;
+  fitCumPpSubmitDate: string;
+  fitCumPpCommentsDate: string;
+  dyeingCompleteDate: string;
+  bulkSizeSetDate: string;
+  cuttingStartDate: string;
+  cuttingCompleteDate: string;
+  printSendDate: string;
+  printReceivedDate: string;
+  sewingInputDate: string;
+  sewingFinishDate: string;
+  packingCompleteDate: string;
+  finalInspectionDate: string;
+  exFactoryDate: string;
+}
+
 interface CreateOrderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -68,6 +91,8 @@ export function CreateOrderDialog({
 }: CreateOrderDialogProps) {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType>(null);
+  const [showTypeSelection, setShowTypeSelection] = useState(true);
   const [formData, setFormData] = useState({
     poNumber: '',
     customerName: '',
@@ -75,6 +100,27 @@ export function CreateOrderDialog({
     fabricType: '',
     orderDate: '',
     notes: '',
+  });
+  
+  // Local order specific fields
+  const [localOrderData, setLocalOrderData] = useState<LocalOrderFormData>({
+    yarnRequired: '',
+    yarnBookedDate: '',
+    yarnReceivedDate: '',
+    ppYards: '',
+    fitCumPpSubmitDate: '',
+    fitCumPpCommentsDate: '',
+    dyeingCompleteDate: '',
+    bulkSizeSetDate: '',
+    cuttingStartDate: '',
+    cuttingCompleteDate: '',
+    printSendDate: '',
+    printReceivedDate: '',
+    sewingInputDate: '',
+    sewingFinishDate: '',
+    packingCompleteDate: '',
+    finalInspectionDate: '',
+    exFactoryDate: '',
   });
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([
@@ -234,7 +280,7 @@ export function CreateOrderDialog({
         styleGroups.get(styleKey)!.push(line);
       });
 
-      const orderData = {
+      const orderData: any = {
         poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
@@ -243,6 +289,7 @@ export function CreateOrderDialog({
         notes: formData.notes || undefined,
         status: 'upcoming',
         category: 'upcoming',
+        orderType: orderType,
         quantity: orderLines.reduce(
           (total, line) => total + (parseFloat(line.quantity) || 0),
           0
@@ -280,6 +327,27 @@ export function CreateOrderDialog({
           };
         }),
       };
+      
+      // Add local order specific fields if this is a local order
+      if (orderType === 'local') {
+        orderData.yarnRequired = localOrderData.yarnRequired ? parseFloat(localOrderData.yarnRequired) : undefined;
+        orderData.yarnBookedDate = localOrderData.yarnBookedDate || undefined;
+        orderData.yarnReceivedDate = localOrderData.yarnReceivedDate || undefined;
+        orderData.ppYards = localOrderData.ppYards ? parseFloat(localOrderData.ppYards) : undefined;
+        orderData.fitCumPpSubmitDate = localOrderData.fitCumPpSubmitDate || undefined;
+        orderData.fitCumPpCommentsDate = localOrderData.fitCumPpCommentsDate || undefined;
+        orderData.dyeingCompleteDate = localOrderData.dyeingCompleteDate || undefined;
+        orderData.bulkSizeSetDate = localOrderData.bulkSizeSetDate || undefined;
+        orderData.cuttingStartDate = localOrderData.cuttingStartDate || undefined;
+        orderData.cuttingCompleteDate = localOrderData.cuttingCompleteDate || undefined;
+        orderData.printSendDate = localOrderData.printSendDate || undefined;
+        orderData.printReceivedDate = localOrderData.printReceivedDate || undefined;
+        orderData.sewingInputDate = localOrderData.sewingInputDate || undefined;
+        orderData.sewingFinishDate = localOrderData.sewingFinishDate || undefined;
+        orderData.packingCompleteDate = localOrderData.packingCompleteDate || undefined;
+        orderData.finalInspectionDate = localOrderData.finalInspectionDate || undefined;
+        orderData.exFactoryDate = localOrderData.exFactoryDate || undefined;
+      }
 
       console.log('Creating order with data:', orderData);
 
@@ -307,6 +375,27 @@ export function CreateOrderDialog({
           currency: 'USD',
         },
       ]);
+      setLocalOrderData({
+        yarnRequired: '',
+        yarnBookedDate: '',
+        yarnReceivedDate: '',
+        ppYards: '',
+        fitCumPpSubmitDate: '',
+        fitCumPpCommentsDate: '',
+        dyeingCompleteDate: '',
+        bulkSizeSetDate: '',
+        cuttingStartDate: '',
+        cuttingCompleteDate: '',
+        printSendDate: '',
+        printReceivedDate: '',
+        sewingInputDate: '',
+        sewingFinishDate: '',
+        packingCompleteDate: '',
+        finalInspectionDate: '',
+        exFactoryDate: '',
+      });
+      setOrderType(null);
+      setShowTypeSelection(true);
 
       onOpenChange(false);
       onSuccess();
@@ -328,23 +417,104 @@ export function CreateOrderDialog({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Order</DialogTitle>
-          <DialogDescription>
-            Add order lines - each line is a Style + optional Color + optional CAD combination
-          </DialogDescription>
-        </DialogHeader>
+  // Handle dialog close - reset state
+  const handleDialogClose = (isOpen: boolean) => {
+    if (!isOpen) {
+      setOrderType(null);
+      setShowTypeSelection(true);
+    }
+    onOpenChange(isOpen);
+  };
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Order Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Order Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+  // Handle order type selection
+  const handleTypeSelection = (type: 'foreign' | 'local') => {
+    setOrderType(type);
+    setShowTypeSelection(false);
+  };
+
+  // Go back to type selection
+  const handleBackToTypeSelection = () => {
+    setShowTypeSelection(true);
+    setOrderType(null);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleDialogClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        {/* Order Type Selection Screen */}
+        {showTypeSelection ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Select Order Type</DialogTitle>
+              <DialogDescription>
+                Please select the type of order you want to create
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-2 gap-6 p-6">
+              <button
+                type="button"
+                onClick={() => handleTypeSelection('foreign')}
+                className="flex flex-col items-center justify-center p-8 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group"
+              >
+                <Globe className="h-16 w-16 text-blue-500 mb-4 group-hover:scale-110 transition-transform" />
+                <span className="text-xl font-semibold text-gray-800">Foreign Order</span>
+                <span className="text-sm text-gray-500 mt-2 text-center">
+                  International orders with standard workflow
+                </span>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => handleTypeSelection('local')}
+                className="flex flex-col items-center justify-center p-8 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200 group"
+              >
+                <MapPin className="h-16 w-16 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
+                <span className="text-xl font-semibold text-gray-800">Local Order</span>
+                <span className="text-sm text-gray-500 mt-2 text-center">
+                  Local orders with production tracking
+                </span>
+              </button>
+            </div>
+            
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => handleDialogClose(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToTypeSelection}
+                  className="mr-2"
+                >
+                  ← Back
+                </Button>
+                Create New {orderType === 'local' ? 'Local' : 'Foreign'} Order
+              </DialogTitle>
+              <DialogDescription>
+                Add order lines - each line is a Style + optional Color + optional CAD combination
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Order Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    Order Information
+                    <span className={`text-xs px-2 py-1 rounded ${orderType === 'local' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {orderType === 'local' ? 'Local Order' : 'Foreign Order'}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="poNumber">PO Number</Label>
                 <Input
@@ -415,6 +585,221 @@ export function CreateOrderDialog({
               </div>
             </CardContent>
           </Card>
+
+          {/* Local Order Specific Fields */}
+          {orderType === 'local' && (
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  Local Order Production Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-4">
+                {/* Yarn Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Yarn Information</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="yarnRequired">Yarn Required (Amount)</Label>
+                      <Input
+                        id="yarnRequired"
+                        type="number"
+                        step="0.01"
+                        value={localOrderData.yarnRequired}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnRequired: e.target.value })}
+                        placeholder="e.g., 500"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="yarnBookedDate">Yarn Booked Date</Label>
+                      <Input
+                        id="yarnBookedDate"
+                        type="date"
+                        value={localOrderData.yarnBookedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnBookedDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="yarnReceivedDate">Yarn Received Date</Label>
+                      <Input
+                        id="yarnReceivedDate"
+                        type="date"
+                        value={localOrderData.yarnReceivedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnReceivedDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PP Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">PP & FIT Information</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="ppYards">PP Yards</Label>
+                      <Input
+                        id="ppYards"
+                        type="number"
+                        step="0.01"
+                        value={localOrderData.ppYards}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, ppYards: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="fitCumPpSubmitDate">FIT CUM PP Submit Date</Label>
+                      <Input
+                        id="fitCumPpSubmitDate"
+                        type="date"
+                        value={localOrderData.fitCumPpSubmitDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpSubmitDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="fitCumPpCommentsDate">FIT CUM PP Comments Date</Label>
+                      <Input
+                        id="fitCumPpCommentsDate"
+                        type="date"
+                        value={localOrderData.fitCumPpCommentsDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpCommentsDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Production Dates Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Production Dates</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="dyeingCompleteDate">Dyeing Complete Date</Label>
+                      <Input
+                        id="dyeingCompleteDate"
+                        type="date"
+                        value={localOrderData.dyeingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, dyeingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bulkSizeSetDate">Bulk Size Set Date</Label>
+                      <Input
+                        id="bulkSizeSetDate"
+                        type="date"
+                        value={localOrderData.bulkSizeSetDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, bulkSizeSetDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cuttingStartDate">Cutting Start Date</Label>
+                      <Input
+                        id="cuttingStartDate"
+                        type="date"
+                        value={localOrderData.cuttingStartDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingStartDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cuttingCompleteDate">Cutting Complete Date</Label>
+                      <Input
+                        id="cuttingCompleteDate"
+                        type="date"
+                        value={localOrderData.cuttingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Print Section (Optional) */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Print Information (Optional)</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="printSendDate">Print Send Date</Label>
+                      <Input
+                        id="printSendDate"
+                        type="date"
+                        value={localOrderData.printSendDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, printSendDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="printReceivedDate">Print Received Date</Label>
+                      <Input
+                        id="printReceivedDate"
+                        type="date"
+                        value={localOrderData.printReceivedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, printReceivedDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sewing Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Sewing Dates</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="sewingInputDate">Sewing Input Date</Label>
+                      <Input
+                        id="sewingInputDate"
+                        type="date"
+                        value={localOrderData.sewingInputDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingInputDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="sewingFinishDate">Sewing Finish Date</Label>
+                      <Input
+                        id="sewingFinishDate"
+                        type="date"
+                        value={localOrderData.sewingFinishDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingFinishDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Final Stage Section */}
+                <div>
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Final Stage Dates</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="packingCompleteDate">Packing Complete Date</Label>
+                      <Input
+                        id="packingCompleteDate"
+                        type="date"
+                        value={localOrderData.packingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, packingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="finalInspectionDate">Final Inspection Date</Label>
+                      <Input
+                        id="finalInspectionDate"
+                        type="date"
+                        value={localOrderData.finalInspectionDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, finalInspectionDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="exFactoryDate">Ex-Factory Date</Label>
+                      <Input
+                        id="exFactoryDate"
+                        type="date"
+                        value={localOrderData.exFactoryDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, exFactoryDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 italic mt-4">
+                  Note: Knitting Start, Knitting Complete, and Dyeing Start dates will be automatically calculated based on Yarn Received date and can be edited from the Edit Order page.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Order Lines */}
           {orderLines.map((line, lineIndex) => (
@@ -752,7 +1137,7 @@ export function CreateOrderDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleDialogClose(false)}
               disabled={submitting}
             >
               Cancel
@@ -762,6 +1147,8 @@ export function CreateOrderDialog({
             </Button>
           </DialogFooter>
         </form>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

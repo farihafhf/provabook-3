@@ -2,7 +2,7 @@
 Orders serializers
 """
 from rest_framework import serializers
-from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
+from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory
 from apps.authentication.serializers import UserSerializer
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
 
@@ -33,6 +33,16 @@ class OrderSerializer(serializers.ModelSerializer):
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
+            'order_type',
+            # Local order specific fields
+            'yarn_required', 'yarn_booked_date', 'yarn_received_date',
+            'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'bulk_size_set_date', 'cutting_start_date', 'cutting_complete_date',
+            'print_send_date', 'print_received_date',
+            'sewing_input_date', 'sewing_finish_date',
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
@@ -105,6 +115,29 @@ class OrderSerializer(serializers.ModelSerializer):
             'timelineEvents': data.get('timeline_events', []),
             'styles': data.get('styles', []),
             'approvalHistoryData': data.get('approval_history_data', []),
+            # Order type
+            'orderType': data.get('order_type'),
+            # Local order specific fields
+            'yarnRequired': float(data['yarn_required']) if data.get('yarn_required') else None,
+            'yarnBookedDate': data.get('yarn_booked_date'),
+            'yarnReceivedDate': data.get('yarn_received_date'),
+            'ppYards': float(data['pp_yards']) if data.get('pp_yards') else None,
+            'fitCumPpSubmitDate': data.get('fit_cum_pp_submit_date'),
+            'fitCumPpCommentsDate': data.get('fit_cum_pp_comments_date'),
+            'knittingStartDate': data.get('knitting_start_date'),
+            'knittingCompleteDate': data.get('knitting_complete_date'),
+            'dyeingStartDate': data.get('dyeing_start_date'),
+            'dyeingCompleteDate': data.get('dyeing_complete_date'),
+            'bulkSizeSetDate': data.get('bulk_size_set_date'),
+            'cuttingStartDate': data.get('cutting_start_date'),
+            'cuttingCompleteDate': data.get('cutting_complete_date'),
+            'printSendDate': data.get('print_send_date'),
+            'printReceivedDate': data.get('print_received_date'),
+            'sewingInputDate': data.get('sewing_input_date'),
+            'sewingFinishDate': data.get('sewing_finish_date'),
+            'packingCompleteDate': data.get('packing_complete_date'),
+            'finalInspectionDate': data.get('final_inspection_date'),
+            'exFactoryDate': data.get('ex_factory_date'),
         }
     
     def get_approval_history_data(self, obj):
@@ -292,6 +325,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
     Serializer for creating orders
     Accepts both camelCase (from frontend) and snake_case
     Now supports nested styles with colors
+    Supports order_type for Local/Foreign orders
     """
     styles = OrderStyleCreateUpdateSerializer(many=True, required=True)
     
@@ -304,7 +338,16 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'mill_name', 'mill_price', 'prova_price', 'currency',
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date',
-            'status', 'category', 'notes', 'metadata', 'styles'
+            'status', 'category', 'notes', 'metadata', 'styles',
+            'order_type',
+            # Local order specific fields
+            'yarn_required', 'yarn_booked_date', 'yarn_received_date',
+            'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
+            'dyeing_complete_date', 'bulk_size_set_date',
+            'cutting_start_date', 'cutting_complete_date',
+            'print_send_date', 'print_received_date',
+            'sewing_input_date', 'sewing_finish_date',
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
         ]
     
     def to_internal_value(self, data):
@@ -326,6 +369,25 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'colorQuantityBreakdown': 'color_quantity_breakdown',
             'orderDate': 'order_date',
             'expectedDeliveryDate': 'expected_delivery_date',
+            'orderType': 'order_type',
+            # Local order field mappings
+            'yarnRequired': 'yarn_required',
+            'yarnBookedDate': 'yarn_booked_date',
+            'yarnReceivedDate': 'yarn_received_date',
+            'ppYards': 'pp_yards',
+            'fitCumPpSubmitDate': 'fit_cum_pp_submit_date',
+            'fitCumPpCommentsDate': 'fit_cum_pp_comments_date',
+            'dyeingCompleteDate': 'dyeing_complete_date',
+            'bulkSizeSetDate': 'bulk_size_set_date',
+            'cuttingStartDate': 'cutting_start_date',
+            'cuttingCompleteDate': 'cutting_complete_date',
+            'printSendDate': 'print_send_date',
+            'printReceivedDate': 'print_received_date',
+            'sewingInputDate': 'sewing_input_date',
+            'sewingFinishDate': 'sewing_finish_date',
+            'packingCompleteDate': 'packing_complete_date',
+            'finalInspectionDate': 'final_inspection_date',
+            'exFactoryDate': 'ex_factory_date',
         }
         
         # Convert camelCase to snake_case
@@ -430,6 +492,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
     Serializer for updating orders
     Accepts both camelCase (from frontend) and snake_case
     Supports nested styles with colors/lines updates
+    Supports order_type for Local/Foreign orders
     """
     styles = OrderStyleCreateUpdateSerializer(many=True, required=False)
     
@@ -442,7 +505,17 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'mill_name', 'mill_price', 'prova_price', 'currency',
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
-            'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser', 'styles'
+            'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser', 'styles',
+            'order_type',
+            # Local order specific fields
+            'yarn_required', 'yarn_booked_date', 'yarn_received_date',
+            'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'bulk_size_set_date', 'cutting_start_date', 'cutting_complete_date',
+            'print_send_date', 'print_received_date',
+            'sewing_input_date', 'sewing_finish_date',
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
         ]
     
     def to_internal_value(self, data):
@@ -466,6 +539,28 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'orderDate': 'order_date',
             'expectedDeliveryDate': 'expected_delivery_date',
             'actualDeliveryDate': 'actual_delivery_date',
+            'orderType': 'order_type',
+            # Local order field mappings
+            'yarnRequired': 'yarn_required',
+            'yarnBookedDate': 'yarn_booked_date',
+            'yarnReceivedDate': 'yarn_received_date',
+            'ppYards': 'pp_yards',
+            'fitCumPpSubmitDate': 'fit_cum_pp_submit_date',
+            'fitCumPpCommentsDate': 'fit_cum_pp_comments_date',
+            'knittingStartDate': 'knitting_start_date',
+            'knittingCompleteDate': 'knitting_complete_date',
+            'dyeingStartDate': 'dyeing_start_date',
+            'dyeingCompleteDate': 'dyeing_complete_date',
+            'bulkSizeSetDate': 'bulk_size_set_date',
+            'cuttingStartDate': 'cutting_start_date',
+            'cuttingCompleteDate': 'cutting_complete_date',
+            'printSendDate': 'print_send_date',
+            'printReceivedDate': 'print_received_date',
+            'sewingInputDate': 'sewing_input_date',
+            'sewingFinishDate': 'sewing_finish_date',
+            'packingCompleteDate': 'packing_complete_date',
+            'finalInspectionDate': 'final_inspection_date',
+            'exFactoryDate': 'ex_factory_date',
         }
         
         # Convert camelCase to snake_case
@@ -671,7 +766,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'order_number', 'customer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
-            'order_date', 'expected_delivery_date',
+            'order_date', 'expected_delivery_date', 'order_type',
             'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
             'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date'
         ]
@@ -802,6 +897,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'lines': data.get('lines') or [],
             'lcIssueDate': data.get('lc_issue_date'),
             'piSentDate': data.get('pi_sent_date'),
+            'orderType': data.get('order_type'),
         }
 
 

@@ -10,9 +10,33 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
-import { ArrowLeft, Save, Plus, Trash2, Calendar } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Calendar, MapPin } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
+
+// Local order specific fields interface
+interface LocalOrderFormData {
+  yarnRequired: string;
+  yarnBookedDate: string;
+  yarnReceivedDate: string;
+  ppYards: string;
+  fitCumPpSubmitDate: string;
+  fitCumPpCommentsDate: string;
+  knittingStartDate: string;
+  knittingCompleteDate: string;
+  dyeingStartDate: string;
+  dyeingCompleteDate: string;
+  bulkSizeSetDate: string;
+  cuttingStartDate: string;
+  cuttingCompleteDate: string;
+  printSendDate: string;
+  printReceivedDate: string;
+  sewingInputDate: string;
+  sewingFinishDate: string;
+  packingCompleteDate: string;
+  finalInspectionDate: string;
+  exFactoryDate: string;
+}
 
 interface OrderLineFormData {
   id?: string;
@@ -58,6 +82,32 @@ export default function OrderEditPage() {
     notes: '',
   });
   
+  const [orderType, setOrderType] = useState<'foreign' | 'local'>('foreign');
+  
+  // Local order specific fields
+  const [localOrderData, setLocalOrderData] = useState<LocalOrderFormData>({
+    yarnRequired: '',
+    yarnBookedDate: '',
+    yarnReceivedDate: '',
+    ppYards: '',
+    fitCumPpSubmitDate: '',
+    fitCumPpCommentsDate: '',
+    knittingStartDate: '',
+    knittingCompleteDate: '',
+    dyeingStartDate: '',
+    dyeingCompleteDate: '',
+    bulkSizeSetDate: '',
+    cuttingStartDate: '',
+    cuttingCompleteDate: '',
+    printSendDate: '',
+    printReceivedDate: '',
+    sewingInputDate: '',
+    sewingFinishDate: '',
+    packingCompleteDate: '',
+    finalInspectionDate: '',
+    exFactoryDate: '',
+  });
+  
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([]);
 
   useEffect(() => {
@@ -82,6 +132,35 @@ export default function OrderEditPage() {
         orderDate: order.orderDate || '',
         notes: order.notes || '',
       });
+      
+      // Set order type
+      setOrderType(order.orderType || 'foreign');
+      
+      // Set local order specific fields
+      if (order.orderType === 'local') {
+        setLocalOrderData({
+          yarnRequired: order.yarnRequired ? order.yarnRequired.toString() : '',
+          yarnBookedDate: order.yarnBookedDate || '',
+          yarnReceivedDate: order.yarnReceivedDate || '',
+          ppYards: order.ppYards ? order.ppYards.toString() : '',
+          fitCumPpSubmitDate: order.fitCumPpSubmitDate || '',
+          fitCumPpCommentsDate: order.fitCumPpCommentsDate || '',
+          knittingStartDate: order.knittingStartDate || '',
+          knittingCompleteDate: order.knittingCompleteDate || '',
+          dyeingStartDate: order.dyeingStartDate || '',
+          dyeingCompleteDate: order.dyeingCompleteDate || '',
+          bulkSizeSetDate: order.bulkSizeSetDate || '',
+          cuttingStartDate: order.cuttingStartDate || '',
+          cuttingCompleteDate: order.cuttingCompleteDate || '',
+          printSendDate: order.printSendDate || '',
+          printReceivedDate: order.printReceivedDate || '',
+          sewingInputDate: order.sewingInputDate || '',
+          sewingFinishDate: order.sewingFinishDate || '',
+          packingCompleteDate: order.packingCompleteDate || '',
+          finalInspectionDate: order.finalInspectionDate || '',
+          exFactoryDate: order.exFactoryDate || '',
+        });
+      }
 
       // Flatten styles and lines into orderLines array
       if (order.styles && order.styles.length > 0) {
@@ -162,7 +241,7 @@ export default function OrderEditPage() {
         styleGroups.get(styleKey)!.push(line);
       });
 
-      const orderData = {
+      const orderData: any = {
         poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
         buyerName: formData.buyerName || undefined,
@@ -205,6 +284,30 @@ export default function OrderEditPage() {
           };
         }),
       };
+      
+      // Add local order specific fields if this is a local order
+      if (orderType === 'local') {
+        orderData.yarnRequired = localOrderData.yarnRequired ? parseFloat(localOrderData.yarnRequired) : undefined;
+        orderData.yarnBookedDate = localOrderData.yarnBookedDate || undefined;
+        orderData.yarnReceivedDate = localOrderData.yarnReceivedDate || undefined;
+        orderData.ppYards = localOrderData.ppYards ? parseFloat(localOrderData.ppYards) : undefined;
+        orderData.fitCumPpSubmitDate = localOrderData.fitCumPpSubmitDate || undefined;
+        orderData.fitCumPpCommentsDate = localOrderData.fitCumPpCommentsDate || undefined;
+        orderData.knittingStartDate = localOrderData.knittingStartDate || undefined;
+        orderData.knittingCompleteDate = localOrderData.knittingCompleteDate || undefined;
+        orderData.dyeingStartDate = localOrderData.dyeingStartDate || undefined;
+        orderData.dyeingCompleteDate = localOrderData.dyeingCompleteDate || undefined;
+        orderData.bulkSizeSetDate = localOrderData.bulkSizeSetDate || undefined;
+        orderData.cuttingStartDate = localOrderData.cuttingStartDate || undefined;
+        orderData.cuttingCompleteDate = localOrderData.cuttingCompleteDate || undefined;
+        orderData.printSendDate = localOrderData.printSendDate || undefined;
+        orderData.printReceivedDate = localOrderData.printReceivedDate || undefined;
+        orderData.sewingInputDate = localOrderData.sewingInputDate || undefined;
+        orderData.sewingFinishDate = localOrderData.sewingFinishDate || undefined;
+        orderData.packingCompleteDate = localOrderData.packingCompleteDate || undefined;
+        orderData.finalInspectionDate = localOrderData.finalInspectionDate || undefined;
+        orderData.exFactoryDate = localOrderData.exFactoryDate || undefined;
+      }
 
       await api.patch(`/orders/${params.id}/`, orderData);
 
@@ -294,7 +397,12 @@ export default function OrderEditPage() {
           {/* Basic Order Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                Order Information
+                <span className={`text-xs px-2 py-1 rounded ${orderType === 'local' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                  {orderType === 'local' ? 'Local Order' : 'Foreign Order'}
+                </span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
@@ -354,6 +462,256 @@ export default function OrderEditPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Local Order Specific Fields */}
+          {orderType === 'local' && (
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-green-600" />
+                  Local Order Production Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-4">
+                {/* Yarn Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Yarn Information</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit-yarnRequired">Yarn Required (Amount)</Label>
+                      <Input
+                        id="edit-yarnRequired"
+                        type="number"
+                        step="0.01"
+                        value={localOrderData.yarnRequired}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnRequired: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-yarnBookedDate">Yarn Booked Date</Label>
+                      <Input
+                        id="edit-yarnBookedDate"
+                        type="date"
+                        value={localOrderData.yarnBookedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnBookedDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-yarnReceivedDate">Yarn Received Date</Label>
+                      <Input
+                        id="edit-yarnReceivedDate"
+                        type="date"
+                        value={localOrderData.yarnReceivedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, yarnReceivedDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PP Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">PP & FIT Information</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit-ppYards">PP Yards</Label>
+                      <Input
+                        id="edit-ppYards"
+                        type="number"
+                        step="0.01"
+                        value={localOrderData.ppYards}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, ppYards: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-fitCumPpSubmitDate">FIT CUM PP Submit Date</Label>
+                      <Input
+                        id="edit-fitCumPpSubmitDate"
+                        type="date"
+                        value={localOrderData.fitCumPpSubmitDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpSubmitDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-fitCumPpCommentsDate">FIT CUM PP Comments Date</Label>
+                      <Input
+                        id="edit-fitCumPpCommentsDate"
+                        type="date"
+                        value={localOrderData.fitCumPpCommentsDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, fitCumPpCommentsDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Knitting Section (Calculated but editable) */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">
+                    Knitting & Dyeing Dates
+                    <span className="text-xs font-normal text-gray-500 ml-2">(Auto-calculated but editable)</span>
+                  </Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit-knittingStartDate">Knitting Start Date</Label>
+                      <Input
+                        id="edit-knittingStartDate"
+                        type="date"
+                        value={localOrderData.knittingStartDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, knittingStartDate: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Yarn Received + 11 days</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-knittingCompleteDate">Knitting Complete Date</Label>
+                      <Input
+                        id="edit-knittingCompleteDate"
+                        type="date"
+                        value={localOrderData.knittingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, knittingCompleteDate: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Knitting Start + 18 days</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-dyeingStartDate">Dyeing Start Date</Label>
+                      <Input
+                        id="edit-dyeingStartDate"
+                        type="date"
+                        value={localOrderData.dyeingStartDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, dyeingStartDate: e.target.value })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Knitting Start + 5 days</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Production Dates Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Production Dates</Label>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div>
+                      <Label htmlFor="edit-dyeingCompleteDate">Dyeing Complete</Label>
+                      <Input
+                        id="edit-dyeingCompleteDate"
+                        type="date"
+                        value={localOrderData.dyeingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, dyeingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-bulkSizeSetDate">Bulk Size Set</Label>
+                      <Input
+                        id="edit-bulkSizeSetDate"
+                        type="date"
+                        value={localOrderData.bulkSizeSetDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, bulkSizeSetDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-cuttingStartDate">Cutting Start</Label>
+                      <Input
+                        id="edit-cuttingStartDate"
+                        type="date"
+                        value={localOrderData.cuttingStartDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingStartDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-cuttingCompleteDate">Cutting Complete</Label>
+                      <Input
+                        id="edit-cuttingCompleteDate"
+                        type="date"
+                        value={localOrderData.cuttingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, cuttingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Print Section (Optional) */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Print Information (Optional)</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-printSendDate">Print Send Date</Label>
+                      <Input
+                        id="edit-printSendDate"
+                        type="date"
+                        value={localOrderData.printSendDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, printSendDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-printReceivedDate">Print Received Date</Label>
+                      <Input
+                        id="edit-printReceivedDate"
+                        type="date"
+                        value={localOrderData.printReceivedDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, printReceivedDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sewing Section */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Sewing Dates</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-sewingInputDate">Sewing Input Date</Label>
+                      <Input
+                        id="edit-sewingInputDate"
+                        type="date"
+                        value={localOrderData.sewingInputDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingInputDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-sewingFinishDate">Sewing Finish Date</Label>
+                      <Input
+                        id="edit-sewingFinishDate"
+                        type="date"
+                        value={localOrderData.sewingFinishDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, sewingFinishDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Final Stage Section */}
+                <div>
+                  <Label className="text-sm font-semibold text-green-700 mb-3 block">Final Stage Dates</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="edit-packingCompleteDate">Packing Complete</Label>
+                      <Input
+                        id="edit-packingCompleteDate"
+                        type="date"
+                        value={localOrderData.packingCompleteDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, packingCompleteDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-finalInspectionDate">Final Inspection</Label>
+                      <Input
+                        id="edit-finalInspectionDate"
+                        type="date"
+                        value={localOrderData.finalInspectionDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, finalInspectionDate: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-exFactoryDate">Ex-Factory Date</Label>
+                      <Input
+                        id="edit-exFactoryDate"
+                        type="date"
+                        value={localOrderData.exFactoryDate}
+                        onChange={(e) => setLocalOrderData({ ...localOrderData, exFactoryDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Order Lines */}
           <div className="space-y-4">

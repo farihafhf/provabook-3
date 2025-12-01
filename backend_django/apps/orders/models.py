@@ -24,6 +24,12 @@ class OrderCategory(models.TextChoices):
     ARCHIVED = 'archived', 'Archived'
 
 
+class OrderType(models.TextChoices):
+    """Order type choices - Local or Foreign"""
+    FOREIGN = 'foreign', 'Foreign'
+    LOCAL = 'local', 'Local'
+
+
 class Order(TimestampedModel):
     """
     Order model - Main order entity
@@ -88,6 +94,52 @@ class Order(TimestampedModel):
     approval_status = models.JSONField(blank=True, null=True, default=dict)
     current_stage = models.CharField(max_length=50, default='Design')
     
+    # Order Type
+    order_type = models.CharField(
+        max_length=10,
+        choices=OrderType.choices,
+        default=OrderType.FOREIGN,
+        db_index=True,
+        help_text='Type of order - Foreign or Local'
+    )
+    
+    # Local Order Specific Fields
+    # Yarn Fields
+    yarn_required = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text='Yarn required amount')
+    yarn_booked_date = models.DateField(blank=True, null=True, help_text='Date when yarn was booked')
+    yarn_received_date = models.DateField(blank=True, null=True, help_text='Date when yarn was received')
+    
+    # PP Fields
+    pp_yards = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text='PP Yards')
+    fit_cum_pp_submit_date = models.DateField(blank=True, null=True, help_text='FIT CUM PP Submit Date')
+    fit_cum_pp_comments_date = models.DateField(blank=True, null=True, help_text='FIT CUM PP Comments Date')
+    
+    # Knitting Fields (calculated from yarn_received_date but editable)
+    knitting_start_date = models.DateField(blank=True, null=True, help_text='Knitting Start Date (Yarn Received + 11 days)')
+    knitting_complete_date = models.DateField(blank=True, null=True, help_text='Knitting Complete Date (Knitting Start + 18 days)')
+    
+    # Dyeing Fields
+    dyeing_start_date = models.DateField(blank=True, null=True, help_text='Dyeing Start Date (Knitting Start + 5 days)')
+    dyeing_complete_date = models.DateField(blank=True, null=True, help_text='Date when dyeing was completed')
+    
+    # Cutting Fields
+    bulk_size_set_date = models.DateField(blank=True, null=True, help_text='Bulk Size Set Date')
+    cutting_start_date = models.DateField(blank=True, null=True, help_text='Cutting Start Date')
+    cutting_complete_date = models.DateField(blank=True, null=True, help_text='Cutting Complete Date')
+    
+    # Print Fields (Optional)
+    print_send_date = models.DateField(blank=True, null=True, help_text='Print Send Date (optional)')
+    print_received_date = models.DateField(blank=True, null=True, help_text='Print Received Date (optional)')
+    
+    # Sewing Fields
+    sewing_input_date = models.DateField(blank=True, null=True, help_text='Sewing Input Date')
+    sewing_finish_date = models.DateField(blank=True, null=True, help_text='Sewing Finish Date')
+    
+    # Final Stage Fields
+    packing_complete_date = models.DateField(blank=True, null=True, help_text='Packing Complete Date')
+    final_inspection_date = models.DateField(blank=True, null=True, help_text='Final Inspection Date')
+    ex_factory_date = models.DateField(blank=True, null=True, help_text='Ex-Factory Date')
+    
     # Additional Information
     notes = models.TextField(blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True, default=dict)
@@ -112,6 +164,7 @@ class Order(TimestampedModel):
             models.Index(fields=['order_number']),
             models.Index(fields=['status']),
             models.Index(fields=['category']),
+            models.Index(fields=['order_type']),
             models.Index(fields=['created_at']),
             models.Index(fields=['merchandiser']),
         ]
@@ -120,12 +173,29 @@ class Order(TimestampedModel):
         return f"{self.order_number} - {self.customer_name}"
     
     def save(self, *args, **kwargs):
-        """Auto-generate order number and uid if not provided"""
+        """Auto-generate order number and uid if not provided, calculate local order dates"""
         if not self.uid:
             self.uid = uuid.uuid4()
         if not self.order_number:
             from apps.core.utils import generate_order_number
             self.order_number = generate_order_number()
+        
+        # Auto-calculate local order dates based on yarn_received_date if not manually set
+        if self.order_type == OrderType.LOCAL and self.yarn_received_date:
+            from datetime import timedelta
+            
+            # Calculate Knitting Start (Yarn Received + 11 days) if not already set
+            if not self.knitting_start_date:
+                self.knitting_start_date = self.yarn_received_date + timedelta(days=11)
+            
+            # Calculate Knitting Complete (Knitting Start + 18 days) if not already set
+            if not self.knitting_complete_date and self.knitting_start_date:
+                self.knitting_complete_date = self.knitting_start_date + timedelta(days=18)
+            
+            # Calculate Dyeing Start (Knitting Start + 5 days) if not already set
+            if not self.dyeing_start_date and self.knitting_start_date:
+                self.dyeing_start_date = self.knitting_start_date + timedelta(days=5)
+        
         super().save(*args, **kwargs)
     
     @property
