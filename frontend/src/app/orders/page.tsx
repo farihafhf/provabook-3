@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState, useRef, useCallback } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,30 +74,7 @@ function OrdersPageContent() {
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
-  const scrollContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
-
-  // Setup wheel event listener with { passive: false } to allow preventDefault
-  const setupScrollHandler = useCallback((element: HTMLDivElement | null, orderId: string) => {
-    if (element) {
-      scrollContainerRefs.current.set(orderId, element);
-      
-      const handleWheel = (e: WheelEvent) => {
-        // Allow horizontal scroll with shift key OR when scrolling horizontally on touchpad
-        if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-          e.preventDefault();
-          element.scrollLeft += e.shiftKey ? e.deltaY : e.deltaX;
-        }
-      };
-      
-      element.addEventListener('wheel', handleWheel, { passive: false });
-      
-      // Store cleanup function
-      (element as any)._wheelCleanup = () => {
-        element.removeEventListener('wheel', handleWheel);
-      };
-    }
-  }, []);
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
@@ -632,34 +609,16 @@ function OrdersPageContent() {
                                       )}
                                     </div>
                                   )}
-                                  <div 
-                                    className="overflow-x-auto scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
-                                    tabIndex={0}
-                                    ref={(el) => setupScrollHandler(el, order.id)}
-                                    onKeyDown={(e) => {
-                                      const container = e.currentTarget;
-                                      if (e.key === 'ArrowRight') {
-                                        e.preventDefault();
-                                        container.scrollLeft += 150;
-                                      } else if (e.key === 'ArrowLeft') {
-                                        e.preventDefault();
-                                        container.scrollLeft -= 150;
-                                      }
-                                    }}
-                                  >
-                                  {/* Scroll hint */}
-                                  <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                                    <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
-                                  </div>
-                                  <table className="w-full min-w-[900px]">
+                                  <div className="overflow-x-scroll touch-pan-x">
+                                  <table className="w-max">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
-                                        <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Description</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Quantity</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Mill Price</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">ETD</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Style / Color / CAD</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap min-w-[250px]">Description</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Quantity</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Mill Price</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">ETD</th>
+                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Approval Stages</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -673,8 +632,8 @@ function OrdersPageContent() {
                                           }}
                                         >
                                           {/* Style / Color / CAD - Stacked badges */}
-                                          <td className="py-3 px-3">
-                                            <div className="flex flex-wrap items-center gap-1.5">
+                                          <td className="py-3 px-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5">
                                               <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
                                                 {line.styleNumber || '-'}
                                               </Badge>
@@ -691,15 +650,15 @@ function OrdersPageContent() {
                                             </div>
                                           </td>
                                           
-                                          {/* Description */}
-                                          <td className="py-3 px-3 text-slate-600 max-w-[200px]">
-                                            <span className="line-clamp-2 text-sm" title={line.description || ''}>
+                                          {/* Description - Full text, no truncation */}
+                                          <td className="py-3 px-4 text-slate-600 min-w-[250px]">
+                                            <span className="text-sm">
                                               {line.description || <span className="text-slate-400">-</span>}
                                             </span>
                                           </td>
                                           
                                           {/* Quantity with unit */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-4 whitespace-nowrap">
                                             <span className="font-semibold text-slate-800">
                                               {line.quantity.toLocaleString()}
                                             </span>
@@ -707,7 +666,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Mill Price - Unit and Total stacked */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-4 whitespace-nowrap">
                                             {line.millPrice ? (
                                               <div className="flex flex-col">
                                                 <div className="flex items-baseline gap-1">
@@ -727,7 +686,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* ETD */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-4 whitespace-nowrap">
                                             {line.etd ? (
                                               <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
                                             ) : (
@@ -736,7 +695,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Approval Stages - Show all stages for this line */}
-                                          <td className="py-3 px-3 min-w-[400px]">
+                                          <td className="py-3 px-4">
                                             <div className="flex flex-nowrap gap-2">
                                               {(() => {
                                                 // Get ALL approval types that have a non-default status
