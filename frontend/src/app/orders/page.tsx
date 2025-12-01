@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
@@ -61,7 +61,6 @@ interface OrdersFilterParams {
 
 function OrdersPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -143,16 +142,12 @@ function OrdersPageContent() {
     try {
       setExporting(true);
 
+      // Use the filters state (same source as fetchOrders) to ensure export matches displayed orders
       const queryParams: Record<string, string> = {};
-      const search = searchParams.get('search');
-      const status = searchParams.get('status');
-      const orderDateFrom = searchParams.get('order_date_from');
-      const orderDateTo = searchParams.get('order_date_to');
-
-      if (search) queryParams.search = search;
-      if (status) queryParams.status = status;
-      if (orderDateFrom) queryParams.order_date_from = orderDateFrom;
-      if (orderDateTo) queryParams.order_date_to = orderDateTo;
+      if (filters.search) queryParams.search = filters.search;
+      if (filters.status) queryParams.status = filters.status;
+      if (filters.orderDateFrom) queryParams.order_date_from = filters.orderDateFrom;
+      if (filters.orderDateTo) queryParams.order_date_to = filters.orderDateTo;
 
       const response = await api.get('/orders/export-excel', {
         params: queryParams,
