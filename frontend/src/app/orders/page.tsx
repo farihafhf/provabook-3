@@ -572,10 +572,11 @@ function OrdersPageContent() {
                                     </div>
                                   )}
                                   <div className="overflow-x-auto">
-                                  <table className="w-full min-w-[800px]">
+                                  <table className="w-full min-w-[900px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Description</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">Quantity</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">Mill Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">ETD</th>
@@ -609,6 +610,13 @@ function OrdersPageContent() {
                                                 </Badge>
                                               )}
                                             </div>
+                                          </td>
+                                          
+                                          {/* Description */}
+                                          <td className="py-3 px-3 text-slate-600 max-w-[200px]">
+                                            <span className="line-clamp-2 text-sm" title={line.description || ''}>
+                                              {line.description || <span className="text-slate-400">-</span>}
+                                            </span>
                                           </td>
                                           
                                           {/* Quantity with unit */}
