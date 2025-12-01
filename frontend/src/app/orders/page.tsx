@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,30 @@ function OrdersPageContent() {
   const [filters, setFilters] = useState<OrdersFilterParams>({});
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const scrollContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
+
+  // Setup wheel event listener with { passive: false } to allow preventDefault
+  const setupScrollHandler = useCallback((element: HTMLDivElement | null, orderId: string) => {
+    if (element) {
+      scrollContainerRefs.current.set(orderId, element);
+      
+      const handleWheel = (e: WheelEvent) => {
+        // Allow horizontal scroll with shift key OR when scrolling horizontally on touchpad
+        if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+          e.preventDefault();
+          element.scrollLeft += e.shiftKey ? e.deltaY : e.deltaX;
+        }
+      };
+      
+      element.addEventListener('wheel', handleWheel, { passive: false });
+      
+      // Store cleanup function
+      (element as any)._wheelCleanup = () => {
+        element.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, []);
 
   const handleFiltersChange = (newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
@@ -609,16 +632,34 @@ function OrdersPageContent() {
                                       )}
                                     </div>
                                   )}
-                                  <div className="overflow-x-scroll touch-pan-x">
-                                  <table className="w-max">
+                                  <div 
+                                    className="overflow-x-auto scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
+                                    tabIndex={0}
+                                    ref={(el) => setupScrollHandler(el, order.id)}
+                                    onKeyDown={(e) => {
+                                      const container = e.currentTarget;
+                                      if (e.key === 'ArrowRight') {
+                                        e.preventDefault();
+                                        container.scrollLeft += 150;
+                                      } else if (e.key === 'ArrowLeft') {
+                                        e.preventDefault();
+                                        container.scrollLeft -= 150;
+                                      }
+                                    }}
+                                  >
+                                  {/* Scroll hint */}
+                                  <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                                    <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
+                                  </div>
+                                  <table className="w-full min-w-[900px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Style / Color / CAD</th>
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap min-w-[250px]">Description</th>
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Quantity</th>
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Mill Price</th>
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">ETD</th>
-                                        <th className="py-2.5 px-4 text-left font-semibold whitespace-nowrap">Approval Stages</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Description</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Quantity</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Mill Price</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">ETD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -632,8 +673,8 @@ function OrdersPageContent() {
                                           }}
                                         >
                                           {/* Style / Color / CAD - Stacked badges */}
-                                          <td className="py-3 px-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5">
+                                          <td className="py-3 px-3">
+                                            <div className="flex flex-wrap items-center gap-1.5">
                                               <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
                                                 {line.styleNumber || '-'}
                                               </Badge>
@@ -651,14 +692,14 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Description - Full text, no truncation */}
-                                          <td className="py-3 px-4 text-slate-600 min-w-[250px]">
+                                          <td className="py-3 px-3 text-slate-600">
                                             <span className="text-sm">
                                               {line.description || <span className="text-slate-400">-</span>}
                                             </span>
                                           </td>
                                           
                                           {/* Quantity with unit */}
-                                          <td className="py-3 px-4 whitespace-nowrap">
+                                          <td className="py-3 px-3">
                                             <span className="font-semibold text-slate-800">
                                               {line.quantity.toLocaleString()}
                                             </span>
@@ -666,7 +707,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Mill Price - Unit and Total stacked */}
-                                          <td className="py-3 px-4 whitespace-nowrap">
+                                          <td className="py-3 px-3">
                                             {line.millPrice ? (
                                               <div className="flex flex-col">
                                                 <div className="flex items-baseline gap-1">
@@ -686,7 +727,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* ETD */}
-                                          <td className="py-3 px-4 whitespace-nowrap">
+                                          <td className="py-3 px-3">
                                             {line.etd ? (
                                               <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
                                             ) : (
@@ -694,19 +735,31 @@ function OrdersPageContent() {
                                             )}
                                           </td>
                                           
-                                          {/* Approval Stages - Show all stages for this line */}
-                                          <td className="py-3 px-4">
+                                          {/* Approval Stages - Show ALL stages that have ANY history */}
+                                          <td className="py-3 px-3 min-w-[400px]">
                                             <div className="flex flex-nowrap gap-2">
                                               {(() => {
-                                                // Get ALL approval types that have a non-default status
-                                                const lineApprovals = Object.entries(line.approvalStatus || {})
-                                                  .filter(([, value]) => value && value !== 'default' && value !== 'pending');
+                                                // Combine approval types from BOTH approvalStatus AND approvalDates
+                                                // This ensures we show ALL stages that have any recorded activity
+                                                const allTypes = new Set<string>();
                                                 
-                                                if (lineApprovals.length === 0) {
+                                                // Add types from approvalStatus (excluding only 'default')
+                                                Object.entries(line.approvalStatus || {}).forEach(([key, value]) => {
+                                                  if (value && value !== 'default') {
+                                                    allTypes.add(key);
+                                                  }
+                                                });
+                                                
+                                                // Add types from approvalDates (these have history records)
+                                                Object.keys(line.approvalDates || {}).forEach(key => {
+                                                  allTypes.add(key);
+                                                });
+                                                
+                                                if (allTypes.size === 0) {
                                                   return <span className="text-slate-400 text-xs italic">No approvals yet</span>;
                                                 }
                                                 
-                                                // Sort by priority order, but include ALL types
+                                                // Sort by priority order
                                                 const priorityOrder: Record<string, number> = {
                                                   price: 1, labDip: 2, lab_dip: 2,
                                                   strikeOff: 3, strike_off: 3,
@@ -716,13 +769,15 @@ function OrdersPageContent() {
                                                   bulkSwatch: 9, bulk_swatch: 9
                                                 };
                                                 
-                                                const sortedApprovals = lineApprovals.sort(([a], [b]) => {
+                                                const sortedTypes = Array.from(allTypes).sort((a, b) => {
                                                   return (priorityOrder[a] || 99) - (priorityOrder[b] || 99);
                                                 });
                                                 
-                                                return sortedApprovals.map(([type, status]) => {
+                                                return sortedTypes.map(type => {
+                                                  // Get current status (could be submission, resubmission, approved, rejected, pending, etc.)
+                                                  const status = line.approvalStatus?.[type] || 'pending';
                                                   const approvalDate = line.approvalDates?.[type];
-                                                  const badge = getApprovalBadge(status as string);
+                                                  const badge = getApprovalBadge(status);
                                                   
                                                   return (
                                                     <div 
