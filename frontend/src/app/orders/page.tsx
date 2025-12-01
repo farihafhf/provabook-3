@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -406,14 +406,32 @@ function OrdersPageContent() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>All Orders</CardTitle>
-            <Button
-              variant={sortByEtd ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSortByEtd(!sortByEtd)}
-            >
-              <ArrowUpDown className="mr-2 h-4 w-4" />
-              Sort by ETD
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (expandedOrders.size === orders.length) {
+                    // All expanded, collapse all
+                    setExpandedOrders(new Set());
+                  } else {
+                    // Expand all
+                    setExpandedOrders(new Set(orders.map(o => o.id)));
+                  }
+                }}
+              >
+                <ChevronsUpDown className="mr-2 h-4 w-4" />
+                {expandedOrders.size === orders.length ? 'Collapse All' : 'Expand All'}
+              </Button>
+              <Button
+                variant={sortByEtd ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortByEtd(!sortByEtd)}
+              >
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                Sort by ETD
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {orders.length === 0 ? (
@@ -460,7 +478,11 @@ function OrdersPageContent() {
                           {/* Main order row */}
                           <tr
                             className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
-                            onClick={() => router.push(`/orders/${order.id}`)}
+                            onClick={() => {
+                              if (lines.length > 0) {
+                                toggleOrderExpanded(order.id);
+                              }
+                            }}
                           >
                             <td className="py-4 text-gray-500 font-medium">{index + 1}</td>
                             <td className="py-4">
@@ -571,7 +593,24 @@ function OrdersPageContent() {
                                       )}
                                     </div>
                                   )}
-                                  <div className="overflow-x-auto">
+                                  <div 
+                                    className="overflow-x-auto scroll-smooth"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      const container = e.currentTarget;
+                                      if (e.key === 'ArrowRight') {
+                                        container.scrollLeft += 100;
+                                      } else if (e.key === 'ArrowLeft') {
+                                        container.scrollLeft -= 100;
+                                      }
+                                    }}
+                                    onWheel={(e) => {
+                                      if (e.shiftKey) {
+                                        e.preventDefault();
+                                        e.currentTarget.scrollLeft += e.deltaY;
+                                      }
+                                    }}
+                                  >
                                   <table className="w-full min-w-[900px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
