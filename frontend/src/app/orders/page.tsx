@@ -294,6 +294,19 @@ function OrdersPageContent() {
     return names[key] || key;
   };
 
+  // Short abbreviations for compact display
+  const getApprovalAbbrev = (key: string): string => {
+    const abbrevs: Record<string, string> = {
+      price: 'PRC',
+      quality: 'QTY',
+      labDip: 'LAB',
+      strikeOff: 'S/O',
+      handloom: 'H/L',
+      ppSample: 'PP',
+    };
+    return abbrevs[key] || key.substring(0, 3).toUpperCase();
+  };
+
   const getApprovalBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
       approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
@@ -303,23 +316,6 @@ function OrdersPageContent() {
       default: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Pending' },
     };
     return statusConfig[status] || statusConfig.default;
-  };
-
-  // Get all unique approval types that have non-default values across all lines in an order
-  const getActiveApprovalTypes = (lines: OrderLine[]): string[] => {
-    const activeTypes = new Set<string>();
-    lines.forEach(line => {
-      if (line.approvalStatus) {
-        Object.entries(line.approvalStatus).forEach(([key, value]) => {
-          if (value && value !== 'default') {
-            activeTypes.add(key);
-          }
-        });
-      }
-    });
-    // Sort by priority order
-    const priority = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample'];
-    return priority.filter(type => activeTypes.has(type));
   };
 
   const handleDeleteClick = (order: Order) => {
@@ -458,7 +454,6 @@ function OrdersPageContent() {
                     ).map((order, index) => {
                       const isExpanded = expandedOrders.has(order.id);
                       const lines = order.lines || [];
-                      const activeApprovalTypes = getActiveApprovalTypes(lines);
                       
                       return (
                         <React.Fragment key={order.id}>
@@ -576,7 +571,8 @@ function OrdersPageContent() {
                                       )}
                                     </div>
                                   )}
-                                  <table className="w-full">
+                                  <div className="overflow-x-auto">
+                                  <table className="w-full min-w-[800px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
@@ -652,42 +648,54 @@ function OrdersPageContent() {
                                             )}
                                           </td>
                                           
-                                          {/* Approval Stages - Compact with dates */}
+                                          {/* Approval Stages - Show all stages for this line */}
                                           <td className="py-3 px-3">
-                                            <div className="flex flex-wrap gap-1.5">
-                                              {activeApprovalTypes.map(type => {
-                                                const status = line.approvalStatus?.[type] || 'default';
-                                                const approvalDate = line.approvalDates?.[type];
-                                                const badge = getApprovalBadge(status);
+                                            <div className="flex flex-wrap gap-2">
+                                              {(() => {
+                                                // Get all approval types that have a status for THIS line
+                                                const lineApprovalTypes = Object.entries(line.approvalStatus || {})
+                                                  .filter(([, value]) => value && value !== 'default')
+                                                  .map(([key]) => key);
                                                 
-                                                if (status === 'default') return null;
+                                                // Sort by priority
+                                                const priority = ['price', 'labDip', 'strikeOff', 'handloom', 'quality', 'ppSample'];
+                                                const sortedTypes = priority.filter(type => lineApprovalTypes.includes(type));
                                                 
-                                                return (
-                                                  <div 
-                                                    key={type} 
-                                                    className="flex flex-col items-center"
-                                                    title={approvalDate ? `${formatApprovalName(type)}: ${badge.label} on ${formatDate(approvalDate)}` : `${formatApprovalName(type)}: ${badge.label}`}
-                                                  >
-                                                    <Badge className={`${badge.bg} ${badge.text} text-[10px] px-2 py-0.5 font-medium`}>
-                                                      {formatApprovalName(type).split(' ')[0]}
-                                                    </Badge>
-                                                    {approvalDate && (
-                                                      <span className="text-[9px] text-slate-400 mt-0.5">
-                                                        {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })}
-                                              {activeApprovalTypes.every(type => (line.approvalStatus?.[type] || 'default') === 'default') && (
-                                                <span className="text-slate-400 text-xs italic">No approvals yet</span>
-                                              )}
+                                                if (sortedTypes.length === 0) {
+                                                  return <span className="text-slate-400 text-xs italic">No approvals yet</span>;
+                                                }
+                                                
+                                                return sortedTypes.map(type => {
+                                                  const status = line.approvalStatus?.[type] || 'default';
+                                                  const approvalDate = line.approvalDates?.[type];
+                                                  const badge = getApprovalBadge(status);
+                                                  
+                                                  return (
+                                                    <div 
+                                                      key={type} 
+                                                      className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200"
+                                                      title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
+                                                    >
+                                                      <span className="text-[10px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
+                                                      <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
+                                                        {badge.label.substring(0, 3)}
+                                                      </Badge>
+                                                      {approvalDate && (
+                                                        <span className="text-[10px] text-slate-500 font-medium">
+                                                          {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                });
+                                              })()}
                                             </div>
                                           </td>
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
+                                  </div>
                                 </div>
                               </td>
                             </tr>
