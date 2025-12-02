@@ -172,12 +172,17 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
     # Process each order
     dhaka_tz = pytz.timezone('Asia/Dhaka')
     
+    # Extract status filter if provided - used to filter lines during export
+    status_filter = filters.get('status') if filters else None
+    
     for order in queryset:
         # Get all styles for this order
         styles = OrderStyle.objects.filter(order=order).prefetch_related('lines')
         
         if not styles.exists():
-            # No styles - export order-level data only
+            # No styles - export order-level data only (skip if status filter is applied)
+            if status_filter:
+                continue
             row_data = _build_order_row(
                 order, None, None, visible_approval_types, dhaka_tz
             )
@@ -185,10 +190,17 @@ def generate_orders_excel(queryset: Iterable, filters: dict = None) -> tuple:
         else:
             # Export each order line
             for style in styles:
-                lines = style.lines.all()
+                # Filter lines by status if status filter is applied
+                if status_filter:
+                    lines = style.lines.filter(status=status_filter)
+                else:
+                    lines = style.lines.all()
                 
                 if not lines.exists():
-                    # Style has no lines - export style-level data
+                    # Style has no lines matching filter - skip or export style-level data
+                    # If status filter is applied, skip styles without matching lines
+                    if status_filter:
+                        continue
                     row_data = _build_order_row(
                         order, style, None, visible_approval_types, dhaka_tz
                     )
@@ -883,15 +895,22 @@ def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
     total_quantity = 0
     line_counter = 0
     
+    # Extract status filter if provided - used to filter lines during export
+    status_filter = filters.get('status') if filters else None
+    
     for order in queryset:
         # Get all styles for this order
         styles = OrderStyle.objects.filter(order=order).prefetch_related('lines')
         
         for style in styles:
-            lines = style.lines.all()
+            # Filter lines by status if status filter is applied
+            if status_filter:
+                lines = style.lines.filter(status=status_filter)
+            else:
+                lines = style.lines.all()
             
             if not lines.exists():
-                # Style has no lines - skip
+                # Style has no lines matching filter - skip
                 continue
             
             for line in lines:
