@@ -787,14 +787,14 @@ function OrdersPageContent() {
                                   <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                     <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
                                   </div>
-                                  <table className="w-full min-w-[900px]">
+                                  <table className="w-full" style={{ minWidth: '1400px' }}>
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
-                                        <th className="py-2.5 px-3 text-left font-semibold">Style / Color / CAD</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Description</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Quantity</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Mill Price</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">ETD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
                                       </tr>
                                     </thead>
@@ -809,7 +809,7 @@ function OrdersPageContent() {
                                           }}
                                         >
                                           {/* Style / Color / CAD - Stacked badges */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-3 min-w-[180px]">
                                             <div className="flex flex-wrap items-center gap-1.5">
                                               <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
                                                 {line.styleNumber || '-'}
@@ -828,14 +828,14 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Description - Full text, no truncation */}
-                                          <td className="py-3 px-3 text-slate-600">
+                                          <td className="py-3 px-3 text-slate-600 min-w-[200px]">
                                             <span className="text-sm">
                                               {line.description || <span className="text-slate-400">-</span>}
                                             </span>
                                           </td>
                                           
                                           {/* Quantity with unit */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-3 min-w-[100px]">
                                             <span className="font-semibold text-slate-800">
                                               {line.quantity.toLocaleString()}
                                             </span>
@@ -843,7 +843,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Mill Price - Unit and Total stacked */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-3 min-w-[140px]">
                                             {line.millPrice ? (
                                               <div className="flex flex-col">
                                                 <div className="flex items-baseline gap-1">
@@ -863,7 +863,7 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* ETD */}
-                                          <td className="py-3 px-3">
+                                          <td className="py-3 px-3 min-w-[100px]">
                                             {line.etd ? (
                                               <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
                                             ) : (
@@ -872,8 +872,8 @@ function OrdersPageContent() {
                                           </td>
                                           
                                           {/* Approval Stages - Show ALL stages that have ANY history */}
-                                          <td className="py-3 px-3 min-w-[400px]">
-                                            <div className="flex flex-nowrap gap-2">
+                                          <td className="py-3 px-3">
+                                            <div className="flex flex-wrap gap-2">
                                               {(() => {
                                                 // Combine approval types from BOTH approvalStatus AND approvalDates
                                                 // This ensures we show ALL stages that have any recorded activity
