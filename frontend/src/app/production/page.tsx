@@ -204,7 +204,7 @@ function calculateProductionMetrics(orders: Order[]) {
   };
 }
 
-function LocalOrdersPageContent() {
+export default function LocalOrdersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -217,13 +217,17 @@ function LocalOrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Initialize filters from URL params to preserve filter state when navigating back
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
-    const statusParam = searchParams.get('status');
+    const urlSearch = searchParams.get('search');
+    const urlStatus = searchParams.get('status');
+    const urlDateFrom = searchParams.get('order_date_from');
+    const urlDateTo = searchParams.get('order_date_to');
     return {
-      search: searchParams.get('search') || undefined,
-      status: (statusParam && statusParam !== 'all') ? statusParam : undefined,
-      orderDateFrom: searchParams.get('order_date_from') || undefined,
-      orderDateTo: searchParams.get('order_date_to') || undefined,
+      search: urlSearch || undefined,
+      status: urlStatus || undefined,
+      orderDateFrom: urlDateFrom || undefined,
+      orderDateTo: urlDateTo || undefined,
     };
   });
   const [sortByEtd, setSortByEtd] = useState(false);
@@ -891,19 +895,5 @@ function LocalOrdersPageContent() {
         </Dialog>
       </div>
     </DashboardLayout>
-  );
-}
-
-export default function LocalOrdersPage() {
-  return (
-    <Suspense fallback={
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Loading...</p>
-        </div>
-      </DashboardLayout>
-    }>
-      <LocalOrdersPageContent />
-    </Suspense>
   );
 }
