@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import React, { useEffect, useMemo, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -204,7 +204,7 @@ function calculateProductionMetrics(orders: Order[]) {
   };
 }
 
-function LocalOrdersPageContent() {
+export default function LocalOrdersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -217,20 +217,26 @@ function LocalOrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Initialize filters from URL params to preserve filter state when navigating back
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
-    const statusParam = searchParams.get('status');
+    const urlSearch = searchParams.get('search');
+    const urlStatus = searchParams.get('status');
+    const urlDateFrom = searchParams.get('order_date_from');
+    const urlDateTo = searchParams.get('order_date_to');
     return {
-      search: searchParams.get('search') || undefined,
-      status: (statusParam && statusParam !== 'all') ? statusParam : undefined,
-      orderDateFrom: searchParams.get('order_date_from') || undefined,
-      orderDateTo: searchParams.get('order_date_to') || undefined,
+      search: urlSearch || undefined,
+      status: urlStatus || undefined,
+      orderDateFrom: urlDateFrom || undefined,
+      orderDateTo: urlDateTo || undefined,
     };
   });
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleFiltersChange = (newFilters: OrdersFilterParams) => {
+  // Memoize the filter change handler to prevent unnecessary re-renders
+  // and ensure stable reference for OrderFilters component
+  const handleFiltersChange = useCallback((newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
       if (
         prev.search === newFilters.search &&
@@ -242,7 +248,7 @@ function LocalOrdersPageContent() {
       }
       return newFilters;
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -456,7 +462,7 @@ function LocalOrdersPageContent() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Local Orders</h1>
-            <p className="text-gray-500 mt-2">Manage local production orders with stage tracking</p>
+            <p className="text-gray-500 mt-2">Manage local orders with detailed stage tracking</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -755,23 +761,27 @@ function LocalOrdersPageContent() {
                                   <div className="text-xs font-semibold text-slate-600 mb-3">
                                     Line Items ({lines.length}) - Production Timeline
                                   </div>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[1200px] text-xs">
+                                  <div>
+                                    {/* Scroll hint */}
+                                    <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                                      <span>Scroll horizontally to view all production stages →</span>
+                                    </div>
+                                    <table className="w-full text-xs min-w-[1600px]">
                                       <thead>
                                         <tr className="text-slate-600 bg-slate-100/50">
-                                          <th className="py-2 px-2 text-left font-semibold">Style / Color</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Qty</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Stage</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Yarn Rcvd</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Knit Start</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Knit Done</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Dye Start</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Dye Done</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Cut Start</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Cut Done</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Sew Start</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Sew Done</th>
-                                          <th className="py-2 px-2 text-left font-semibold">Ex-Factory</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[160px]">Style / Color</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Qty</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[110px]">Stage</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Yarn Rcvd</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Knit Start</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Knit Done</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Dye Start</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Dye Done</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Cut Start</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Cut Done</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Sew Start</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Sew Done</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Ex-Factory</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -782,7 +792,7 @@ function LocalOrdersPageContent() {
                                               key={line.id} 
                                               className="border-t border-slate-200 hover:bg-slate-50/80"
                                             >
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[160px]">
                                                 <div className="flex flex-wrap items-center gap-1">
                                                   <Badge className="bg-indigo-100 text-indigo-700 text-xs">
                                                     {line.styleNumber || '-'}
@@ -794,50 +804,50 @@ function LocalOrdersPageContent() {
                                                   )}
                                                 </div>
                                               </td>
-                                              <td className="py-2 px-2">{line.quantity?.toLocaleString() || '-'}</td>
-                                              <td className="py-2 px-2">
-                                                <Badge className={`${getStageBadgeClass(lineStage)} border text-xs`}>
+                                              <td className="py-2 px-3 min-w-[90px]">{line.quantity?.toLocaleString() || '-'}</td>
+                                              <td className="py-2 px-3 min-w-[110px]">
+                                                <Badge className={`${getStageBadgeClass(lineStage)} border text-xs whitespace-nowrap`}>
                                                   {lineStage}
                                                 </Badge>
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.yarnReceivedDate ? (
                                                   <span className="text-green-600 font-medium">{formatDate(line.yarnReceivedDate)}</span>
                                                 ) : (
                                                   <span className="text-gray-400">-</span>
                                                 )}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.knittingStartDate ? formatDate(line.knittingStartDate) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.knittingCompleteDate ? (
                                                   <span className="text-blue-600 font-medium">{formatDate(line.knittingCompleteDate)}</span>
                                                 ) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.dyeingStartDate ? formatDate(line.dyeingStartDate) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.dyeingCompleteDate ? (
                                                   <span className="text-purple-600 font-medium">{formatDate(line.dyeingCompleteDate)}</span>
                                                 ) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.cuttingStartDate ? formatDate(line.cuttingStartDate) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.cuttingCompleteDate ? formatDate(line.cuttingCompleteDate) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.sewingInputDate ? formatDate(line.sewingInputDate) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.sewingFinishDate ? (
                                                   <span className="text-green-600 font-medium">{formatDate(line.sewingFinishDate)}</span>
                                                 ) : '-'}
                                               </td>
-                                              <td className="py-2 px-2">
+                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
                                                 {line.exFactoryDate ? (
                                                   <span className="text-green-700 font-bold">{formatDate(line.exFactoryDate)}</span>
                                                 ) : '-'}
@@ -891,19 +901,5 @@ function LocalOrdersPageContent() {
         </Dialog>
       </div>
     </DashboardLayout>
-  );
-}
-
-export default function LocalOrdersPage() {
-  return (
-    <Suspense fallback={
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Loading...</p>
-        </div>
-      </DashboardLayout>
-    }>
-      <LocalOrdersPageContent />
-    </Suspense>
   );
 }

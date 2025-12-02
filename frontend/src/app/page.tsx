@@ -83,10 +83,10 @@ export default function HomePage() {
       gradient: 'from-emerald-500 to-green-500'
     },
     { 
-      name: 'Production', 
+      name: 'Local Orders', 
       href: '/production', 
       icon: Factory,
-      description: 'Production metrics',
+      description: 'Local Orders metrics',
       gradient: 'from-orange-500 to-amber-500'
     },
     { 
@@ -195,7 +195,7 @@ export default function HomePage() {
             <Sparkles className="h-8 w-8 text-indigo-600" />
           </div>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Your all-in-one platform for managing orders, production, and operations
+            Your all-in-one platform for managing foreign orders, local orders, and operations
           </p>
         </div>
 
