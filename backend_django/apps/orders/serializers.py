@@ -2,6 +2,7 @@
 Orders serializers
 """
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory
 from apps.authentication.serializers import UserSerializer
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
@@ -1214,3 +1215,25 @@ class ApprovalHistorySerializer(serializers.ModelSerializer):
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }
+
+
+class ApprovalHistoryUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for updating approval history entries.
+    Accepts camelCase from frontend and maps to snake_case internally.
+    """
+    status = serializers.ChoiceField(
+        choices=['submission', 'resubmission', 'approved', 'rejected'],
+        required=False
+    )
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    # customTimestamp accepts ISO format datetime string
+    customTimestamp = serializers.DateTimeField(required=False, allow_null=True)
+    # changedByName allows updating the approver name (for corrections)
+    changedByName = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
+    def validate_customTimestamp(self, value):
+        """Validate timestamp is not in the future"""
+        if value and value > timezone.now():
+            raise serializers.ValidationError("Timestamp cannot be in the future")
+        return value

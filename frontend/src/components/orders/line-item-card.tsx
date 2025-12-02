@@ -25,6 +25,7 @@ interface LineItemCardProps {
   };
   orderId?: string;
   onClick?: () => void;
+  onRefresh?: () => void; // Callback to refresh parent data when approval stages are modified
 }
 
 const getStatusBadgeClass = (status: string) => {
@@ -77,7 +78,7 @@ const getETDUrgency = (etdDate?: string): { text: string; color: string; days: n
   }
 };
 
-export function LineItemCard({ line, orderId, onClick }: LineItemCardProps) {
+export function LineItemCard({ line, orderId, onClick, onRefresh }: LineItemCardProps) {
   const [showApprovalTimeline, setShowApprovalTimeline] = useState(false);
   const urgency = getETDUrgency(line.etd);
   
@@ -194,6 +195,7 @@ export function LineItemCard({ line, orderId, onClick }: LineItemCardProps) {
         orderId={orderId}
         lineId={line.id}
         lineLabel={lineLabel}
+        onRefresh={onRefresh}
       />
     )}
   </>

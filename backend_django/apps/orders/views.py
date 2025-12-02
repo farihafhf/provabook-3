@@ -16,7 +16,7 @@ from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
     OrderListSerializer, OrderAlertSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
-    StageChangeSerializer, DocumentSerializer
+    StageChangeSerializer, DocumentSerializer, ApprovalHistorySerializer, ApprovalHistoryUpdateSerializer
 )
 from .filters import OrderFilter
 from .utils.export import generate_orders_excel, generate_purchase_order_pdf, generate_tna_excel
@@ -611,6 +611,111 @@ class OrderViewSet(viewsets.ModelViewSet):
         }
         
         return Response(response_data)
+
+    @action(detail=True, methods=['patch'], url_path='approval-history/(?P<history_id>[^/.]+)')
+    def update_approval_history(self, request, pk=None, history_id=None):
+        """
+        PATCH /orders/{id}/approval-history/{history_id}/
+        Update an approval history entry (date/time, status, notes)
+        
+        Request body:
+        {
+            "status": "approved" (optional),
+            "notes": "some notes" (optional),
+            "customTimestamp": "2024-01-15T10:30:00Z" (optional)
+        }
+        """
+        order = self.get_object()
+        
+        try:
+            history_entry = ApprovalHistory.objects.get(id=history_id, order=order)
+        except ApprovalHistory.DoesNotExist:
+            return Response(
+                {'error': 'Approval history entry not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = ApprovalHistoryUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Update fields if provided
+        if 'status' in serializer.validated_data:
+            history_entry.status = serializer.validated_data['status']
+            
+            # Also update the line's approval_status if this is a line-level approval
+            if history_entry.order_line:
+                order_line = history_entry.order_line
+                if not order_line.approval_status:
+                    order_line.approval_status = {}
+                order_line.approval_status[history_entry.approval_type] = serializer.validated_data['status']
+                order_line.save(update_fields=['approval_status', 'updated_at'])
+        
+        if 'notes' in serializer.validated_data:
+            history_entry.notes = serializer.validated_data['notes']
+        
+        history_entry.save()
+        
+        # Update created_at if custom timestamp provided
+        if 'customTimestamp' in serializer.validated_data and serializer.validated_data['customTimestamp']:
+            ApprovalHistory.objects.filter(pk=history_entry.pk).update(
+                created_at=serializer.validated_data['customTimestamp']
+            )
+            history_entry.refresh_from_db()
+        
+        response_serializer = ApprovalHistorySerializer(history_entry)
+        return Response(response_serializer.data)
+
+    @action(detail=True, methods=['delete'], url_path='approval-history/(?P<history_id>[^/.]+)/delete')
+    def delete_approval_history(self, request, pk=None, history_id=None):
+        """
+        DELETE /orders/{id}/approval-history/{history_id}/delete/
+        Delete an approval history entry
+        
+        This also updates the line's current approval_status to the previous
+        status in the history, or removes it if no previous entries exist.
+        """
+        order = self.get_object()
+        
+        try:
+            history_entry = ApprovalHistory.objects.get(id=history_id, order=order)
+        except ApprovalHistory.DoesNotExist:
+            return Response(
+                {'error': 'Approval history entry not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        order_line = history_entry.order_line
+        approval_type = history_entry.approval_type
+        
+        # Delete the entry
+        history_entry.delete()
+        
+        # Update the line's approval_status to reflect the previous state
+        if order_line:
+            # Find the most recent remaining history entry for this approval type
+            previous_entry = ApprovalHistory.objects.filter(
+                order=order,
+                order_line=order_line,
+                approval_type=approval_type
+            ).order_by('-created_at').first()
+            
+            if not order_line.approval_status:
+                order_line.approval_status = {}
+            
+            if previous_entry:
+                # Set to previous status
+                order_line.approval_status[approval_type] = previous_entry.status
+            else:
+                # No history left, remove the approval status
+                if approval_type in order_line.approval_status:
+                    del order_line.approval_status[approval_type]
+            
+            order_line.save(update_fields=['approval_status', 'updated_at'])
+            
+            # Aggregate line approvals to order level
+            self._aggregate_line_approvals_to_order(order, approval_type)
+        
+        return Response({'message': 'Approval history entry deleted successfully'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], url_path='download-po')
     def download_po(self, request, pk=None):

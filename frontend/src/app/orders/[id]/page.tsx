@@ -1349,6 +1349,7 @@ export default function OrderDetailPage() {
                             });
                             setShowLineItemSheet(true);
                           }}
+                          onRefresh={fetchOrder}
                         />
                       )) : null
                     )}

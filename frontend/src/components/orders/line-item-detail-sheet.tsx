@@ -204,9 +204,6 @@ export function LineItemDetailSheet({
     const { approvalType, newStatus } = pendingApproval;
     const label = `${line.styleNumber || ''} ${line.colorCode || ''} ${line.cadCode || ''}`.trim();
     
-    // Update local state immediately
-    setSelectedApprovals(prev => ({ ...prev, [approvalType]: newStatus }));
-    
     // Build custom timestamp if user wants to use one
     let customTimestamp: string | undefined;
     if (useCustomTimestamp && customDate && customTime) {
@@ -217,6 +214,11 @@ export function LineItemDetailSheet({
     
     // Update the approval with optional custom timestamp
     await onApprovalChange(approvalType, newStatus, line.id, label, customTimestamp);
+    
+    // Reset the dropdown back to 'default' after successful submission
+    // This allows the user to add multiple consecutive entries of the same status
+    // (e.g., multiple "Submission" entries for Quality on different dates)
+    setSelectedApprovals(prev => ({ ...prev, [approvalType]: 'default' }));
   };
 
   // Called when user cancels the approval change

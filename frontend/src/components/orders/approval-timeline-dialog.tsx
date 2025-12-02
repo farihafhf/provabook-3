@@ -6,11 +6,19 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw, Calendar, Ship, Plane } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, CheckCircle2, XCircle, Clock, RotateCcw, Calendar, Ship, Plane, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ApprovalHistoryItem {
   id: string;
@@ -39,6 +47,7 @@ interface ApprovalTimelineDialogProps {
   orderId: string;
   lineId: string;
   lineLabel: string;
+  onRefresh?: () => void; // Callback to refresh parent data when approval stages are modified
 }
 
 const getStatusIcon = (status: string) => {
@@ -107,9 +116,25 @@ export function ApprovalTimelineDialog({
   orderId,
   lineId,
   lineLabel,
+  onRefresh,
 }: ApprovalTimelineDialogProps) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+  
+  // Edit dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+  const [editStatus, setEditStatus] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  
+  // Delete dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState<TimelineEvent | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (open && orderId && lineId) {
@@ -165,7 +190,104 @@ export function ApprovalTimelineDialog({
     }
   };
 
+  // Open edit dialog
+  const handleOpenEdit = (event: TimelineEvent) => {
+    setEditingEvent(event);
+    setEditStatus(event.status || '');
+    setEditNotes(event.notes || '');
+    
+    // Parse the date/time from createdAt
+    const eventDate = new Date(event.date);
+    setEditDate(eventDate.toISOString().split('T')[0]);
+    setEditTime(eventDate.toTimeString().slice(0, 5));
+    
+    setShowEditDialog(true);
+  };
+
+  // Save edit
+  const handleSaveEdit = async () => {
+    if (!editingEvent) return;
+    
+    setSaving(true);
+    try {
+      const customTimestamp = `${editDate}T${editTime}:00`;
+      
+      await api.patch(`/orders/${orderId}/approval-history/${editingEvent.id}/`, {
+        status: editStatus,
+        notes: editNotes,
+        customTimestamp,
+      });
+      
+      toast({
+        title: 'Success',
+        description: 'Approval stage updated successfully',
+      });
+      
+      // Refresh the timeline
+      await fetchApprovalHistory();
+      
+      // Notify parent to refresh
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      setShowEditDialog(false);
+      setEditingEvent(null);
+    } catch (error: any) {
+      console.error('Failed to update approval history:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update approval stage',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Open delete confirmation
+  const handleOpenDelete = (event: TimelineEvent) => {
+    setDeletingEvent(event);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!deletingEvent) return;
+    
+    setDeleting(true);
+    try {
+      await api.delete(`/orders/${orderId}/approval-history/${deletingEvent.id}/delete/`);
+      
+      toast({
+        title: 'Success',
+        description: 'Approval stage deleted successfully',
+      });
+      
+      // Refresh the timeline
+      await fetchApprovalHistory();
+      
+      // Notify parent to refresh
+      if (onRefresh) {
+        onRefresh();
+      }
+      
+      setShowDeleteDialog(false);
+      setDeletingEvent(null);
+    } catch (error: any) {
+      console.error('Failed to delete approval history:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to delete approval stage',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -240,9 +362,34 @@ export function ApprovalTimelineDialog({
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Calendar className="h-4 w-4" />
-                            <span>{formatDate(event.date)}</span>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Calendar className="h-4 w-4" />
+                              <span>{formatDate(event.date)}</span>
+                            </div>
+                            {/* Edit/Delete buttons for approval events only */}
+                            {isApproval && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                  onClick={() => handleOpenEdit(event)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-red-600 hover:text-red-800 hover:bg-red-50"
+                                  onClick={() => handleOpenDelete(event)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                                  Delete
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -289,5 +436,136 @@ export function ApprovalTimelineDialog({
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Edit Dialog */}
+    <Dialog open={showEditDialog} onOpenChange={(open) => !open && setShowEditDialog(false)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Pencil className="h-5 w-5 text-blue-600" />
+            Edit Approval Stage
+          </DialogTitle>
+          <DialogDescription>
+            {editingEvent && (
+              <>Modify the {formatApprovalType(editingEvent.approvalType!)} approval entry</>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="editStatus">Status</Label>
+            <Select value={editStatus} onValueChange={setEditStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="submission">Submission</SelectItem>
+                <SelectItem value="resubmission">Re-submission</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Date/Time */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="editDate">Date</Label>
+              <Input
+                id="editDate"
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editTime">Time</Label>
+              <Input
+                id="editTime"
+                type="time"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="editNotes">Notes (optional)</Label>
+            <Textarea
+              id="editNotes"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              placeholder="Add any notes..."
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveEdit} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <Dialog open={showDeleteDialog} onOpenChange={(open) => !open && setShowDeleteDialog(false)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <Trash2 className="h-5 w-5" />
+            Delete Approval Stage
+          </DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this approval entry? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+
+        {deletingEvent && (
+          <div className="py-4 px-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-gray-900">
+              {formatApprovalType(deletingEvent.approvalType!)} - {getStatusLabel(deletingEvent.status!)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {new Date(deletingEvent.date).toLocaleString()}
+            </p>
+            {deletingEvent.changedByName && (
+              <p className="text-xs text-gray-500">Changed by: {deletingEvent.changedByName}</p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setShowDeleteDialog(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleting}>
+            {deleting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
