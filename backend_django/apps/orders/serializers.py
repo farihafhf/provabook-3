@@ -882,6 +882,21 @@ class OrderListSerializer(serializers.ModelSerializer):
                     float(d.delivered_quantity) for d in line.deliveries.all()
                 )
                 
+                # Calculate line-level production entry summary using prefetched production_entries
+                line_knitting = 0
+                line_dyeing = 0
+                line_finishing = 0
+                for entry in line.production_entries.all():
+                    qty = float(entry.quantity) if entry.quantity else 0
+                    if entry.entry_type == 'knitting':
+                        line_knitting += qty
+                    elif entry.entry_type == 'dyeing':
+                        line_dyeing += qty
+                    elif entry.entry_type == 'finishing':
+                        line_finishing += qty
+                
+                line_qty = float(line.quantity) if line.quantity else 0
+                
                 line_data = {
                     'id': str(line.id),
                     'styleNumber': style.style_number,
@@ -920,6 +935,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'packingCompleteDate': line.packing_complete_date.isoformat() if line.packing_complete_date else None,
                     'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
                     'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
+                    # Line-level production entry summary (from ProductionEntry records)
+                    'productionKnitting': line_knitting,
+                    'productionDyeing': line_dyeing,
+                    'productionFinishing': line_finishing,
+                    'productionKnittingPercent': round((line_knitting / line_qty) * 100, 1) if line_qty > 0 else 0,
+                    'productionDyeingPercent': round((line_dyeing / line_qty) * 100, 1) if line_qty > 0 else 0,
+                    'productionFinishingPercent': round((line_finishing / line_qty) * 100, 1) if line_qty > 0 else 0,
                 }
                 result.append(line_data)
         

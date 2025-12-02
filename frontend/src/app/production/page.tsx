@@ -69,6 +69,13 @@ interface OrderLine {
   packingCompleteDate?: string;
   finalInspectionDate?: string;
   exFactoryDate?: string;
+  // Line-level production entry summary
+  productionKnitting?: number;
+  productionDyeing?: number;
+  productionFinishing?: number;
+  productionKnittingPercent?: number;
+  productionDyeingPercent?: number;
+  productionFinishingPercent?: number;
 }
 
 interface ProductionSummary {
@@ -101,6 +108,8 @@ interface Order {
   lines?: OrderLine[];
   orderType?: string;
   productionSummary?: ProductionSummary;
+  lcIssueDate?: string;
+  piSentDate?: string;
 }
 
 interface OrdersFilterParams {
@@ -306,7 +315,7 @@ function calculateProductionMetrics(orders: Order[]) {
   };
 }
 
-export default function LocalOrdersPage() {
+function LocalOrdersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -768,6 +777,7 @@ export default function LocalOrdersPage() {
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">Production Stage</th>
                       <th className="pb-3 font-medium">ETD</th>
+                      <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
                       <th className="pb-3 font-medium">Actions</th>
@@ -835,6 +845,13 @@ export default function LocalOrdersPage() {
                               )}
                             </td>
                             <td className="py-4">
+                              {order.merchandiserName ? (
+                                <span className="text-gray-700">{order.merchandiserName}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
                               {renderAggregatedStatus(order)}
                             </td>
                             <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
@@ -882,38 +899,26 @@ export default function LocalOrdersPage() {
                           {/* Expanded line items with production timeline */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={11} className="p-0">
+                              <td colSpan={12} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
-                                  {/* Production Summary Row */}
-                                  {order.productionSummary && (
+                                  {/* Order-level document dates (LC/PI) */}
+                                  {(order.lcIssueDate || order.piSentDate) && (
                                     <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-6 text-xs">
-                                      <span className="text-slate-600 font-medium">Production Entries:</span>
-                                      {order.productionSummary.totalKnitting > 0 && (
+                                      {order.piSentDate && (
                                         <div className="flex items-center gap-1.5">
-                                          <Scissors className="h-3 w-3 text-blue-500" />
-                                          <Badge className="bg-blue-100 text-blue-700 text-xs font-medium">
-                                            Knit: {order.productionSummary.totalKnitting.toLocaleString()} ({order.productionSummary.knittingPercent}%)
+                                          <span className="text-slate-500">PI Sent:</span>
+                                          <Badge className="bg-violet-100 text-violet-700 text-xs font-medium">
+                                            {formatDate(order.piSentDate)}
                                           </Badge>
                                         </div>
                                       )}
-                                      {order.productionSummary.totalDyeing > 0 && (
+                                      {order.lcIssueDate && (
                                         <div className="flex items-center gap-1.5">
-                                          <Droplets className="h-3 w-3 text-purple-500" />
-                                          <Badge className="bg-purple-100 text-purple-700 text-xs font-medium">
-                                            Dye: {order.productionSummary.totalDyeing.toLocaleString()} ({order.productionSummary.dyeingPercent}%)
+                                          <span className="text-slate-500">LC Issue:</span>
+                                          <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">
+                                            {formatDate(order.lcIssueDate)}
                                           </Badge>
                                         </div>
-                                      )}
-                                      {order.productionSummary.totalFinishing > 0 && (
-                                        <div className="flex items-center gap-1.5">
-                                          <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                          <Badge className="bg-green-100 text-green-700 text-xs font-medium">
-                                            Finish: {order.productionSummary.totalFinishing.toLocaleString()} ({order.productionSummary.finishingPercent}%)
-                                          </Badge>
-                                        </div>
-                                      )}
-                                      {order.productionSummary.totalKnitting === 0 && order.productionSummary.totalDyeing === 0 && order.productionSummary.totalFinishing === 0 && (
-                                        <span className="text-slate-400">No production entries recorded</span>
                                       )}
                                     </div>
                                   )}
@@ -922,22 +927,41 @@ export default function LocalOrdersPage() {
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                       <span>Line Items ({lines.length}) • Scroll horizontally to view all columns →</span>
                                     </div>
-                                    <table className="w-full text-xs min-w-[1800px]">
+                                    <table className="w-full text-xs min-w-[2100px]">
                                       <thead>
                                         <tr className="text-slate-600 bg-slate-100/50">
                                           <th className="py-2 px-3 text-left font-semibold min-w-[180px] sticky left-0 bg-slate-100/95 z-10">Style / Color / CAD</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Qty</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
+                                          {/* Production Entry Progress Columns */}
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px] bg-blue-50">
+                                            <div className="flex items-center gap-1">
+                                              <Scissors className="h-3 w-3 text-blue-500" />
+                                              <span>Knitting</span>
+                                            </div>
+                                          </th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px] bg-purple-50">
+                                            <div className="flex items-center gap-1">
+                                              <Droplets className="h-3 w-3 text-purple-500" />
+                                              <span>Dyeing</span>
+                                            </div>
+                                          </th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px] bg-green-50">
+                                            <div className="flex items-center gap-1">
+                                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                              <span>Finishing</span>
+                                            </div>
+                                          </th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Mill Price</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Stage</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px]">ETD</th>
                                           {/* Production Dates */}
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-amber-50">Yarn</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-blue-50">Knit</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-purple-50">Dye</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-sky-50">Knit Date</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-violet-50">Dye Date</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-orange-50">Cut</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-teal-50">Sew</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-green-50">Ex-Fact</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-emerald-50">Ex-Fact</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[200px]">Approval Stages</th>
                                         </tr>
                                       </thead>
@@ -1001,6 +1025,87 @@ export default function LocalOrdersPage() {
                                                 ) : (
                                                   <span className="text-slate-400">-</span>
                                                 )}
+                                              </td>
+                                              {/* Knitting Production Entry Progress */}
+                                              <td className="py-2 px-3 min-w-[100px] bg-blue-50/30">
+                                                {(() => {
+                                                  const knitting = line.productionKnitting || 0;
+                                                  const knittingPct = line.productionKnittingPercent || 0;
+                                                  const isKnitComplete = knittingPct >= 100;
+                                                  if (knitting > 0) {
+                                                    return (
+                                                      <div className="flex flex-col gap-0.5">
+                                                        <div className="flex items-baseline gap-1">
+                                                          <span className={`font-semibold text-xs ${isKnitComplete ? 'text-blue-600' : 'text-slate-700'}`}>
+                                                            {knitting.toLocaleString()}
+                                                          </span>
+                                                          <span className="text-slate-400 text-[10px]">({knittingPct}%)</span>
+                                                        </div>
+                                                        <div className="w-full bg-blue-100 rounded-full h-1">
+                                                          <div 
+                                                            className={`h-1 rounded-full ${isKnitComplete ? 'bg-blue-600' : 'bg-blue-400'}`}
+                                                            style={{ width: `${Math.min(knittingPct, 100)}%` }}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  }
+                                                  return <span className="text-blue-200">-</span>;
+                                                })()}
+                                              </td>
+                                              {/* Dyeing Production Entry Progress */}
+                                              <td className="py-2 px-3 min-w-[100px] bg-purple-50/30">
+                                                {(() => {
+                                                  const dyeing = line.productionDyeing || 0;
+                                                  const dyeingPct = line.productionDyeingPercent || 0;
+                                                  const isDyeComplete = dyeingPct >= 100;
+                                                  if (dyeing > 0) {
+                                                    return (
+                                                      <div className="flex flex-col gap-0.5">
+                                                        <div className="flex items-baseline gap-1">
+                                                          <span className={`font-semibold text-xs ${isDyeComplete ? 'text-purple-600' : 'text-slate-700'}`}>
+                                                            {dyeing.toLocaleString()}
+                                                          </span>
+                                                          <span className="text-slate-400 text-[10px]">({dyeingPct}%)</span>
+                                                        </div>
+                                                        <div className="w-full bg-purple-100 rounded-full h-1">
+                                                          <div 
+                                                            className={`h-1 rounded-full ${isDyeComplete ? 'bg-purple-600' : 'bg-purple-400'}`}
+                                                            style={{ width: `${Math.min(dyeingPct, 100)}%` }}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  }
+                                                  return <span className="text-purple-200">-</span>;
+                                                })()}
+                                              </td>
+                                              {/* Finishing Production Entry Progress */}
+                                              <td className="py-2 px-3 min-w-[100px] bg-green-50/30">
+                                                {(() => {
+                                                  const finishing = line.productionFinishing || 0;
+                                                  const finishingPct = line.productionFinishingPercent || 0;
+                                                  const isFinishComplete = finishingPct >= 100;
+                                                  if (finishing > 0) {
+                                                    return (
+                                                      <div className="flex flex-col gap-0.5">
+                                                        <div className="flex items-baseline gap-1">
+                                                          <span className={`font-semibold text-xs ${isFinishComplete ? 'text-green-600' : 'text-slate-700'}`}>
+                                                            {finishing.toLocaleString()}
+                                                          </span>
+                                                          <span className="text-slate-400 text-[10px]">({finishingPct}%)</span>
+                                                        </div>
+                                                        <div className="w-full bg-green-100 rounded-full h-1">
+                                                          <div 
+                                                            className={`h-1 rounded-full ${isFinishComplete ? 'bg-green-600' : 'bg-green-400'}`}
+                                                            style={{ width: `${Math.min(finishingPct, 100)}%` }}
+                                                          />
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  }
+                                                  return <span className="text-green-200">-</span>;
+                                                })()}
                                               </td>
                                               {/* Mill Price */}
                                               <td className="py-2 px-3 min-w-[100px]">
@@ -1189,5 +1294,22 @@ export default function LocalOrdersPage() {
         </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function LocalOrdersPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <div className="flex items-center gap-2 text-gray-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading local orders...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    }>
+      <LocalOrdersPageContent />
+    </Suspense>
   );
 }
