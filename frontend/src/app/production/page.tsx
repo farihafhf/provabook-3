@@ -830,100 +830,206 @@ export default function LocalOrdersPage() {
                           {isExpanded && lines.length > 0 && (
                             <tr>
                               <td colSpan={11} className="p-0">
-                                <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200 p-4">
-                                  <div className="text-xs font-semibold text-slate-600 mb-3">
-                                    Line Items ({lines.length}) - Production Timeline
-                                  </div>
+                                <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
+                                  {/* Production Summary Row */}
+                                  {order.productionSummary && (
+                                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-6 text-xs">
+                                      <span className="text-slate-600 font-medium">Production Entries:</span>
+                                      {order.productionSummary.totalKnitting > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <Scissors className="h-3 w-3 text-blue-500" />
+                                          <Badge className="bg-blue-100 text-blue-700 text-xs font-medium">
+                                            Knit: {order.productionSummary.totalKnitting.toLocaleString()} ({order.productionSummary.knittingPercent}%)
+                                          </Badge>
+                                        </div>
+                                      )}
+                                      {order.productionSummary.totalDyeing > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <Droplets className="h-3 w-3 text-purple-500" />
+                                          <Badge className="bg-purple-100 text-purple-700 text-xs font-medium">
+                                            Dye: {order.productionSummary.totalDyeing.toLocaleString()} ({order.productionSummary.dyeingPercent}%)
+                                          </Badge>
+                                        </div>
+                                      )}
+                                      {order.productionSummary.totalFinishing > 0 && (
+                                        <div className="flex items-center gap-1.5">
+                                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                          <Badge className="bg-green-100 text-green-700 text-xs font-medium">
+                                            Finish: {order.productionSummary.totalFinishing.toLocaleString()} ({order.productionSummary.finishingPercent}%)
+                                          </Badge>
+                                        </div>
+                                      )}
+                                      {order.productionSummary.totalKnitting === 0 && order.productionSummary.totalDyeing === 0 && order.productionSummary.totalFinishing === 0 && (
+                                        <span className="text-slate-400">No production entries recorded</span>
+                                      )}
+                                    </div>
+                                  )}
                                   <div>
                                     {/* Scroll hint */}
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                                      <span>Scroll horizontally to view all production stages →</span>
+                                      <span>Line Items ({lines.length}) • Scroll horizontally to view all columns →</span>
                                     </div>
-                                    <table className="w-full text-xs min-w-[1600px]">
+                                    <table className="w-full text-xs min-w-[1800px]">
                                       <thead>
                                         <tr className="text-slate-600 bg-slate-100/50">
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[160px]">Style / Color</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[180px] sticky left-0 bg-slate-100/95 z-10">Style / Color / CAD</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Qty</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[110px]">Stage</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Yarn Rcvd</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Knit Start</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Knit Done</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Dye Start</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Dye Done</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Cut Start</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Cut Done</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Sew Start</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Sew Done</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Ex-Factory</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Mill Price</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Stage</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px]">ETD</th>
+                                          {/* Production Dates */}
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-amber-50">Yarn</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-blue-50">Knit</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-purple-50">Dye</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-orange-50">Cut</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-teal-50">Sew</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-green-50">Ex-Fact</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {lines.map((line) => {
                                           const lineStage = deriveLineProductionStage(line);
+                                          const delivered = line.deliveredQty || 0;
+                                          const total = line.quantity || 0;
+                                          const deliveryPct = total > 0 ? Math.round((delivered / total) * 100) : 0;
+                                          const isComplete = deliveryPct >= 100;
+                                          
                                           return (
                                             <tr 
                                               key={line.id} 
-                                              className="border-t border-slate-200 hover:bg-slate-50/80"
+                                              className="border-t border-slate-200 hover:bg-slate-50/80 cursor-pointer"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                router.push(`/orders/${order.id}`);
+                                              }}
                                             >
-                                              <td className="py-2 px-3 min-w-[160px]">
+                                              {/* Style / Color / CAD */}
+                                              <td className="py-2 px-3 min-w-[180px] sticky left-0 bg-white z-10">
                                                 <div className="flex flex-wrap items-center gap-1">
                                                   <Badge className="bg-indigo-100 text-indigo-700 text-xs">
                                                     {line.styleNumber || '-'}
                                                   </Badge>
                                                   {line.colorCode && (
-                                                    <Badge className="bg-pink-100 text-pink-700 text-xs">
+                                                    <Badge className="bg-sky-100 text-sky-700 text-xs font-mono">
                                                       {line.colorCode}
+                                                    </Badge>
+                                                  )}
+                                                  {line.cadCode && (
+                                                    <Badge className="bg-amber-100 text-amber-700 text-xs font-mono">
+                                                      {line.cadCode}
                                                     </Badge>
                                                   )}
                                                 </div>
                                               </td>
-                                              <td className="py-2 px-3 min-w-[90px]">{line.quantity?.toLocaleString() || '-'}</td>
-                                              <td className="py-2 px-3 min-w-[110px]">
+                                              {/* Quantity */}
+                                              <td className="py-2 px-3 min-w-[90px]">
+                                                <span className="font-semibold">{line.quantity?.toLocaleString() || '-'}</span>
+                                                <span className="text-slate-400 ml-1 text-[10px]">{line.unit}</span>
+                                              </td>
+                                              {/* Delivered with progress */}
+                                              <td className="py-2 px-3 min-w-[90px]">
+                                                {delivered > 0 ? (
+                                                  <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-baseline gap-1">
+                                                      <span className={`font-semibold text-xs ${isComplete ? 'text-emerald-600' : 'text-slate-700'}`}>
+                                                        {delivered.toLocaleString()}
+                                                      </span>
+                                                      <span className="text-slate-400 text-[10px]">/ {total.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-200 rounded-full h-1">
+                                                      <div 
+                                                        className={`h-1 rounded-full ${isComplete ? 'bg-emerald-500' : deliveryPct > 50 ? 'bg-sky-500' : 'bg-amber-500'}`}
+                                                        style={{ width: `${Math.min(deliveryPct, 100)}%` }}
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <span className="text-slate-400">-</span>
+                                                )}
+                                              </td>
+                                              {/* Mill Price */}
+                                              <td className="py-2 px-3 min-w-[100px]">
+                                                {line.millPrice ? (
+                                                  <div className="flex flex-col">
+                                                    <span className="font-medium text-slate-700">${line.millPrice.toFixed(2)}</span>
+                                                    <span className="text-[10px] text-slate-400">
+                                                      Total: ${((line.millPrice || 0) * (line.quantity || 0)).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                                                    </span>
+                                                  </div>
+                                                ) : (
+                                                  <span className="text-slate-400">-</span>
+                                                )}
+                                              </td>
+                                              {/* Stage */}
+                                              <td className="py-2 px-3 min-w-[100px]">
                                                 <Badge className={`${getStageBadgeClass(lineStage)} border text-xs whitespace-nowrap`}>
                                                   {lineStage}
                                                 </Badge>
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.yarnReceivedDate ? (
-                                                  <span className="text-green-600 font-medium">{formatDate(line.yarnReceivedDate)}</span>
+                                              {/* ETD */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap">
+                                                {line.etd ? (
+                                                  <span className="font-medium text-slate-700">{formatDate(line.etd)}</span>
                                                 ) : (
-                                                  <span className="text-gray-400">-</span>
+                                                  <span className="text-slate-400">-</span>
                                                 )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.knittingStartDate ? formatDate(line.knittingStartDate) : '-'}
+                                              {/* Yarn - amber bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-amber-50/50">
+                                                {line.yarnReceivedDate ? (
+                                                  <span className="text-amber-700 font-medium text-[11px]">{formatDate(line.yarnReceivedDate)}</span>
+                                                ) : (
+                                                  <span className="text-amber-300">-</span>
+                                                )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
+                                              {/* Knitting - blue bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-blue-50/50">
                                                 {line.knittingCompleteDate ? (
-                                                  <span className="text-blue-600 font-medium">{formatDate(line.knittingCompleteDate)}</span>
-                                                ) : '-'}
+                                                  <span className="text-blue-700 font-medium text-[11px]">{formatDate(line.knittingCompleteDate)}</span>
+                                                ) : line.knittingStartDate ? (
+                                                  <span className="text-blue-400 text-[11px]">{formatDate(line.knittingStartDate)}</span>
+                                                ) : (
+                                                  <span className="text-blue-200">-</span>
+                                                )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.dyeingStartDate ? formatDate(line.dyeingStartDate) : '-'}
-                                              </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
+                                              {/* Dyeing - purple bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-purple-50/50">
                                                 {line.dyeingCompleteDate ? (
-                                                  <span className="text-purple-600 font-medium">{formatDate(line.dyeingCompleteDate)}</span>
-                                                ) : '-'}
+                                                  <span className="text-purple-700 font-medium text-[11px]">{formatDate(line.dyeingCompleteDate)}</span>
+                                                ) : line.dyeingStartDate ? (
+                                                  <span className="text-purple-400 text-[11px]">{formatDate(line.dyeingStartDate)}</span>
+                                                ) : (
+                                                  <span className="text-purple-200">-</span>
+                                                )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.cuttingStartDate ? formatDate(line.cuttingStartDate) : '-'}
+                                              {/* Cutting - orange bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-orange-50/50">
+                                                {line.cuttingCompleteDate ? (
+                                                  <span className="text-orange-700 font-medium text-[11px]">{formatDate(line.cuttingCompleteDate)}</span>
+                                                ) : line.cuttingStartDate ? (
+                                                  <span className="text-orange-400 text-[11px]">{formatDate(line.cuttingStartDate)}</span>
+                                                ) : (
+                                                  <span className="text-orange-200">-</span>
+                                                )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.cuttingCompleteDate ? formatDate(line.cuttingCompleteDate) : '-'}
-                                              </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
-                                                {line.sewingInputDate ? formatDate(line.sewingInputDate) : '-'}
-                                              </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
+                                              {/* Sewing - teal bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-teal-50/50">
                                                 {line.sewingFinishDate ? (
-                                                  <span className="text-green-600 font-medium">{formatDate(line.sewingFinishDate)}</span>
-                                                ) : '-'}
+                                                  <span className="text-teal-700 font-medium text-[11px]">{formatDate(line.sewingFinishDate)}</span>
+                                                ) : line.sewingInputDate ? (
+                                                  <span className="text-teal-400 text-[11px]">{formatDate(line.sewingInputDate)}</span>
+                                                ) : (
+                                                  <span className="text-teal-200">-</span>
+                                                )}
                                               </td>
-                                              <td className="py-2 px-3 min-w-[100px] whitespace-nowrap">
+                                              {/* Ex-Factory - green bg */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-green-50/50">
                                                 {line.exFactoryDate ? (
-                                                  <span className="text-green-700 font-bold">{formatDate(line.exFactoryDate)}</span>
-                                                ) : '-'}
+                                                  <span className="text-green-700 font-bold text-[11px]">{formatDate(line.exFactoryDate)}</span>
+                                                ) : (
+                                                  <span className="text-green-200">-</span>
+                                                )}
                                               </td>
                                             </tr>
                                           );

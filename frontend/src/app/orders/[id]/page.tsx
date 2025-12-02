@@ -480,7 +480,7 @@ export default function OrderDetailPage() {
     try {
       const payload = {
         order: order?.id,
-        orderLine: productionFormData.lineItem || undefined,
+        orderLine: productionFormData.lineItem && productionFormData.lineItem !== 'general' ? productionFormData.lineItem : undefined,
         entryType: productionFormData.entryType,
         entryDate: productionFormData.entryDate,
         quantity: parseFloat(productionFormData.quantity),
@@ -2691,7 +2691,7 @@ export default function OrderDetailPage() {
                       <SelectValue placeholder="General (applies to whole order)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">General (applies to whole order)</SelectItem>
+                      <SelectItem value="general">General (applies to whole order)</SelectItem>
                       {order.styles.flatMap((style) =>
                         (style.lines || []).map((line) => {
                           const lineLabel = [
