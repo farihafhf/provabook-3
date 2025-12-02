@@ -607,6 +607,8 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">ETD</th>
+                      <th className="pb-3 font-medium">PI Sent</th>
+                      <th className="pb-3 font-medium">LC Issue</th>
                       <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
@@ -669,6 +671,20 @@ function OrdersPageContent() {
                               )}
                             </td>
                             <td className="py-4">
+                              {order.piSentDate ? (
+                                <span className="text-violet-600 font-medium">{formatDate(order.piSentDate)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
+                              {order.lcIssueDate ? (
+                                <span className="text-emerald-600 font-medium">{formatDate(order.lcIssueDate)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
                               {order.merchandiserName ? (
                                 <span className="text-gray-700">{order.merchandiserName}</span>
                               ) : (
@@ -723,29 +739,8 @@ function OrdersPageContent() {
                           {/* Expanded line items */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={11} className="p-0">
+                              <td colSpan={13} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
-                                  {/* Order-level document dates */}
-                                  {(order.lcIssueDate || order.piSentDate) && (
-                                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-6 text-xs">
-                                      {order.piSentDate && (
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-slate-500">PI Sent:</span>
-                                          <Badge className="bg-violet-100 text-violet-700 text-xs font-medium">
-                                            {formatDate(order.piSentDate)}
-                                          </Badge>
-                                        </div>
-                                      )}
-                                      {order.lcIssueDate && (
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-slate-500">LC Issue:</span>
-                                          <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">
-                                            {formatDate(order.lcIssueDate)}
-                                          </Badge>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
                                   <div 
                                     className="scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
                                     tabIndex={0}
@@ -754,7 +749,7 @@ function OrdersPageContent() {
                                   <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                     <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
                                   </div>
-                                  <table className="w-full min-w-[1400px]">
+                                  <table className="w-full min-w-[1600px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
@@ -763,6 +758,8 @@ function OrdersPageContent() {
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-violet-50">PI Sent</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-emerald-50">LC Issue</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
                                       </tr>
                                     </thead>
@@ -868,6 +865,24 @@ function OrdersPageContent() {
                                               <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
                                             ) : (
                                               <span className="text-slate-400 text-xs">-</span>
+                                            )}
+                                          </td>
+                                          
+                                          {/* PI Sent - Order level, same for all lines */}
+                                          <td className="py-3 px-3 min-w-[90px] bg-violet-50/30">
+                                            {order.piSentDate ? (
+                                              <span className="text-violet-600 font-medium text-xs">{formatDate(order.piSentDate)}</span>
+                                            ) : (
+                                              <span className="text-violet-200">-</span>
+                                            )}
+                                          </td>
+                                          
+                                          {/* LC Issue - Order level, same for all lines */}
+                                          <td className="py-3 px-3 min-w-[90px] bg-emerald-50/30">
+                                            {order.lcIssueDate ? (
+                                              <span className="text-emerald-600 font-medium text-xs">{formatDate(order.lcIssueDate)}</span>
+                                            ) : (
+                                              <span className="text-emerald-200">-</span>
                                             )}
                                           </td>
                                           

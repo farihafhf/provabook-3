@@ -777,6 +777,8 @@ function LocalOrdersPageContent() {
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">Production Stage</th>
                       <th className="pb-3 font-medium">ETD</th>
+                      <th className="pb-3 font-medium">PI Sent</th>
+                      <th className="pb-3 font-medium">LC Issue</th>
                       <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
@@ -845,6 +847,20 @@ function LocalOrdersPageContent() {
                               )}
                             </td>
                             <td className="py-4">
+                              {order.piSentDate ? (
+                                <span className="text-violet-600 font-medium">{formatDate(order.piSentDate)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
+                              {order.lcIssueDate ? (
+                                <span className="text-emerald-600 font-medium">{formatDate(order.lcIssueDate)}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4">
                               {order.merchandiserName ? (
                                 <span className="text-gray-700">{order.merchandiserName}</span>
                               ) : (
@@ -899,29 +915,8 @@ function LocalOrdersPageContent() {
                           {/* Expanded line items with production timeline */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={12} className="p-0">
+                              <td colSpan={14} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
-                                  {/* Order-level document dates (LC/PI) */}
-                                  {(order.lcIssueDate || order.piSentDate) && (
-                                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-6 text-xs">
-                                      {order.piSentDate && (
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-slate-500">PI Sent:</span>
-                                          <Badge className="bg-violet-100 text-violet-700 text-xs font-medium">
-                                            {formatDate(order.piSentDate)}
-                                          </Badge>
-                                        </div>
-                                      )}
-                                      {order.lcIssueDate && (
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-slate-500">LC Issue:</span>
-                                          <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">
-                                            {formatDate(order.lcIssueDate)}
-                                          </Badge>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
                                   <div>
                                     {/* Scroll hint */}
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
@@ -955,13 +950,16 @@ function LocalOrdersPageContent() {
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Mill Price</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Stage</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px]">ETD</th>
+                                          {/* PI and LC columns */}
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-violet-50">PI Sent</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-emerald-50">LC Issue</th>
                                           {/* Production Dates */}
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-amber-50">Yarn</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-sky-50">Knit Date</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-violet-50">Dye Date</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-indigo-50">Dye Date</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-orange-50">Cut</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-teal-50">Sew</th>
-                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-emerald-50">Ex-Fact</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-lime-50">Ex-Fact</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[200px]">Approval Stages</th>
                                         </tr>
                                       </thead>
@@ -1132,6 +1130,22 @@ function LocalOrdersPageContent() {
                                                   <span className="font-medium text-slate-700">{formatDate(line.etd)}</span>
                                                 ) : (
                                                   <span className="text-slate-400">-</span>
+                                                )}
+                                              </td>
+                                              {/* PI Sent - Order level */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-violet-50/30">
+                                                {order.piSentDate ? (
+                                                  <span className="text-violet-600 font-medium text-[11px]">{formatDate(order.piSentDate)}</span>
+                                                ) : (
+                                                  <span className="text-violet-200">-</span>
+                                                )}
+                                              </td>
+                                              {/* LC Issue - Order level */}
+                                              <td className="py-2 px-3 min-w-[85px] whitespace-nowrap bg-emerald-50/30">
+                                                {order.lcIssueDate ? (
+                                                  <span className="text-emerald-600 font-medium text-[11px]">{formatDate(order.lcIssueDate)}</span>
+                                                ) : (
+                                                  <span className="text-emerald-200">-</span>
                                                 )}
                                               </td>
                                               {/* Yarn - amber bg */}
