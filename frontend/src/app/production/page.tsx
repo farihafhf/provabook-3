@@ -462,7 +462,7 @@ export default function LocalOrdersPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Local Orders</h1>
-            <p className="text-gray-500 mt-2">Manage local production orders with stage tracking</p>
+            <p className="text-gray-500 mt-2">Manage local orders with detailed stage tracking</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -761,12 +761,12 @@ export default function LocalOrdersPage() {
                                   <div className="text-xs font-semibold text-slate-600 mb-3">
                                     Line Items ({lines.length}) - Production Timeline
                                   </div>
-                                  <div className="overflow-x-auto">
+                                  <div>
                                     {/* Scroll hint */}
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                       <span>Scroll horizontally to view all production stages →</span>
                                     </div>
-                                    <table className="w-full text-xs" style={{ minWidth: '1600px' }}>
+                                    <table className="w-full text-xs min-w-[1600px]">
                                       <thead>
                                         <tr className="text-slate-600 bg-slate-100/50">
                                           <th className="py-2 px-3 text-left font-semibold min-w-[160px]">Style / Color</th>

@@ -117,33 +117,10 @@ function OrdersPageContent() {
     }
     return new Set();
   });
-  const scrollContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const hasRestoredScroll = useRef(false);
   const isInitialMount = useRef(true);
   // formData, users, taskAssignment removed - now handled by CreateOrderDialog component
-
-  // Setup wheel event listener with { passive: false } to allow preventDefault
-  const setupScrollHandler = useCallback((element: HTMLDivElement | null, orderId: string) => {
-    if (element) {
-      scrollContainerRefs.current.set(orderId, element);
-      
-      const handleWheel = (e: WheelEvent) => {
-        // Allow horizontal scroll with shift key OR when scrolling horizontally on touchpad
-        if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-          e.preventDefault();
-          element.scrollLeft += e.shiftKey ? e.deltaY : e.deltaX;
-        }
-      };
-      
-      element.addEventListener('wheel', handleWheel, { passive: false });
-      
-      // Store cleanup function
-      (element as any)._wheelCleanup = () => {
-        element.removeEventListener('wheel', handleWheel);
-      };
-    }
-  }, []);
 
   // Memoize the filter change handler to prevent unnecessary re-renders
   // and ensure stable reference for OrderFilters component
@@ -769,25 +746,14 @@ function OrdersPageContent() {
                                     </div>
                                   )}
                                   <div 
-                                    className="overflow-x-auto scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
+                                    className="scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
                                     tabIndex={0}
-                                    ref={(el) => setupScrollHandler(el, order.id)}
-                                    onKeyDown={(e) => {
-                                      const container = e.currentTarget;
-                                      if (e.key === 'ArrowRight') {
-                                        e.preventDefault();
-                                        container.scrollLeft += 150;
-                                      } else if (e.key === 'ArrowLeft') {
-                                        e.preventDefault();
-                                        container.scrollLeft -= 150;
-                                      }
-                                    }}
                                   >
                                   {/* Scroll hint */}
                                   <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                     <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
                                   </div>
-                                  <table className="w-full" style={{ minWidth: '1400px' }}>
+                                  <table className="w-full min-w-[1400px]">
                                     <thead>
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
