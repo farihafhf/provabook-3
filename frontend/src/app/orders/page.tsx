@@ -72,6 +72,27 @@ interface OrdersCache {
   timestamp: number;
 }
 
+type ApiError = {
+  response?: { data?: { message?: string } };
+  message?: string;
+};
+
+const getErrorMessage = (error: unknown, defaultMessage: string): string => {
+  if (typeof error === 'object' && error !== null) {
+    const maybeError = error as ApiError;
+    if (typeof maybeError.response?.data?.message === 'string') {
+      return maybeError.response.data.message;
+    }
+    if (typeof maybeError.message === 'string') {
+      return maybeError.message;
+    }
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return defaultMessage;
+};
+
 // Generate a cache key from filters
 function getFilterKey(filters: OrdersFilterParams): string {
   return JSON.stringify({
@@ -281,9 +302,9 @@ function OrdersPageContent() {
       }
 
       downloadBlob(response.data, filename);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to export orders:', error);
-      const message = error.response?.data?.message || 'Failed to export orders';
+      const message = getErrorMessage(error, 'Failed to export orders');
       toast({
         title: 'Error',
         description: message,
@@ -489,10 +510,10 @@ function OrdersPageContent() {
       
       // Refresh orders list with current filters
       await fetchOrders(filters);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting order:', error);
       
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete order';
+      const errorMessage = getErrorMessage(error, 'Failed to delete order');
       
       toast({
         title: 'Error',

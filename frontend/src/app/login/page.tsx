@@ -66,10 +66,25 @@ export default function LoginPage() {
 
         router.push('/');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      let description = isSignUp ? 'Failed to create account' : 'Invalid credentials';
+
+      if (typeof error === 'object' && error !== null) {
+        const maybeError = error as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+
+        if (typeof maybeError.response?.data?.message === 'string') {
+          description = maybeError.response.data.message;
+        } else if (typeof maybeError.message === 'string') {
+          description = maybeError.message;
+        }
+      }
+
       toast({
         title: isSignUp ? 'Registration failed' : 'Login failed',
-        description: error.response?.data?.message || (isSignUp ? 'Failed to create account' : 'Invalid credentials'),
+        description,
         variant: 'destructive',
       });
     } finally {
