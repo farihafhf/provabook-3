@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useRef, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -204,8 +204,9 @@ function calculateProductionMetrics(orders: Order[]) {
   };
 }
 
-export default function LocalOrdersPage() {
+function LocalOrdersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   
@@ -216,7 +217,15 @@ export default function LocalOrdersPage() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState<OrdersFilterParams>({});
+  const [filters, setFilters] = useState<OrdersFilterParams>(() => {
+    const statusParam = searchParams.get('status');
+    return {
+      search: searchParams.get('search') || undefined,
+      status: (statusParam && statusParam !== 'all') ? statusParam : undefined,
+      orderDateFrom: searchParams.get('order_date_from') || undefined,
+      orderDateTo: searchParams.get('order_date_to') || undefined,
+    };
+  });
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const mainScrollRef = useRef<HTMLDivElement>(null);
@@ -882,5 +891,19 @@ export default function LocalOrdersPage() {
         </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function LocalOrdersPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <p>Loading...</p>
+        </div>
+      </DashboardLayout>
+    }>
+      <LocalOrdersPageContent />
+    </Suspense>
   );
 }
