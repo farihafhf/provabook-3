@@ -82,9 +82,12 @@ class Document(TimestampedModel):
         return None
     
     def delete(self, *args, **kwargs):
-        """Override delete to also delete the file from storage"""
+        """Override delete to also delete the file from storage (R2 or local)"""
         if self.file:
-            # Delete the file from storage
-            if os.path.isfile(self.file.path):
-                os.remove(self.file.path)
+            try:
+                # Delete the file from storage (works for both local and R2)
+                self.file.delete(save=False)
+            except Exception:
+                # If file deletion fails, continue with model deletion
+                pass
         super().delete(*args, **kwargs)

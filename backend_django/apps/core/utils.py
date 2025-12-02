@@ -2,56 +2,105 @@
 Utility functions
 """
 import os
-from google.cloud import storage
+import uuid
+import boto3
+from botocore.exceptions import ClientError
 from django.conf import settings
 
 
-def upload_file_to_gcs(file, folder='documents'):
+def get_r2_client():
     """
-    Upload a file to Google Cloud Storage
+    Get a boto3 S3 client configured for Cloudflare R2
+    
+    Returns:
+        boto3.client: S3 client for R2
+    """
+    if not settings.R2_ACCESS_KEY_ID or not settings.R2_SECRET_ACCESS_KEY or not settings.R2_ENDPOINT_URL:
+        raise ValueError("Cloudflare R2 credentials not configured")
+    
+    return boto3.client(
+        's3',
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        region_name='auto',
+    )
+
+
+def upload_file_to_r2(file, folder='documents'):
+    """
+    Upload a file to Cloudflare R2
     
     Args:
         file: The file object to upload
         folder: The folder path in the bucket
         
     Returns:
-        str: Public URL of the uploaded file
+        str: The key (path) of the uploaded file in the bucket
     """
-    if not settings.GCS_CREDENTIALS_PATH or not os.path.exists(settings.GCS_CREDENTIALS_PATH):
-        raise ValueError("Google Cloud Storage credentials not configured")
-    
-    # Initialize GCS client
-    storage_client = storage.Client.from_service_account_json(settings.GCS_CREDENTIALS_PATH)
-    bucket = storage_client.bucket(settings.GCS_BUCKET_NAME)
+    client = get_r2_client()
     
     # Generate unique filename
-    filename = f"{folder}/{file.name}"
-    blob = bucket.blob(filename)
+    ext = os.path.splitext(file.name)[1]
+    unique_filename = f"{uuid.uuid4()}{ext}"
+    key = f"{folder}/{unique_filename}"
     
     # Upload file
-    blob.upload_from_file(file, content_type=file.content_type)
+    client.upload_fileobj(
+        file,
+        settings.R2_BUCKET_NAME,
+        key,
+        ExtraArgs={'ContentType': getattr(file, 'content_type', 'application/octet-stream')}
+    )
     
-    # Make the file publicly accessible (optional)
-    # blob.make_public()
-    
-    # Return the public URL
-    return blob.public_url
+    return key
 
 
-def delete_file_from_gcs(file_path):
+def delete_file_from_r2(file_path):
     """
-    Delete a file from Google Cloud Storage
+    Delete a file from Cloudflare R2
     
     Args:
-        file_path: The path to the file in the bucket
+        file_path: The key (path) to the file in the bucket
     """
-    if not settings.GCS_CREDENTIALS_PATH or not os.path.exists(settings.GCS_CREDENTIALS_PATH):
-        raise ValueError("Google Cloud Storage credentials not configured")
+    client = get_r2_client()
     
-    storage_client = storage.Client.from_service_account_json(settings.GCS_CREDENTIALS_PATH)
-    bucket = storage_client.bucket(settings.GCS_BUCKET_NAME)
-    blob = bucket.blob(file_path)
-    blob.delete()
+    try:
+        client.delete_object(
+            Bucket=settings.R2_BUCKET_NAME,
+            Key=file_path
+        )
+    except ClientError as e:
+        # Log error but don't raise - file might already be deleted
+        print(f"Warning: Could not delete file from R2: {e}")
+
+
+def get_r2_file_url(file_path, expiration=3600):
+    """
+    Generate a presigned URL for accessing a file in R2
+    
+    Args:
+        file_path: The key (path) to the file in the bucket
+        expiration: URL expiration time in seconds (default 1 hour)
+        
+    Returns:
+        str: Presigned URL for the file
+    """
+    client = get_r2_client()
+    
+    try:
+        url = client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': settings.R2_BUCKET_NAME,
+                'Key': file_path
+            },
+            ExpiresIn=expiration
+        )
+        return url
+    except ClientError as e:
+        print(f"Error generating presigned URL: {e}")
+        return None
 
 
 def validate_file(file):

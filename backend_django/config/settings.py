@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'drf_yasg',
+    'storages',
     
     # Local apps
     'apps.authentication',
@@ -141,11 +142,21 @@ APPEND_SLASH = False
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Default storages configuration (used when R2 is not configured)
+# This will be overwritten below if R2 credentials are provided
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -212,10 +223,40 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Google Cloud Storage Configuration
-GCS_CREDENTIALS_PATH = env('GOOGLE_APPLICATION_CREDENTIALS', default='')
-GCS_BUCKET_NAME = env('GCS_BUCKET_NAME', default='provabook-documents')
-GCS_PROJECT_ID = env('GCS_PROJECT_ID', default='')
+# Cloudflare R2 Storage Configuration (S3-compatible)
+R2_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID', default='')
+R2_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY', default='')
+R2_ENDPOINT_URL = env('R2_ENDPOINT_URL', default='')
+R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='provabook-documents')
+
+# Django Storages - S3 Backend for Cloudflare R2
+if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
+    # Use R2 for media file storage
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": R2_ACCESS_KEY_ID,
+                "secret_key": R2_SECRET_ACCESS_KEY,
+                "bucket_name": R2_BUCKET_NAME,
+                "endpoint_url": R2_ENDPOINT_URL,
+                "default_acl": "private",
+                "file_overwrite": False,
+                "region_name": "auto",
+                "signature_version": "s3v4",
+            },
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    # Custom domain for R2 public access (optional - set if you have a custom domain)
+    R2_CUSTOM_DOMAIN = env('R2_CUSTOM_DOMAIN', default='')
+    if R2_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{R2_CUSTOM_DOMAIN}/'
+    else:
+        # For private R2 buckets, use signed URLs (handled by django-storages)
+        MEDIA_URL = f'{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/'
 
 # File Upload Settings
 MAX_UPLOAD_SIZE = env.int('MAX_UPLOAD_SIZE', default=10485760)  # 10MB
