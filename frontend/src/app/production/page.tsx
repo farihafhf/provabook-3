@@ -45,6 +45,7 @@ interface OrderLine {
   currency?: string;
   etd?: string;
   status?: string;
+  deliveredQty?: number;
   approvalStatus?: Record<string, string>;
   approvalDates?: Record<string, string>;
   // Local order production fields
@@ -167,6 +168,58 @@ function deriveOrderProductionStage(lines: OrderLine[]): string {
   }
   
   return stageOrder[minStageIndex];
+}
+
+// Approval helper functions
+function formatApprovalName(key: string): string {
+  const names: Record<string, string> = {
+    price: 'Price',
+    quality: 'Quality',
+    labDip: 'Lab Dip',
+    lab_dip: 'Lab Dip',
+    strikeOff: 'Strike Off',
+    strike_off: 'Strike Off',
+    handloom: 'Handloom',
+    ppSample: 'PP Sample',
+    pp_sample: 'PP Sample',
+    aop: 'AOP',
+    qualityTest: 'Quality Test',
+    quality_test: 'Quality Test',
+    bulkSwatch: 'Bulk Swatch',
+    bulk_swatch: 'Bulk Swatch',
+  };
+  return names[key] || key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+}
+
+function getApprovalAbbrev(key: string): string {
+  const abbrevs: Record<string, string> = {
+    price: 'PRC',
+    quality: 'QTY',
+    labDip: 'LAB',
+    lab_dip: 'LAB',
+    strikeOff: 'S/O',
+    strike_off: 'S/O',
+    handloom: 'H/L',
+    ppSample: 'PP',
+    pp_sample: 'PP',
+    aop: 'AOP',
+    qualityTest: 'QT',
+    quality_test: 'QT',
+    bulkSwatch: 'B/S',
+    bulk_swatch: 'B/S',
+  };
+  return abbrevs[key] || key.substring(0, 3).toUpperCase();
+}
+
+function getApprovalBadge(status: string) {
+  const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
+    approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
+    rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
+    submission: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Submission' },
+    resubmission: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Resubmission' },
+    default: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Pending' },
+  };
+  return statusConfig[status] || statusConfig.default;
 }
 
 // Calculate aggregated production metrics from all lines across all orders
@@ -885,6 +938,7 @@ export default function LocalOrdersPage() {
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-orange-50">Cut</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-teal-50">Sew</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-green-50">Ex-Fact</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[200px]">Approval Stages</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1030,6 +1084,61 @@ export default function LocalOrdersPage() {
                                                 ) : (
                                                   <span className="text-green-200">-</span>
                                                 )}
+                                              </td>
+                                              {/* Approval Stages */}
+                                              <td className="py-2 px-3 min-w-[200px]">
+                                                <div className="flex flex-wrap gap-1">
+                                                  {(() => {
+                                                    // Combine approval types from BOTH approvalStatus AND approvalDates
+                                                    const allTypes = new Set<string>();
+                                                    
+                                                    Object.entries(line.approvalStatus || {}).forEach(([key, value]) => {
+                                                      if (value && value !== 'default') {
+                                                        allTypes.add(key);
+                                                      }
+                                                    });
+                                                    
+                                                    Object.keys(line.approvalDates || {}).forEach(key => {
+                                                      allTypes.add(key);
+                                                    });
+                                                    
+                                                    if (allTypes.size === 0) {
+                                                      return <span className="text-slate-400 text-[10px] italic">No approvals</span>;
+                                                    }
+                                                    
+                                                    const priorityOrder: Record<string, number> = {
+                                                      price: 1, labDip: 2, lab_dip: 2,
+                                                      strikeOff: 3, strike_off: 3,
+                                                      handloom: 4, quality: 5,
+                                                      ppSample: 6, pp_sample: 6,
+                                                      aop: 7, qualityTest: 8, quality_test: 8,
+                                                      bulkSwatch: 9, bulk_swatch: 9
+                                                    };
+                                                    
+                                                    const sortedTypes = Array.from(allTypes).sort((a, b) => {
+                                                      return (priorityOrder[a] || 99) - (priorityOrder[b] || 99);
+                                                    });
+                                                    
+                                                    return sortedTypes.map(type => {
+                                                      const status = line.approvalStatus?.[type] || 'pending';
+                                                      const approvalDate = line.approvalDates?.[type];
+                                                      const badge = getApprovalBadge(status);
+                                                      
+                                                      return (
+                                                        <div 
+                                                          key={type} 
+                                                          className="flex items-center gap-0.5 bg-slate-50 rounded px-1 py-0.5 border border-slate-200 whitespace-nowrap"
+                                                          title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
+                                                        >
+                                                          <span className="text-[9px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
+                                                          <Badge className={`${badge.bg} ${badge.text} text-[9px] px-1 py-0 font-medium`}>
+                                                            {badge.label.substring(0, 3)}
+                                                          </Badge>
+                                                        </div>
+                                                      );
+                                                    });
+                                                  })()}
+                                                </div>
                                               </td>
                                             </tr>
                                           );
