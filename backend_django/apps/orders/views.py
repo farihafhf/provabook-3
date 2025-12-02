@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.db.models import Sum, Count, Q
+from django.db.models import Sum, Count, Q, Prefetch
 from django.utils import timezone
 from django.http import HttpResponse, FileResponse
 from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
@@ -38,7 +38,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     - POST /orders/{id}/change_stage/ - Change order stage
     """
     queryset = Order.objects.select_related('merchandiser').prefetch_related(
-        'styles__lines__approval_history',  # Prefetch approval history for each line
+        # Prefetch approval history with explicit ascending order by created_at
+        # This ensures the serializer can correctly get first record (oldest) and last record (newest)
+        Prefetch(
+            'styles__lines__approval_history',
+            queryset=ApprovalHistory.objects.order_by('created_at')
+        ),
         'styles__colors',
         'documents',  # Prefetch documents for LC/PI dates
     ).all()
