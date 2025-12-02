@@ -17,20 +17,41 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 
 export default function HomePage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const [showLanding, setShowLanding] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (isAuthenticated()) {
       setShowLanding(true);
+      fetchUnreadCount();
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
     } else {
       router.push('/login');
     }
   }, [isAuthenticated, router]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await api.get('/notifications/unread-count');
+      setUnreadCount(response.data.unreadCount || 0);
+    } catch (error) {
+      // Silently ignore errors (e.g., not authenticated yet)
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setUnreadCount(0);
+    router.push('/login');
+  };
 
   const menuItems = [
     { 
@@ -115,12 +136,49 @@ export default function HomePage() {
                 ProvaBook
               </span>
             </div>
-            {user && (
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
-              </div>
-            )}
+            <div className="flex items-center gap-4">
+              {/* Notification Bell with unread count for authenticated users */}
+              {isAuthenticated() && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative"
+                  onClick={() => router.push('/notifications')}
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              )}
+
+              {/* User info and auth actions */}
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{user.fullName}</p>
+                    <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => router.push('/login')}
+                >
+                  Login
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
