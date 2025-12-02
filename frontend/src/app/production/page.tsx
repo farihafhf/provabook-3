@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import React, { useEffect, useMemo, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -234,7 +234,9 @@ export default function LocalOrdersPage() {
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
-  const handleFiltersChange = (newFilters: OrdersFilterParams) => {
+  // Memoize the filter change handler to prevent unnecessary re-renders
+  // and ensure stable reference for OrderFilters component
+  const handleFiltersChange = useCallback((newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
       if (
         prev.search === newFilters.search &&
@@ -246,7 +248,7 @@ export default function LocalOrdersPage() {
       }
       return newFilters;
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated()) {

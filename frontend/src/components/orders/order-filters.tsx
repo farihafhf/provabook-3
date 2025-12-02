@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -63,9 +64,19 @@ export function OrderFilters({
     return searchParams.get('order_date_to') ?? initialOrderDateTo ?? '';
   });
 
+  // Track the last emitted filter values to avoid duplicate emissions
+  const lastEmittedRef = useRef<string>('');
+
   const emitFilterChange = React.useCallback(
     (next: { search: string; status: string; orderDateFrom: string; orderDateTo: string }) => {
       if (!onFilterChange) return;
+
+      // Create a signature of the filter values to detect duplicates
+      const signature = JSON.stringify(next);
+      if (signature === lastEmittedRef.current) {
+        return; // Skip duplicate emission
+      }
+      lastEmittedRef.current = signature;
 
       onFilterChange({
         search: next.search,
@@ -132,29 +143,30 @@ export function OrderFilters({
     });
   };
 
-  // Auto-apply filters when URL params change or on initial mount
+  // Sync local state and emit filter changes when URL params change
+  // This effect runs on mount and whenever searchParams changes (e.g., back navigation)
   React.useEffect(() => {
     const urlSearch = searchParams.get('search') ?? '';
     const urlStatus = searchParams.get('status') ?? 'all';
     const urlDateFrom = searchParams.get('order_date_from') ?? '';
     const urlDateTo = searchParams.get('order_date_to') ?? '';
 
-    // Update local state if URL params differ
-    if (search !== urlSearch) setSearch(urlSearch);
-    if (status !== urlStatus) setStatus(urlStatus);
-    if (orderDateFrom !== urlDateFrom) setOrderDateFrom(urlDateFrom);
-    if (orderDateTo !== urlDateTo) setOrderDateTo(urlDateTo);
+    // Always sync local state from URL to ensure consistency
+    // This avoids stale closure issues by unconditionally updating state
+    setSearch(urlSearch);
+    setStatus(urlStatus);
+    setOrderDateFrom(urlDateFrom);
+    setOrderDateTo(urlDateTo);
 
-    // Auto-emit filter change if any URL params are present
-    if (urlSearch || (urlStatus && urlStatus !== 'all') || urlDateFrom || urlDateTo) {
-      emitFilterChange({
-        search: urlSearch,
-        status: urlStatus,
-        orderDateFrom: urlDateFrom,
-        orderDateTo: urlDateTo,
-      });
-    }
-  }, [searchParams]);
+    // Always emit filter change to parent - the emitFilterChange function
+    // will deduplicate if values haven't changed
+    emitFilterChange({
+      search: urlSearch,
+      status: urlStatus,
+      orderDateFrom: urlDateFrom,
+      orderDateTo: urlDateTo,
+    });
+  }, [searchParams, emitFilterChange]);
 
   return (
     <form onSubmit={handleSubmit} className={cn('w-full', className)}>

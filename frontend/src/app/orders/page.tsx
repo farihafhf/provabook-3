@@ -145,7 +145,9 @@ function OrdersPageContent() {
     }
   }, []);
 
-  const handleFiltersChange = (newFilters: OrdersFilterParams) => {
+  // Memoize the filter change handler to prevent unnecessary re-renders
+  // and ensure stable reference for OrderFilters component
+  const handleFiltersChange = useCallback((newFilters: OrdersFilterParams) => {
     setFilters((prev) => {
       if (
         prev.search === newFilters.search &&
@@ -157,7 +159,7 @@ function OrdersPageContent() {
       }
       return newFilters;
     });
-  };
+  }, []);
 
   // Save scroll position before unload or navigation
   useEffect(() => {
