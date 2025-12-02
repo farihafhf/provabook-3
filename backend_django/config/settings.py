@@ -22,7 +22,8 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-temporary-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', default=True)
+# Default to False for production safety - set DEBUG=True explicitly in development
+DEBUG = env.bool('DEBUG', default=False)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
 
@@ -101,6 +102,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': env.db('DATABASE_URL', default='postgresql://postgres:password@localhost:5432/provabook_django')
 }
+
+# CRITICAL: Required for DigitalOcean Managed PostgreSQL connection pooler (pgBouncer)
+# When using connection pooling in transaction mode, server-side cursors must be disabled
+# Without this, you will get 504 timeouts and cursor errors
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+
+# Set connection timeout and options for production reliability
+DATABASES['default']['CONN_MAX_AGE'] = 60  # Keep connections alive for 60 seconds
+DATABASES['default']['CONN_HEALTH_CHECKS'] = True  # Check connection health before use
 
 # Custom User Model
 AUTH_USER_MODEL = 'authentication.User'
@@ -266,6 +276,8 @@ ALLOWED_FILE_EXTENSIONS = env.list(
 )
 
 # Logging Configuration
+# For production (DigitalOcean App Platform), only use console logging
+# File logging doesn't work reliably on ephemeral container filesystems
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -280,27 +292,24 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'django.log'),
-            'formatter': 'verbose',
-        },
     },
     'root': {
-        'handlers': ['console', 'file'],
+        'handlers': ['console'],
         'level': 'INFO',
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Reduce DB query noise in production
             'propagate': False,
         },
     },
 }
-
-# Create logs directory if it doesn't exist
-os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
 
 # Swagger/OpenAPI Configuration
 SWAGGER_SETTINGS = {
