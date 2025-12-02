@@ -47,6 +47,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         'styles__colors',
         'styles__lines__deliveries',  # Prefetch deliveries per line for list view
         'documents',  # Prefetch documents for LC/PI dates
+        'production_entries',  # Prefetch production entries for local orders
     ).all()
     permission_classes = [permissions.IsAuthenticated, IsMerchandiser]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]

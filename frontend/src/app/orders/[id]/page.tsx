@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight, Scissors, Droplets } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/auth-store';
@@ -121,6 +122,42 @@ interface SupplierDelivery {
   updatedAt: string;
 }
 
+// Production entry types for local orders
+type ProductionEntryType = 'knitting' | 'dyeing' | 'finishing';
+
+interface ProductionEntry {
+  id: string;
+  order: string;
+  orderNumber?: string;
+  orderLine?: string;
+  orderLineLabel?: string;
+  styleNumber?: string;
+  colorCode?: string;
+  cadCode?: string;
+  entryType: ProductionEntryType;
+  entryTypeDisplay?: string;
+  entryDate: string;
+  quantity: number;
+  unit: string;
+  notes?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+interface ProductionSummary {
+  totalKnitting: number;
+  totalDyeing: number;
+  totalFinishing: number;
+  knittingEntriesCount: number;
+  dyeingEntriesCount: number;
+  finishingEntriesCount: number;
+  knittingPercent: number;
+  dyeingPercent: number;
+  finishingPercent: number;
+}
+
 interface Order {
   id: string;
   poNumber: string;
@@ -193,6 +230,8 @@ interface Order {
   totalValue?: number;
   realizedValue?: number;
   orderType?: 'local' | 'foreign';
+  // Production summary for local orders
+  productionSummary?: ProductionSummary;
   createdAt: string;
   updatedAt: string;
 }
@@ -246,6 +285,20 @@ export default function OrderDetailPage() {
   });
   const [savingDelivery, setSavingDelivery] = useState(false);
 
+  // Production Entries state (for local orders)
+  const [productionEntries, setProductionEntries] = useState<ProductionEntry[]>([]);
+  const [showProductionDialog, setShowProductionDialog] = useState(false);
+  const [editingProductionEntry, setEditingProductionEntry] = useState<ProductionEntry | null>(null);
+  const [productionFormData, setProductionFormData] = useState({
+    lineItem: '',
+    entryType: 'knitting' as ProductionEntryType,
+    entryDate: '',
+    quantity: '',
+    unit: 'kg',
+    notes: ''
+  });
+  const [savingProductionEntry, setSavingProductionEntry] = useState(false);
+
   const toggleOrderLineExpanded = (lineId: string) => {
     const newExpanded = new Set(expandedOrderLines);
     if (newExpanded.has(lineId)) {
@@ -267,6 +320,7 @@ export default function OrderDetailPage() {
     fetchUsers();
     fetchDeliveries();
     fetchCurrentTask();
+    fetchProductionEntries(); // Fetch production entries for local orders
   }, [isAuthenticated, router, params.id]);
 
   // Update selectedLineItem when order data changes (e.g., after approval/status changes)
@@ -368,6 +422,145 @@ export default function OrderDetailPage() {
     } catch (error) {
       console.error('Failed to fetch deliveries:', error);
     }
+  };
+
+  const fetchProductionEntries = async () => {
+    try {
+      const timestamp = new Date().getTime();
+      const response = await api.get('/orders/production-entries/', {
+        params: {
+          order: params.id,
+          _t: timestamp,
+        },
+      });
+      console.log('Fetched production entries:', response.data);
+      setProductionEntries(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch production entries:', error);
+    }
+  };
+
+  const handleAddProductionEntry = (entryType?: ProductionEntryType) => {
+    setEditingProductionEntry(null);
+    setProductionFormData({
+      lineItem: '',
+      entryType: entryType || 'knitting',
+      entryDate: new Date().toISOString().split('T')[0],
+      quantity: '',
+      unit: 'kg',
+      notes: ''
+    });
+    setShowProductionDialog(true);
+  };
+
+  const handleEditProductionEntry = (entry: ProductionEntry) => {
+    setEditingProductionEntry(entry);
+    setProductionFormData({
+      lineItem: entry.orderLine || '',
+      entryType: entry.entryType,
+      entryDate: entry.entryDate,
+      quantity: entry.quantity.toString(),
+      unit: entry.unit,
+      notes: entry.notes || ''
+    });
+    setShowProductionDialog(true);
+  };
+
+  const handleSaveProductionEntry = async () => {
+    if (!productionFormData.entryDate || !productionFormData.quantity) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in date and quantity',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingProductionEntry(true);
+    try {
+      const payload = {
+        order: order?.id,
+        orderLine: productionFormData.lineItem || undefined,
+        entryType: productionFormData.entryType,
+        entryDate: productionFormData.entryDate,
+        quantity: parseFloat(productionFormData.quantity),
+        unit: productionFormData.unit,
+        notes: productionFormData.notes || undefined
+      };
+
+      if (editingProductionEntry) {
+        const response = await api.patch(`/orders/production-entries/${editingProductionEntry.id}/`, payload);
+        console.log('Production entry updated:', response.data);
+        // Update state with response data
+        setProductionEntries(prev => prev.map(e => e.id === editingProductionEntry.id ? response.data : e));
+        toast({
+          title: 'Success',
+          description: 'Production entry updated successfully',
+        });
+      } else {
+        const response = await api.post('/orders/production-entries/', payload);
+        console.log('Production entry created:', response.data);
+        // Add new entry to state
+        setProductionEntries(prev => [response.data, ...prev]);
+        toast({
+          title: 'Success',
+          description: 'Production entry recorded successfully',
+        });
+      }
+
+      setShowProductionDialog(false);
+      // Refetch order to update summary
+      fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to save production entry:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to save production entry',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingProductionEntry(false);
+    }
+  };
+
+  const handleDeleteProductionEntry = async (entryId: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+    
+    try {
+      await api.delete(`/orders/production-entries/${entryId}/`);
+      setProductionEntries(prev => prev.filter(e => e.id !== entryId));
+      toast({
+        title: 'Success',
+        description: 'Production entry deleted',
+      });
+      // Refetch order to update summary
+      fetchOrder();
+    } catch (error) {
+      console.error('Failed to delete production entry:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete production entry',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const getEntryTypeDisplay = (type: ProductionEntryType): string => {
+    const displays: Record<ProductionEntryType, string> = {
+      knitting: 'Knitting',
+      dyeing: 'Dyeing',
+      finishing: 'Finishing'
+    };
+    return displays[type] || type;
+  };
+
+  const getEntryTypeBadgeClass = (type: ProductionEntryType): string => {
+    const classes: Record<ProductionEntryType, string> = {
+      knitting: 'bg-blue-100 text-blue-800',
+      dyeing: 'bg-purple-100 text-purple-800',
+      finishing: 'bg-green-100 text-green-800'
+    };
+    return classes[type] || 'bg-gray-100 text-gray-800';
   };
 
   const handleAddDelivery = () => {
@@ -1116,7 +1309,10 @@ export default function OrderDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="deliveries">
               <Truck className="h-4 w-4 mr-2" />
-              ETD & Deliveries ({deliveries.length})
+              {order.orderType === 'local' 
+                ? `Deliveries, Knitting, Dyeing, Finishing (${deliveries.length + productionEntries.length})`
+                : `ETD & Deliveries (${deliveries.length})`
+              }
             </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
@@ -1919,6 +2115,181 @@ export default function OrderDetailPage() {
 
           {/* ETD & Deliveries Tab */}
           <TabsContent value="deliveries" className="space-y-6">
+            {/* Production Progress Bars - Only for Local Orders */}
+            {order.orderType === 'local' && order.productionSummary && (
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Knitting Progress */}
+                <Card className="border-l-4 border-l-blue-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Scissors className="h-4 w-4 text-blue-500" />
+                      Knitting Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">{order.productionSummary.totalKnitting.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="font-semibold text-blue-700">{order.productionSummary.knittingPercent}%</span>
+                    </div>
+                    <Progress value={Math.min(order.productionSummary.knittingPercent, 100)} className="h-2" />
+                    <div className="text-xs text-gray-500">{order.productionSummary.knittingEntriesCount} entries</div>
+                  </CardContent>
+                </Card>
+
+                {/* Dyeing Progress */}
+                <Card className="border-l-4 border-l-purple-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Droplets className="h-4 w-4 text-purple-500" />
+                      Dyeing Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">{order.productionSummary.totalDyeing.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="font-semibold text-purple-700">{order.productionSummary.dyeingPercent}%</span>
+                    </div>
+                    <Progress value={Math.min(order.productionSummary.dyeingPercent, 100)} className="h-2" />
+                    <div className="text-xs text-gray-500">{order.productionSummary.dyeingEntriesCount} entries</div>
+                  </CardContent>
+                </Card>
+
+                {/* Finishing Progress */}
+                <Card className="border-l-4 border-l-green-500">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      Finishing Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span className="text-gray-500">{order.productionSummary.totalFinishing.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="font-semibold text-green-700">{order.productionSummary.finishingPercent}%</span>
+                    </div>
+                    <Progress value={Math.min(order.productionSummary.finishingPercent, 100)} className="h-2" />
+                    <div className="text-xs text-gray-500">{order.productionSummary.finishingEntriesCount} entries</div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Production Entries Section - Only for Local Orders */}
+            {order.orderType === 'local' && (
+              <Card className="border-l-4 border-l-indigo-500">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-indigo-600" />
+                      Knitting, Dyeing & Finishing Records
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button onClick={() => handleAddProductionEntry('knitting')} size="sm" variant="outline" className="text-blue-700 border-blue-300 hover:bg-blue-50">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Knitting
+                      </Button>
+                      <Button onClick={() => handleAddProductionEntry('dyeing')} size="sm" variant="outline" className="text-purple-700 border-purple-300 hover:bg-purple-50">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Dyeing
+                      </Button>
+                      <Button onClick={() => handleAddProductionEntry('finishing')} size="sm" variant="outline" className="text-green-700 border-green-300 hover:bg-green-50">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Finishing
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {productionEntries.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed">
+                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500 mb-2">No production records yet</p>
+                      <p className="text-sm text-gray-400 mb-4">Click one of the buttons above to record knitting, dyeing, or finishing</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 border-b">
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Type</th>
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Date</th>
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Order Line</th>
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Quantity</th>
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Notes</th>
+                            <th className="text-left p-3 text-sm font-semibold text-gray-700">Created By</th>
+                            <th className="text-right p-3 text-sm font-semibold text-gray-700">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {productionEntries.map((entry) => (
+                            <tr key={entry.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3 text-sm">
+                                <Badge className={getEntryTypeBadgeClass(entry.entryType)}>
+                                  {getEntryTypeDisplay(entry.entryType)}
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-gray-400" />
+                                  {formatDate(entry.entryDate)}
+                                </div>
+                              </td>
+                              <td className="p-3 text-sm">
+                                {entry.orderLineLabel ? (
+                                  <Badge className="bg-indigo-100 text-indigo-800 font-medium">
+                                    {entry.orderLineLabel}
+                                  </Badge>
+                                ) : entry.styleNumber || entry.colorCode ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    {entry.styleNumber && (
+                                      <span className="font-medium text-gray-700">{entry.styleNumber}</span>
+                                    )}
+                                    {entry.colorCode && (
+                                      <span className="text-xs text-gray-500">{entry.colorCode}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic">General</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-sm font-medium">
+                                {entry.quantity.toLocaleString()} {entry.unit}
+                              </td>
+                              <td className="p-3 text-sm text-gray-600">
+                                {entry.notes || <span className="text-gray-400 italic">No notes</span>}
+                              </td>
+                              <td className="p-3 text-sm text-gray-600">
+                                {entry.createdByName || 'Unknown'}
+                              </td>
+                              <td className="p-3 text-sm text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEditProductionEntry(entry)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteProductionEntry(entry.id)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="border-l-4 border-l-green-500">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -2252,6 +2623,154 @@ export default function OrderDetailPage() {
               </Button>
               <Button onClick={handleSaveDelivery} disabled={savingDelivery}>
                 {savingDelivery ? 'Saving...' : editingDelivery ? 'Update Delivery' : 'Save Delivery'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Production Entry Dialog - Only for Local Orders */}
+        <Dialog open={showProductionDialog} onOpenChange={setShowProductionDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingProductionEntry ? 'Edit Production Entry' : 'Record Production Entry'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="entry-type">Entry Type *</Label>
+                <Select
+                  value={productionFormData.entryType}
+                  onValueChange={(value: ProductionEntryType) => setProductionFormData({ ...productionFormData, entryType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="knitting">
+                      <div className="flex items-center gap-2">
+                        <Scissors className="h-4 w-4 text-blue-500" />
+                        <span>Knitting</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="dyeing">
+                      <div className="flex items-center gap-2">
+                        <Droplets className="h-4 w-4 text-purple-500" />
+                        <span>Dyeing</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="finishing">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>Finishing</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="entry-date">Date *</Label>
+                <Input
+                  id="entry-date"
+                  type="date"
+                  value={productionFormData.entryDate}
+                  onChange={(e) => setProductionFormData({ ...productionFormData, entryDate: e.target.value })}
+                  required
+                />
+              </div>
+
+              {order?.styles && order.styles.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="line-item">Order Line (Optional)</Label>
+                  <Select
+                    value={productionFormData.lineItem}
+                    onValueChange={(value) => setProductionFormData({ ...productionFormData, lineItem: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="General (applies to whole order)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">General (applies to whole order)</SelectItem>
+                      {order.styles.flatMap((style) =>
+                        (style.lines || []).map((line) => {
+                          const lineLabel = [
+                            style.styleNumber,
+                            line.colorCode,
+                            line.cadCode
+                          ].filter(Boolean).join(' / ');
+                          return (
+                            <SelectItem key={line.id} value={line.id}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{lineLabel || 'Base Line'}</span>
+                                <span className="text-xs text-slate-500">
+                                  ({line.quantity?.toLocaleString()} {line.unit})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    Optionally associate this entry with a specific line item
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="production-quantity">Quantity *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="production-quantity"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={productionFormData.quantity}
+                    onChange={(e) => setProductionFormData({ ...productionFormData, quantity: e.target.value })}
+                    placeholder="Enter quantity"
+                    className="flex-1"
+                    required
+                  />
+                  <Select
+                    value={productionFormData.unit}
+                    onValueChange={(value) => setProductionFormData({ ...productionFormData, unit: value })}
+                  >
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="kg">kg</SelectItem>
+                      <SelectItem value="yards">yards</SelectItem>
+                      <SelectItem value="meters">meters</SelectItem>
+                      <SelectItem value="pcs">pcs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="production-notes">Notes (Optional)</Label>
+                <Textarea
+                  id="production-notes"
+                  value={productionFormData.notes}
+                  onChange={(e) => setProductionFormData({ ...productionFormData, notes: e.target.value })}
+                  placeholder="Add any additional notes..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowProductionDialog(false)}
+                disabled={savingProductionEntry}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveProductionEntry} disabled={savingProductionEntry}>
+                {savingProductionEntry ? 'Saving...' : editingProductionEntry ? 'Update Entry' : 'Save Entry'}
               </Button>
             </DialogFooter>
           </DialogContent>

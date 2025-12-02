@@ -70,6 +70,18 @@ interface OrderLine {
   exFactoryDate?: string;
 }
 
+interface ProductionSummary {
+  totalKnitting: number;
+  totalDyeing: number;
+  totalFinishing: number;
+  knittingEntriesCount: number;
+  dyeingEntriesCount: number;
+  finishingEntriesCount: number;
+  knittingPercent: number;
+  dyeingPercent: number;
+  finishingPercent: number;
+}
+
 interface Order {
   id: string;
   poNumber: string;
@@ -87,6 +99,7 @@ interface Order {
   lineStatusCounts?: Record<string, number>;
   lines?: OrderLine[];
   orderType?: string;
+  productionSummary?: ProductionSummary;
 }
 
 interface OrdersFilterParams {
@@ -157,8 +170,10 @@ function deriveOrderProductionStage(lines: OrderLine[]): string {
 }
 
 // Calculate aggregated production metrics from all lines across all orders
+// Includes data from both line dates AND productionEntry records
 function calculateProductionMetrics(orders: Order[]) {
   let totalLines = 0;
+  let totalQuantity = 0;
   let yarnReceivedLines = 0;
   let knittingStartedLines = 0;
   let knittingCompleteLines = 0;
@@ -167,7 +182,18 @@ function calculateProductionMetrics(orders: Order[]) {
   let sewingFinishLines = 0;
   let exFactoryLines = 0;
 
+  // Aggregated from productionSummary (ProductionEntry records)
+  let totalKnittingQty = 0;
+  let totalDyeingQty = 0;
+  let totalFinishingQty = 0;
+  let totalKnittingEntries = 0;
+  let totalDyeingEntries = 0;
+  let totalFinishingEntries = 0;
+
   orders.forEach(order => {
+    totalQuantity += order.quantity || 0;
+    
+    // Line-level date-based metrics
     (order.lines || []).forEach(line => {
       totalLines++;
       if (line.yarnReceivedDate) yarnReceivedLines++;
@@ -178,10 +204,21 @@ function calculateProductionMetrics(orders: Order[]) {
       if (line.sewingFinishDate) sewingFinishLines++;
       if (line.exFactoryDate) exFactoryLines++;
     });
+
+    // Add productionSummary data from ProductionEntry records
+    if (order.productionSummary) {
+      totalKnittingQty += order.productionSummary.totalKnitting || 0;
+      totalDyeingQty += order.productionSummary.totalDyeing || 0;
+      totalFinishingQty += order.productionSummary.totalFinishing || 0;
+      totalKnittingEntries += order.productionSummary.knittingEntriesCount || 0;
+      totalDyeingEntries += order.productionSummary.dyeingEntriesCount || 0;
+      totalFinishingEntries += order.productionSummary.finishingEntriesCount || 0;
+    }
   });
 
   return {
     totalLines,
+    totalQuantity,
     yarn: {
       received: yarnReceivedLines,
       percent: totalLines > 0 ? (yarnReceivedLines / totalLines) * 100 : 0,
@@ -190,16 +227,28 @@ function calculateProductionMetrics(orders: Order[]) {
       started: knittingStartedLines,
       complete: knittingCompleteLines,
       percent: totalLines > 0 ? (knittingCompleteLines / totalLines) * 100 : 0,
+      // From ProductionEntry records
+      totalQty: totalKnittingQty,
+      entriesCount: totalKnittingEntries,
+      qtyPercent: totalQuantity > 0 ? (totalKnittingQty / totalQuantity) * 100 : 0,
     },
     dyeing: {
       started: dyeingStartedLines,
       complete: dyeingCompleteLines,
       percent: totalLines > 0 ? (dyeingCompleteLines / totalLines) * 100 : 0,
+      // From ProductionEntry records
+      totalQty: totalDyeingQty,
+      entriesCount: totalDyeingEntries,
+      qtyPercent: totalQuantity > 0 ? (totalDyeingQty / totalQuantity) * 100 : 0,
     },
     finishing: {
       sewingComplete: sewingFinishLines,
       exFactory: exFactoryLines,
       percent: totalLines > 0 ? (exFactoryLines / totalLines) * 100 : 0,
+      // From ProductionEntry records
+      totalQty: totalFinishingQty,
+      entriesCount: totalFinishingEntries,
+      qtyPercent: totalQuantity > 0 ? (totalFinishingQty / totalQuantity) * 100 : 0,
     },
   };
 }
@@ -533,6 +582,14 @@ export default function LocalOrdersPage() {
                 <span>Started: {productionMetrics.knitting.started}</span>
                 <span>{productionMetrics.knitting.percent.toFixed(1)}%</span>
               </div>
+              {productionMetrics.knitting.entriesCount > 0 && (
+                <div className="pt-2 border-t mt-2">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-blue-600 font-medium">Recorded: {productionMetrics.knitting.totalQty.toLocaleString()}</span>
+                    <span className="text-blue-600">{productionMetrics.knitting.qtyPercent.toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -556,6 +613,14 @@ export default function LocalOrdersPage() {
                 <span>Started: {productionMetrics.dyeing.started}</span>
                 <span>{productionMetrics.dyeing.percent.toFixed(1)}%</span>
               </div>
+              {productionMetrics.dyeing.entriesCount > 0 && (
+                <div className="pt-2 border-t mt-2">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-purple-600 font-medium">Recorded: {productionMetrics.dyeing.totalQty.toLocaleString()}</span>
+                    <span className="text-purple-600">{productionMetrics.dyeing.qtyPercent.toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -579,6 +644,14 @@ export default function LocalOrdersPage() {
                 <span>Sewing Done: {productionMetrics.finishing.sewingComplete}</span>
                 <span>{productionMetrics.finishing.percent.toFixed(1)}%</span>
               </div>
+              {productionMetrics.finishing.entriesCount > 0 && (
+                <div className="pt-2 border-t mt-2">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="text-green-600 font-medium">Recorded: {productionMetrics.finishing.totalQty.toLocaleString()}</span>
+                    <span className="text-green-600">{productionMetrics.finishing.qtyPercent.toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

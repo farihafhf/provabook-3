@@ -22,6 +22,8 @@ class OrderSerializer(serializers.ModelSerializer):
     timeline_events = serializers.SerializerMethodField()
     styles = OrderStyleSerializer(many=True, read_only=True)
     approval_history_data = serializers.SerializerMethodField()
+    # Production entry metrics for local orders
+    production_summary = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -46,7 +48,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'notes', 'metadata', 'merchandiser', 'merchandiser_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
-            'created_at', 'updated_at', 'timeline_events', 'styles', 'approval_history_data'
+            'created_at', 'updated_at', 'timeline_events', 'styles', 'approval_history_data',
+            'production_summary'
         ]
         read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value', 
                            'total_delivered_quantity', 'shortage_excess_quantity', 
@@ -138,6 +141,42 @@ class OrderSerializer(serializers.ModelSerializer):
             'packingCompleteDate': data.get('packing_complete_date'),
             'finalInspectionDate': data.get('final_inspection_date'),
             'exFactoryDate': data.get('ex_factory_date'),
+            # Production entry summary for local orders
+            'productionSummary': data.get('production_summary'),
+        }
+    
+    def get_production_summary(self, obj):
+        """Get aggregated production entry summary for local orders"""
+        from django.db.models import Sum, Count, Q
+        from .models_production_entry import ProductionEntryType
+        
+        # Only calculate for local orders
+        if obj.order_type != 'local':
+            return None
+        
+        # Get aggregated data from production_entries
+        summary = obj.production_entries.aggregate(
+            total_knitting=Sum('quantity', filter=Q(entry_type=ProductionEntryType.KNITTING)),
+            total_dyeing=Sum('quantity', filter=Q(entry_type=ProductionEntryType.DYEING)),
+            total_finishing=Sum('quantity', filter=Q(entry_type=ProductionEntryType.FINISHING)),
+            knitting_entries_count=Count('id', filter=Q(entry_type=ProductionEntryType.KNITTING)),
+            dyeing_entries_count=Count('id', filter=Q(entry_type=ProductionEntryType.DYEING)),
+            finishing_entries_count=Count('id', filter=Q(entry_type=ProductionEntryType.FINISHING)),
+        )
+        
+        ordered_qty = float(obj.quantity) if obj.quantity else 0
+        
+        return {
+            'totalKnitting': float(summary['total_knitting'] or 0),
+            'totalDyeing': float(summary['total_dyeing'] or 0),
+            'totalFinishing': float(summary['total_finishing'] or 0),
+            'knittingEntriesCount': summary['knitting_entries_count'] or 0,
+            'dyeingEntriesCount': summary['dyeing_entries_count'] or 0,
+            'finishingEntriesCount': summary['finishing_entries_count'] or 0,
+            # Calculate percentages
+            'knittingPercent': round((float(summary['total_knitting'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            'dyeingPercent': round((float(summary['total_dyeing'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            'finishingPercent': round((float(summary['total_finishing'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
         }
     
     def get_approval_history_data(self, obj):
@@ -760,6 +799,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     lines = serializers.SerializerMethodField()
     lc_issue_date = serializers.SerializerMethodField()
     pi_sent_date = serializers.SerializerMethodField()
+    production_summary = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
@@ -768,7 +808,8 @@ class OrderListSerializer(serializers.ModelSerializer):
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date', 'order_type',
             'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
-            'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date'
+            'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date',
+            'production_summary'
         ]
     
     def get_merchandiser_name(self, obj):
@@ -902,6 +943,51 @@ class OrderListSerializer(serializers.ModelSerializer):
             return pi_docs[0].created_at.date().isoformat()
         return None
     
+    def get_production_summary(self, obj):
+        """Get aggregated production entry summary for local orders - uses prefetched data"""
+        # Only calculate for local orders
+        if obj.order_type != 'local':
+            return None
+        
+        # Use prefetched production_entries if available
+        entries = getattr(obj, '_prefetched_objects_cache', {}).get('production_entries')
+        if entries is None:
+            # Fallback to queryset if not prefetched
+            entries = obj.production_entries.all()
+        
+        total_knitting = 0
+        total_dyeing = 0
+        total_finishing = 0
+        knitting_count = 0
+        dyeing_count = 0
+        finishing_count = 0
+        
+        for entry in entries:
+            qty = float(entry.quantity) if entry.quantity else 0
+            if entry.entry_type == 'knitting':
+                total_knitting += qty
+                knitting_count += 1
+            elif entry.entry_type == 'dyeing':
+                total_dyeing += qty
+                dyeing_count += 1
+            elif entry.entry_type == 'finishing':
+                total_finishing += qty
+                finishing_count += 1
+        
+        ordered_qty = float(obj.quantity) if obj.quantity else 0
+        
+        return {
+            'totalKnitting': total_knitting,
+            'totalDyeing': total_dyeing,
+            'totalFinishing': total_finishing,
+            'knittingEntriesCount': knitting_count,
+            'dyeingEntriesCount': dyeing_count,
+            'finishingEntriesCount': finishing_count,
+            'knittingPercent': round((total_knitting / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            'dyeingPercent': round((total_dyeing / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            'finishingPercent': round((total_finishing / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+        }
+    
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
         data = super().to_representation(instance)
@@ -926,6 +1012,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'lcIssueDate': data.get('lc_issue_date'),
             'piSentDate': data.get('pi_sent_date'),
             'orderType': data.get('order_type'),
+            'productionSummary': data.get('production_summary'),
         }
 
 
