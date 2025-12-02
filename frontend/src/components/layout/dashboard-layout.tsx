@@ -14,8 +14,19 @@ import {
   Truck,
   Bell,
   LogOut,
+  LogIn,
   Menu,
+  User,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
@@ -123,14 +134,61 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            {user && (
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm font-medium">{user.fullName}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <Link href="/notifications">
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+              </Link>
+
+              {/* User Menu / Auth Buttons */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center gap-2 px-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-primary text-white text-sm">
+                          {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-left hidden sm:block">
+                        <p className="text-sm font-medium">{user.fullName}</p>
+                        <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span>{user.email}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2 text-red-600 cursor-pointer"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link href="/login">
+                  <Button variant="default" size="sm" className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" />
+                    <span>Login</span>
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </header>
 
