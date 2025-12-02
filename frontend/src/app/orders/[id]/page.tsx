@@ -192,6 +192,7 @@ interface Order {
   realizedProfit?: number;
   totalValue?: number;
   realizedValue?: number;
+  orderType?: 'local' | 'foreign';
   createdAt: string;
   updatedAt: string;
 }
@@ -551,7 +552,8 @@ export default function OrderDetailPage() {
       // If merchandiser reassigns to someone else, redirect to orders list
       // Managers can stay on the page since they can see all orders
       if (currentUser?.role === 'merchandiser' && selectedUser !== currentUser?.id) {
-        router.push('/orders');
+        // Navigate to the appropriate orders list based on order type
+        router.push(order?.orderType === 'local' ? '/production' : '/orders');
       } else {
         // Manager or reassigning to self - refresh data
         await fetchCurrentTask();
@@ -1001,7 +1003,7 @@ export default function OrderDetailPage() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <p className="text-gray-500 mb-4">Order not found</p>
-            <Button onClick={() => router.push('/orders')}>
+            <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Orders
             </Button>
@@ -1016,7 +1018,7 @@ export default function OrderDetailPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <Button variant="ghost" onClick={() => router.push('/orders')} className="mb-2">
+            <Button variant="ghost" onClick={() => router.back()} className="mb-2">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Orders
             </Button>
