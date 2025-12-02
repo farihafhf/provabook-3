@@ -836,6 +836,11 @@ class OrderListSerializer(serializers.ModelSerializer):
                     if key not in merged_approval_status and value and value != 'default':
                         merged_approval_status[key] = value
                 
+                # Calculate delivery summary for this line using prefetched deliveries
+                delivered_qty = sum(
+                    float(d.delivered_quantity) for d in line.deliveries.all()
+                )
+                
                 line_data = {
                     'id': str(line.id),
                     'styleNumber': style.style_number,
@@ -851,6 +856,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'status': line.status,
                     'approvalStatus': merged_approval_status,
                     'approvalDates': approval_dates,
+                    # Delivery summary
+                    'deliveredQty': delivered_qty,
                     # Local order production fields (line-level)
                     'yarnRequired': float(line.yarn_required) if line.yarn_required else None,
                     'yarnBookedDate': line.yarn_booked_date.isoformat() if line.yarn_booked_date else None,

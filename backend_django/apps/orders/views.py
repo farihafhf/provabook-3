@@ -45,6 +45,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset=ApprovalHistory.objects.order_by('created_at')
         ),
         'styles__colors',
+        'styles__lines__deliveries',  # Prefetch deliveries per line for list view
         'documents',  # Prefetch documents for LC/PI dates
     ).all()
     permission_classes = [permissions.IsAuthenticated, IsMerchandiser]

@@ -30,6 +30,7 @@ interface OrderLine {
   status?: string;
   approvalStatus?: Record<string, string>;
   approvalDates?: Record<string, string>;
+  deliveredQty?: number;
 }
 
 interface Order {
@@ -759,6 +760,7 @@ function OrdersPageContent() {
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
@@ -806,6 +808,38 @@ function OrdersPageContent() {
                                               {line.quantity.toLocaleString()}
                                             </span>
                                             <span className="text-slate-500 ml-1 text-xs">{line.unit}</span>
+                                          </td>
+                                          
+                                          {/* Delivered - compact delivery progress */}
+                                          <td className="py-3 px-3 min-w-[90px]">
+                                            {(() => {
+                                              const delivered = line.deliveredQty || 0;
+                                              const total = line.quantity || 0;
+                                              const pct = total > 0 ? Math.round((delivered / total) * 100) : 0;
+                                              const isComplete = pct >= 100;
+                                              const hasDeliveries = delivered > 0;
+                                              
+                                              if (!hasDeliveries) {
+                                                return <span className="text-slate-400 text-xs">-</span>;
+                                              }
+                                              
+                                              return (
+                                                <div className="flex flex-col gap-0.5">
+                                                  <div className="flex items-baseline gap-1">
+                                                    <span className={`font-semibold text-xs ${isComplete ? 'text-emerald-600' : 'text-slate-700'}`}>
+                                                      {delivered.toLocaleString()}
+                                                    </span>
+                                                    <span className="text-slate-400 text-[10px]">/ {total.toLocaleString()}</span>
+                                                  </div>
+                                                  <div className="w-full bg-slate-200 rounded-full h-1.5">
+                                                    <div 
+                                                      className={`h-1.5 rounded-full ${isComplete ? 'bg-emerald-500' : pct > 50 ? 'bg-sky-500' : 'bg-amber-500'}`}
+                                                      style={{ width: `${Math.min(pct, 100)}%` }}
+                                                    />
+                                                  </div>
+                                                </div>
+                                              );
+                                            })()}
                                           </td>
                                           
                                           {/* Mill Price - Unit and Total stacked */}

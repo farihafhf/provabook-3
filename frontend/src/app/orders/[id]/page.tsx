@@ -236,6 +236,7 @@ export default function OrderDetailPage() {
   const [showDeliveryDialog, setShowDeliveryDialog] = useState(false);
   const [editingDelivery, setEditingDelivery] = useState<SupplierDelivery | null>(null);
   const [deliveryFormData, setDeliveryFormData] = useState({
+    lineItem: '',  // Direct line item ID selection
     style: '',
     color: '',
     cad: '',
@@ -372,6 +373,7 @@ export default function OrderDetailPage() {
   const handleAddDelivery = () => {
     setEditingDelivery(null);
     setDeliveryFormData({
+      lineItem: '',  // Direct line item ID selection
       style: '',
       color: '',
       cad: '',
@@ -385,6 +387,7 @@ export default function OrderDetailPage() {
   const handleEditDelivery = (delivery: SupplierDelivery) => {
     setEditingDelivery(delivery);
     setDeliveryFormData({
+      lineItem: delivery.orderLine || '',  // Set the line item from existing delivery
       style: delivery.style || '',
       color: delivery.color || '',
       cad: delivery.cad || '',
@@ -440,12 +443,12 @@ export default function OrderDetailPage() {
 
     setSavingDelivery(true);
     try {
-      // Auto-calculate the order line based on selections
-      const calculatedOrderLine = findMatchingOrderLine();
+      // Use direct lineItem selection if provided, otherwise fall back to auto-calculation
+      const orderLineId = deliveryFormData.lineItem || findMatchingOrderLine();
 
       const payload = {
         order: order?.id,
-        orderLine: calculatedOrderLine || undefined,
+        orderLine: orderLineId || undefined,
         style: deliveryFormData.style || undefined,
         color: deliveryFormData.color || undefined,
         cad: deliveryFormData.cad || undefined,
@@ -2158,96 +2161,57 @@ export default function OrderDetailPage() {
                 />
               </div>
               
-              {/* Style Selection */}
+              {/* Line Item Selection - Direct association with style-color-CAD */}
               {order?.styles && order.styles.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="delivery-style">Style (Optional)</Label>
+                  <Label htmlFor="delivery-line-item">Line Item (Style / Color / CAD)</Label>
                   <Select
-                    value={deliveryFormData.style || "all-styles"}
+                    value={deliveryFormData.lineItem || "general"}
                     onValueChange={(value) =>
                       setDeliveryFormData({
                         ...deliveryFormData,
-                        style: value === "all-styles" ? "" : value,
+                        lineItem: value === "general" ? "" : value,
+                        // Clear style/color/cad when selecting a direct line item
+                        style: "",
                         color: "",
+                        cad: "",
                       })
                     }
                   >
-                    <SelectTrigger id="delivery-style">
-                      <SelectValue placeholder="Select a style or leave blank for all" />
+                    <SelectTrigger id="delivery-line-item">
+                      <SelectValue placeholder="Select a line item or leave general" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all-styles">All Styles</SelectItem>
-                      {order.styles.map((style) => (
-                        <SelectItem key={style.id} value={style.id}>
-                          {style.styleNumber}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="general">
+                        <span className="text-slate-500">General (Order-wide)</span>
+                      </SelectItem>
+                      {order.styles.flatMap((style) =>
+                        (style.lines || []).map((line) => {
+                          const label = [
+                            style.styleNumber,
+                            line.colorCode && `Color: ${line.colorCode}`,
+                            line.cadCode && `CAD: ${line.cadCode}`,
+                          ].filter(Boolean).join(' - ');
+                          return (
+                            <SelectItem key={line.id} value={line.id}>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{label}</span>
+                                <span className="text-xs text-slate-500">
+                                  ({line.quantity?.toLocaleString()} {line.unit})
+                                </span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-slate-500">
+                    Select a specific line item to track delivery progress
+                  </p>
                 </div>
               )}
 
-              {/* Color Selection - only show if style is selected */}
-              {deliveryFormData.style && order?.styles && (
-                <div className="space-y-2">
-                  <Label htmlFor="delivery-color">Color Code (Optional)</Label>
-                  <Select
-                    value={deliveryFormData.color || "none"}
-                    onValueChange={(value) =>
-                      setDeliveryFormData({
-                        ...deliveryFormData,
-                        color: value === "none" ? "" : value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="delivery-color">
-                      <SelectValue placeholder="Select color code (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific color</SelectItem>
-                      {order.styles
-                        .find((s) => s.id === deliveryFormData.style)
-                        ?.colors.map((color) => (
-                          <SelectItem key={color.id} value={color.id}>
-                            {color.colorCode}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* CAD Selection - only show if style is selected */}
-              {deliveryFormData.style && order?.styles && (
-                <div className="space-y-2">
-                  <Label htmlFor="delivery-cad">CAD Code (Optional)</Label>
-                  <Select
-                    value={deliveryFormData.cad || "none"}
-                    onValueChange={(value) =>
-                      setDeliveryFormData({
-                        ...deliveryFormData,
-                        cad: value === "none" ? "" : value,
-                      })
-                    }
-                  >
-                    <SelectTrigger id="delivery-cad">
-                      <SelectValue placeholder="Select CAD code (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific CAD</SelectItem>
-                      {order.styles
-                        .find((s) => s.id === deliveryFormData.style)
-                        ?.lines?.filter((line) => line.cadCode)
-                        .map((line) => (
-                          <SelectItem key={line.id} value={line.id}>
-                            {line.cadCode}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
               <div className="space-y-2">
                 <Label htmlFor="delivered-quantity">Delivered Quantity *</Label>
                 <div className="flex gap-2">
