@@ -113,13 +113,24 @@ export function OrderFilters({
 
   const handleStatusChange = (value: string) => {
     setStatus(value);
-    // Optionally emit immediately when status changes
+    // Emit immediately when status changes
     emitFilterChange({
       search,
       status: value,
       orderDateFrom,
       orderDateTo,
     });
+    
+    // CRITICAL: Also update the URL immediately so back navigation preserves the filter
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (value && value !== 'all') params.set('status', value);
+    if (orderDateFrom) params.set('order_date_from', orderDateFrom);
+    if (orderDateTo) params.set('order_date_to', orderDateTo);
+    
+    const query = params.toString();
+    const url = query ? `${pathname}?${query}` : pathname;
+    router.push(url, { scroll: false });
   };
 
   const handleOrderDateFromChange = (value: string) => {
