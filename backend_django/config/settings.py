@@ -242,6 +242,7 @@ R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='provabook-documents')
 # Django Storages - S3 Backend for Cloudflare R2
 if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
     # Use R2 for media file storage
+    # IMPORTANT: Cloudflare R2 does NOT support ACLs, so default_acl must be None
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3.S3Storage",
@@ -250,10 +251,13 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
                 "secret_key": R2_SECRET_ACCESS_KEY,
                 "bucket_name": R2_BUCKET_NAME,
                 "endpoint_url": R2_ENDPOINT_URL,
-                "default_acl": "private",
+                "default_acl": None,  # R2 doesn't support ACLs
                 "file_overwrite": False,
                 "region_name": "auto",
                 "signature_version": "s3v4",
+                "object_parameters": {
+                    "CacheControl": "max-age=86400",  # 1 day cache
+                },
             },
         },
         "staticfiles": {
