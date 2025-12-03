@@ -243,6 +243,8 @@ R2_BUCKET_NAME = env('R2_BUCKET_NAME', default='provabook-documents')
 if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
     # Use R2 for media file storage
     # IMPORTANT: Cloudflare R2 does NOT support ACLs, so default_acl must be None
+    # NOTE: file_overwrite=True skips HeadObject check (which requires read permission)
+    # This is safe because we use UUIDs for filenames (see document_upload_path)
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3.S3Storage",
@@ -252,7 +254,7 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
                 "bucket_name": R2_BUCKET_NAME,
                 "endpoint_url": R2_ENDPOINT_URL,
                 "default_acl": None,  # R2 doesn't support ACLs
-                "file_overwrite": False,
+                "file_overwrite": True,  # Skip HeadObject check (uses UUID filenames)
                 "region_name": "auto",
                 "signature_version": "s3v4",
                 "object_parameters": {
