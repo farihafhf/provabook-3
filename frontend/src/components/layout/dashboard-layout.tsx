@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
@@ -17,6 +17,8 @@ import {
   LogIn,
   Menu,
   User,
+  X,
+  ChevronRight,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -37,8 +39,10 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = () => {
@@ -52,6 +56,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const fetchUnreadCount = async () => {
     try {
@@ -72,10 +81,101 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Notifications', href: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
+  // Get current page name for mobile header
+  const currentPage = navigation.find(item => pathname?.startsWith(item.href))?.name || 'Provabook';
+
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Slide-out Menu */}
+      <div className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex flex-col h-full">
+          {/* Mobile Menu Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-primary p-1.5">
+                <Package className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-lg">Provabook</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Mobile Navigation */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            {navigation.map((item) => {
+              const isActive = pathname?.startsWith(item.href);
+              return (
+                <Link key={item.name} href={item.href} onClick={() => setMobileMenuOpen(false)}>
+                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-100'}`}>
+                    <item.icon className="h-5 w-5" />
+                    <span className="flex-1 font-medium">{item.name}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {item.badge}
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Mobile User Section */}
+          <div className="p-4 border-t border-gray-200 bg-gray-50">
+            {user && (
+              <div className="flex items-center gap-3 mb-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-primary text-white text-sm">
+                    {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">{user.fullName}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                </div>
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Floating Tab - Only visible when menu is closed */}
+      {!mobileMenuOpen && (
+        <button
+          className="md:hidden fixed top-3 left-3 z-30 flex items-center gap-2 bg-primary text-white px-3 py-2 rounded-full shadow-lg active:scale-95 transition-transform"
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <Menu className="h-4 w-4" />
+          <span className="text-xs font-medium">{currentPage}</span>
+          {unreadCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className={`hidden md:flex bg-white border-r border-gray-200 flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-primary p-2">
@@ -86,23 +186,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navigation.map((item) => (
-            <Link key={item.name} href={item.href}>
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors relative">
-                <item.icon className="h-5 w-5" />
-                {sidebarOpen && <span className="flex-1">{item.name}</span>}
-                {item.badge !== undefined && item.badge > 0 && (
-                  <span className={`${
-                    sidebarOpen 
-                      ? 'bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full' 
-                      : 'absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center'
-                  }`}>
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-            </Link>
-          ))}
+          {navigation.map((item) => {
+            const isActive = pathname?.startsWith(item.href);
+            return (
+              <Link key={item.name} href={item.href}>
+                <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors relative ${isActive ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <item.icon className="h-5 w-5" />
+                  {sidebarOpen && <span className="flex-1">{item.name}</span>}
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className={`${
+                      sidebarOpen 
+                        ? 'bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full' 
+                        : 'absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-gray-200">
@@ -125,7 +228,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        {/* Desktop Header - Hidden on mobile */}
+        <header className="hidden md:block bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -192,7 +296,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        {/* Main content area - Reduced padding on mobile */}
+        <main className="flex-1 overflow-y-auto p-3 md:p-6 pt-14 md:pt-6">
           {children}
         </main>
       </div>

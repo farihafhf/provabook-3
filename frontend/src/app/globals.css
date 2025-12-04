@@ -57,3 +57,66 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile Optimizations */
+@layer utilities {
+  /* Smaller text on mobile */
+  @media (max-width: 768px) {
+    .mobile-compact-text {
+      font-size: 0.75rem;
+      line-height: 1rem;
+    }
+    
+    /* Compact card headers on mobile */
+    .card-header {
+      padding: 0.75rem !important;
+    }
+    
+    .card-content {
+      padding: 0.75rem !important;
+    }
+    
+    /* Smaller badges on mobile */
+    .badge {
+      font-size: 0.625rem;
+      padding: 0.125rem 0.375rem;
+    }
+    
+    /* Touch-friendly tap targets */
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Compact table cells on mobile */
+    table td, table th {
+      padding: 0.5rem 0.375rem;
+      font-size: 0.75rem;
+    }
+    
+    /* Reduce heading sizes on mobile */
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 1.125rem; }
+    h3 { font-size: 1rem; }
+    h4 { font-size: 0.875rem; }
+  }
+  
+  /* Safe area insets for notched phones */
+  .safe-area-inset {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Smooth scrolling for mobile */
+  .scroll-smooth-mobile {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Prevent text selection on interactive elements */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
