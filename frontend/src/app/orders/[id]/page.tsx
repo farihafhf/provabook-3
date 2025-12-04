@@ -1560,16 +1560,20 @@ export default function OrderDetailPage() {
                                   <Calculator className="h-3 w-3" />
                                   Production Calculations
                                 </p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                                   {line.mixedFabricType && (
                                     <div className="bg-white p-2 rounded border">
-                                      <p className="text-gray-500">{line.mixedFabricType}</p>
-                                      <p className="font-bold text-purple-700">{line.mixedFabricPercent || 0}%</p>
+                                      <p className="text-gray-500">{line.mixedFabricType} ({line.mixedFabricPercent || 0}%)</p>
+                                      <p className="font-bold text-purple-700">
+                                        {(calculateLineGreige(line) * (line.mixedFabricPercent || 0) / 100).toFixed(2)} {line.unit}
+                                      </p>
                                     </div>
                                   )}
                                   <div className="bg-white p-2 rounded border">
-                                    <p className="text-gray-500">Process Loss</p>
-                                    <p className="font-bold text-red-600">{line.processLossPercent || 0}%</p>
+                                    <p className="text-gray-500">Process Loss ({line.processLossPercent || 0}%)</p>
+                                    <p className="font-bold text-red-600">
+                                      {(line.quantity * (line.processLossPercent || 0) / 100).toFixed(2)} {line.unit}
+                                    </p>
                                   </div>
                                   <div className="bg-white p-2 rounded border">
                                     <p className="text-gray-500">Greige Required</p>
@@ -3056,7 +3060,9 @@ export default function OrderDetailPage() {
                                 <p className="font-semibold text-amber-700">= {Math.round(lineGreige).toLocaleString()} {line.unit}</p>
                                 {line.mixedFabricType && (
                                   <>
-                                    <p className="mt-1">Yarn = {Math.round(lineGreige).toLocaleString()} × (1 - {line.mixedFabricPercent || 0}%)</p>
+                                    <p className="mt-1">{line.mixedFabricType} = {Math.round(lineGreige).toLocaleString()} × {line.mixedFabricPercent || 0}%</p>
+                                    <p className="font-semibold text-purple-700">= {(lineGreige * (line.mixedFabricPercent || 0) / 100).toFixed(2)} {line.unit}</p>
+                                    <p className="mt-1">Yarn = {Math.round(lineGreige).toLocaleString()} - {(lineGreige * (line.mixedFabricPercent || 0) / 100).toFixed(2)}</p>
                                     <p className="font-semibold text-blue-700">= {Math.round(lineYarn).toLocaleString()} {line.unit}</p>
                                   </>
                                 )}
@@ -3069,6 +3075,12 @@ export default function OrderDetailPage() {
                                 <p className="text-xs text-gray-500">Greige:</p>
                                 <p className="font-bold text-amber-700">{Math.round(lineGreige).toLocaleString()} {line.unit}</p>
                               </div>
+                              {line.mixedFabricType && (
+                                <div className="bg-purple-50 p-2 rounded border border-purple-200">
+                                  <p className="text-xs text-gray-500">{line.mixedFabricType}:</p>
+                                  <p className="font-bold text-purple-700">{(lineGreige * (line.mixedFabricPercent || 0) / 100).toFixed(2)} {line.unit}</p>
+                                </div>
+                              )}
                               <div className="bg-blue-50 p-2 rounded border border-blue-200">
                                 <p className="text-xs text-gray-500">Yarn:</p>
                                 <p className="font-bold text-blue-700">{Math.round(lineYarn).toLocaleString()} {line.unit}</p>

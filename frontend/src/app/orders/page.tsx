@@ -655,9 +655,7 @@ function OrdersPageContent() {
                           <tr
                             className={`text-sm cursor-pointer ${getEtdRowClass(order.earliestEtd) || 'hover:bg-gray-50'}`}
                             onClick={() => {
-                              if (lines.length > 0) {
-                                toggleOrderExpanded(order.id);
-                              }
+                              router.push(`/orders/${order.id}`);
                             }}
                           >
                             <td className="py-4 text-gray-500 font-medium">{index + 1}</td>
