@@ -25,7 +25,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes',
             'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
-            # Local order production fields
+            # Local order production fields - greige/yarn calculation
+            'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent', 'greige_quantity',
             'yarn_required', 'yarn_booked_date', 'yarn_received_date',
             'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
             'knitting_start_date', 'knitting_complete_date',
@@ -72,7 +73,11 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'totalCommission': data.get('total_commission'),
             'profit': data.get('profit'),
             'lineLabel': data.get('line_label'),
-            # Local order production fields
+            # Local order production fields - greige/yarn calculation
+            'processLossPercent': float(data['process_loss_percent']) if data.get('process_loss_percent') else None,
+            'mixedFabricType': data.get('mixed_fabric_type'),
+            'mixedFabricPercent': float(data['mixed_fabric_percent']) if data.get('mixed_fabric_percent') else None,
+            'greigeQuantity': float(data['greige_quantity']) if data.get('greige_quantity') else None,
             'yarnRequired': float(data['yarn_required']) if data.get('yarn_required') else None,
             'yarnBookedDate': data.get('yarn_booked_date'),
             'yarnReceivedDate': data.get('yarn_received_date'),
@@ -111,7 +116,11 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'submissionDate': 'submission_date',
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
-            # Local order production field mappings
+            # Local order production field mappings - greige/yarn calculation
+            'processLossPercent': 'process_loss_percent',
+            'mixedFabricType': 'mixed_fabric_type',
+            'mixedFabricPercent': 'mixed_fabric_percent',
+            'greigeQuantity': 'greige_quantity',
             'yarnRequired': 'yarn_required',
             'yarnBookedDate': 'yarn_booked_date',
             'yarnReceivedDate': 'yarn_received_date',
@@ -153,7 +162,8 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes',
-            # Local order production fields
+            # Local order production fields - greige/yarn calculation
+            'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent', 'greige_quantity',
             'yarn_required', 'yarn_booked_date', 'yarn_received_date',
             'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
             'knitting_start_date', 'knitting_complete_date',
@@ -181,7 +191,11 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'submissionDate': 'submission_date',
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
-            # Local order production field mappings
+            # Local order production field mappings - greige/yarn calculation
+            'processLossPercent': 'process_loss_percent',
+            'mixedFabricType': 'mixed_fabric_type',
+            'mixedFabricPercent': 'mixed_fabric_percent',
+            'greigeQuantity': 'greige_quantity',
             'yarnRequired': 'yarn_required',
             'yarnBookedDate': 'yarn_booked_date',
             'yarnReceivedDate': 'yarn_received_date',

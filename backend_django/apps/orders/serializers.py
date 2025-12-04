@@ -897,6 +897,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                         line_finishing += qty
                 
                 line_qty = float(line.quantity) if line.quantity else 0
+                # For local orders, use greige quantity as denominator for production percentages
+                line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
                 
                 line_data = {
                     'id': str(line.id),
@@ -915,7 +917,11 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'approvalDates': approval_dates,
                     # Delivery summary
                     'deliveredQty': delivered_qty,
-                    # Local order production fields (line-level)
+                    # Local order production fields - greige/yarn calculation
+                    'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
+                    'mixedFabricType': line.mixed_fabric_type,
+                    'mixedFabricPercent': float(line.mixed_fabric_percent) if line.mixed_fabric_percent else None,
+                    'greigeQuantity': float(line.greige_quantity) if line.greige_quantity else None,
                     'yarnRequired': float(line.yarn_required) if line.yarn_required else None,
                     'yarnBookedDate': line.yarn_booked_date.isoformat() if line.yarn_booked_date else None,
                     'yarnReceivedDate': line.yarn_received_date.isoformat() if line.yarn_received_date else None,
@@ -937,12 +943,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
                     'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
                     # Line-level production entry summary (from ProductionEntry records)
+                    # Use greige quantity as denominator for local orders
                     'productionKnitting': line_knitting,
                     'productionDyeing': line_dyeing,
                     'productionFinishing': line_finishing,
-                    'productionKnittingPercent': round((line_knitting / line_qty) * 100, 1) if line_qty > 0 else 0,
-                    'productionDyeingPercent': round((line_dyeing / line_qty) * 100, 1) if line_qty > 0 else 0,
-                    'productionFinishingPercent': round((line_finishing / line_qty) * 100, 1) if line_qty > 0 else 0,
+                    'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                    'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                    'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
                 }
                 result.append(line_data)
         
@@ -997,18 +1004,33 @@ class OrderListSerializer(serializers.ModelSerializer):
                 total_finishing += qty
                 finishing_count += 1
         
+        # Calculate total greige quantity from all lines (for local orders, use as denominator)
+        total_greige = 0.0
         ordered_qty = float(obj.quantity) if obj.quantity else 0
+        
+        # Iterate through styles and their lines to sum greige quantities
+        for style in obj.styles.all():
+            for line in style.lines.all():
+                if line.greige_quantity:
+                    total_greige += float(line.greige_quantity)
+                elif line.quantity:
+                    # Fallback: if no greige calculated yet, use quantity
+                    total_greige += float(line.quantity)
+        
+        # Use greige total as denominator, fallback to ordered_qty if no lines
+        denominator = total_greige if total_greige > 0 else ordered_qty
         
         return {
             'totalKnitting': total_knitting,
             'totalDyeing': total_dyeing,
             'totalFinishing': total_finishing,
+            'totalGreige': total_greige,
             'knittingEntriesCount': knitting_count,
             'dyeingEntriesCount': dyeing_count,
             'finishingEntriesCount': finishing_count,
-            'knittingPercent': round((total_knitting / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
-            'dyeingPercent': round((total_dyeing / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
-            'finishingPercent': round((total_finishing / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            'knittingPercent': round((total_knitting / denominator) * 100, 1) if denominator > 0 else 0,
+            'dyeingPercent': round((total_dyeing / denominator) * 100, 1) if denominator > 0 else 0,
+            'finishingPercent': round((total_finishing / denominator) * 100, 1) if denominator > 0 else 0,
         }
     
     def to_representation(self, instance):

@@ -48,7 +48,11 @@ interface OrderLine {
   deliveredQty?: number;
   approvalStatus?: Record<string, string>;
   approvalDates?: Record<string, string>;
-  // Local order production fields
+  // Local order production fields - greige/yarn calculation
+  processLossPercent?: number;
+  mixedFabricType?: string;
+  mixedFabricPercent?: number;
+  greigeQuantity?: number;
   yarnRequired?: number;
   yarnBookedDate?: string;
   yarnReceivedDate?: string;
@@ -82,6 +86,7 @@ interface ProductionSummary {
   totalKnitting: number;
   totalDyeing: number;
   totalFinishing: number;
+  totalGreige: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
@@ -233,9 +238,11 @@ function getApprovalBadge(status: string) {
 
 // Calculate aggregated production metrics from all lines across all orders
 // Includes data from both line dates AND productionEntry records
+// Uses total greige quantity as denominator for production percentages (textile industry standard)
 function calculateProductionMetrics(orders: Order[]) {
   let totalLines = 0;
   let totalQuantity = 0;
+  let totalGreige = 0; // Total greige quantity for percentage calculations
   let yarnReceivedLines = 0;
   let knittingStartedLines = 0;
   let knittingCompleteLines = 0;
@@ -258,6 +265,8 @@ function calculateProductionMetrics(orders: Order[]) {
     // Line-level date-based metrics
     (order.lines || []).forEach(line => {
       totalLines++;
+      // Use greige quantity if available, otherwise fall back to quantity
+      totalGreige += line.greigeQuantity || line.quantity || 0;
       if (line.yarnReceivedDate) yarnReceivedLines++;
       if (line.knittingStartDate) knittingStartedLines++;
       if (line.knittingCompleteDate) knittingCompleteLines++;
@@ -268,6 +277,7 @@ function calculateProductionMetrics(orders: Order[]) {
     });
 
     // Add productionSummary data from ProductionEntry records
+    // Also use totalGreige from production summary if available
     if (order.productionSummary) {
       totalKnittingQty += order.productionSummary.totalKnitting || 0;
       totalDyeingQty += order.productionSummary.totalDyeing || 0;
@@ -278,9 +288,14 @@ function calculateProductionMetrics(orders: Order[]) {
     }
   });
 
+  // Use total greige as denominator for production percentages
+  // This is textile industry standard: production is measured against greige requirement
+  const denominator = totalGreige > 0 ? totalGreige : totalQuantity;
+
   return {
     totalLines,
     totalQuantity,
+    totalGreige,
     yarn: {
       received: yarnReceivedLines,
       percent: totalLines > 0 ? (yarnReceivedLines / totalLines) * 100 : 0,
@@ -289,28 +304,28 @@ function calculateProductionMetrics(orders: Order[]) {
       started: knittingStartedLines,
       complete: knittingCompleteLines,
       percent: totalLines > 0 ? (knittingCompleteLines / totalLines) * 100 : 0,
-      // From ProductionEntry records
+      // From ProductionEntry records - use greige as denominator
       totalQty: totalKnittingQty,
       entriesCount: totalKnittingEntries,
-      qtyPercent: totalQuantity > 0 ? (totalKnittingQty / totalQuantity) * 100 : 0,
+      qtyPercent: denominator > 0 ? (totalKnittingQty / denominator) * 100 : 0,
     },
     dyeing: {
       started: dyeingStartedLines,
       complete: dyeingCompleteLines,
       percent: totalLines > 0 ? (dyeingCompleteLines / totalLines) * 100 : 0,
-      // From ProductionEntry records
+      // From ProductionEntry records - use greige as denominator
       totalQty: totalDyeingQty,
       entriesCount: totalDyeingEntries,
-      qtyPercent: totalQuantity > 0 ? (totalDyeingQty / totalQuantity) * 100 : 0,
+      qtyPercent: denominator > 0 ? (totalDyeingQty / denominator) * 100 : 0,
     },
     finishing: {
       sewingComplete: sewingFinishLines,
       exFactory: exFactoryLines,
       percent: totalLines > 0 ? (exFactoryLines / totalLines) * 100 : 0,
-      // From ProductionEntry records
+      // From ProductionEntry records - use greige as denominator
       totalQty: totalFinishingQty,
       entriesCount: totalFinishingEntries,
-      qtyPercent: totalQuantity > 0 ? (totalFinishingQty / totalQuantity) * 100 : 0,
+      qtyPercent: denominator > 0 ? (totalFinishingQty / denominator) * 100 : 0,
     },
   };
 }

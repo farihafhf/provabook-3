@@ -40,6 +40,11 @@ interface OrderLineFormData {
   cuttableWidth?: string;
   finishingWidth?: string;
   // Local order production fields (line-level)
+  // Greige/Yarn calculation fields
+  processLossPercent?: string;
+  mixedFabricType?: string;
+  mixedFabricPercent?: string;
+  greigeQuantity?: string;
   yarnRequired?: string;
   yarnBookedDate?: string;
   yarnReceivedDate?: string;
@@ -143,6 +148,11 @@ export default function OrderEditPage() {
               cuttableWidth: style.cuttableWidth || '',
               finishingWidth: style.finishingWidth || '',
               // Local order production fields (line-level)
+              // Greige/Yarn calculation fields
+              processLossPercent: item.processLossPercent ? item.processLossPercent.toString() : '',
+              mixedFabricType: item.mixedFabricType || '',
+              mixedFabricPercent: item.mixedFabricPercent ? item.mixedFabricPercent.toString() : '',
+              greigeQuantity: item.greigeQuantity ? item.greigeQuantity.toString() : '',
               yarnRequired: item.yarnRequired ? item.yarnRequired.toString() : '',
               yarnBookedDate: item.yarnBookedDate || '',
               yarnReceivedDate: item.yarnReceivedDate || '',
@@ -253,7 +263,11 @@ export default function OrderEditPage() {
               
               // Add local order production fields at line level for local orders
               if (orderType === 'local') {
-                lineData.yarnRequired = line.yarnRequired ? parseFloat(line.yarnRequired) : undefined;
+                // Greige/Yarn calculation fields (yarnRequired is auto-calculated on backend)
+                lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
+                lineData.mixedFabricType = line.mixedFabricType || undefined;
+                lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
+                // Yarn dates
                 lineData.yarnBookedDate = line.yarnBookedDate || undefined;
                 lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
                 lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
@@ -712,18 +726,68 @@ export default function OrderEditPage() {
                           Production Tracking (Local Order)
                         </Label>
                         
-                        {/* Yarn Section */}
-                        <div className="grid grid-cols-3 gap-3 mb-3">
-                          <div>
-                            <Label className="text-sm">Yarn Required</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={line.yarnRequired || ''}
-                              onChange={(e) => updateOrderLine(lineIndex, 'yarnRequired', e.target.value)}
-                              className="text-sm"
-                            />
+                        {/* Greige & Yarn Calculation Section */}
+                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 mb-3">
+                          <Label className="text-sm font-semibold text-amber-800 mb-2 block">
+                            Greige & Yarn Calculation
+                          </Label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <Label className="text-sm">Process Loss (%)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                placeholder="e.g., 10"
+                                value={line.processLossPercent || ''}
+                                onChange={(e) => updateOrderLine(lineIndex, 'processLossPercent', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm">Mixed Fabric Type</Label>
+                              <Input
+                                placeholder="e.g., Lycra, Spandex"
+                                value={line.mixedFabricType || ''}
+                                onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricType', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm">Mixed Fabric (%)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                placeholder="e.g., 4"
+                                value={line.mixedFabricPercent || ''}
+                                onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricPercent', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
                           </div>
+                          {/* Show calculated values */}
+                          {(line.greigeQuantity || line.yarnRequired || line.quantity) && (
+                            <div className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded">
+                              <span className="font-medium">Calculated: </span>
+                              {line.greigeQuantity && `Greige: ${parseFloat(line.greigeQuantity).toFixed(2)} ${line.unit} | `}
+                              {line.yarnRequired && `Yarn Required: ${parseFloat(line.yarnRequired).toFixed(2)} ${line.unit}`}
+                              {!line.greigeQuantity && !line.yarnRequired && line.quantity && (() => {
+                                const finished = parseFloat(line.quantity || '0');
+                                const loss = parseFloat(line.processLossPercent || '0') / 100;
+                                const mixed = parseFloat(line.mixedFabricPercent || '0') / 100;
+                                const greige = finished * (1 + loss);
+                                const yarn = greige * (1 - mixed);
+                                return `Preview - Greige: ${greige.toFixed(2)} ${line.unit} | Yarn: ${yarn.toFixed(2)} ${line.unit}`;
+                              })()}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Yarn Dates Section */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
                             <Label className="text-sm">Yarn Booked</Label>
                             <Input

@@ -147,10 +147,28 @@ class OrderLine(TimestampedModel):
     # ========== Local Order Production Fields ==========
     # These fields are only relevant for local orders (order.order_type == 'local')
     
+    # Process Loss & Mixed Fabric Fields (for calculating greige and yarn)
+    process_loss_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        help_text='Process loss percentage from finished fabric to greige (e.g., 10 for 10%)'
+    )
+    mixed_fabric_type = models.CharField(
+        max_length=100, blank=True, null=True,
+        help_text='Name of mixed fabric (e.g., lycra, spandex)'
+    )
+    mixed_fabric_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        help_text='Percentage of mixed fabric in greige (e.g., 4 for 4%)'
+    )
+    greige_quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Calculated greige quantity (finished fabric + process loss)'
+    )
+    
     # Yarn Fields
     yarn_required = models.DecimalField(
         max_digits=10, decimal_places=2, blank=True, null=True,
-        help_text='Yarn required amount for this line'
+        help_text='Calculated yarn required (greige minus mixed fabric portion)'
     )
     yarn_booked_date = models.DateField(
         blank=True, null=True,
@@ -262,10 +280,46 @@ class OrderLine(TimestampedModel):
             models.Index(fields=['style', 'color_code', 'cad_code']),
         ]
     
+    def _calculate_greige_and_yarn(self):
+        """
+        Calculate greige_quantity and yarn_required based on finished fabric quantity,
+        process loss percentage, and mixed fabric percentage.
+        
+        Standard textile industry formula:
+        1. Greige = Finished Fabric * (1 + ProcessLoss%)
+        2. Yarn = Greige * (1 - MixedFabric%)
+        
+        Example: 1000 kg finished, 10% process loss, 4% lycra
+        - Greige = 1000 * 1.10 = 1100 kg
+        - Yarn = 1100 * 0.96 = 1056 kg
+        """
+        from decimal import Decimal
+        
+        if not self.quantity:
+            return
+        
+        finished = Decimal(str(self.quantity))
+        
+        # Get process loss (default 0 if not set)
+        loss_percent = Decimal(str(self.process_loss_percent or 0)) / Decimal('100')
+        
+        # Calculate greige: finished * (1 + loss)
+        self.greige_quantity = finished * (Decimal('1') + loss_percent)
+        
+        # Get mixed fabric percent (default 0 if not set)
+        mixed_percent = Decimal(str(self.mixed_fabric_percent or 0)) / Decimal('100')
+        
+        # Calculate yarn: greige * (1 - mixed)
+        self.yarn_required = self.greige_quantity * (Decimal('1') - mixed_percent)
+    
     def save(self, *args, **kwargs):
-        """Auto-calculate local order dates based on yarn_received_date if not manually set"""
+        """Auto-calculate local order fields"""
         # Only auto-calculate for local orders
         if self.style and self.style.order and self.style.order.order_type == 'local':
+            # Calculate greige and yarn requirements
+            self._calculate_greige_and_yarn()
+            
+            # Auto-calculate production dates based on yarn_received_date
             if self.yarn_received_date:
                 from datetime import timedelta
                 

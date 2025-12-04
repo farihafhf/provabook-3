@@ -57,7 +57,11 @@ interface OrderLineFormData {
   notes?: string;
   
   // Local Order Production Fields (only used for local orders)
-  yarnRequired?: string;
+  // Greige/Yarn calculation fields
+  processLossPercent?: string;
+  mixedFabricType?: string;
+  mixedFabricPercent?: string;
+  // Yarn fields (yarnRequired is now auto-calculated)
   yarnBookedDate?: string;
   yarnReceivedDate?: string;
   ppYards?: string;
@@ -279,7 +283,11 @@ export function CreateOrderDialog({
               
               // Add local order production fields at line level for local orders
               if (orderType === 'local') {
-                lineData.yarnRequired = line.yarnRequired ? parseFloat(line.yarnRequired) : undefined;
+                // Greige/Yarn calculation fields (yarnRequired is auto-calculated on backend)
+                lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
+                lineData.mixedFabricType = line.mixedFabricType || undefined;
+                lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
+                // Yarn dates
                 lineData.yarnBookedDate = line.yarnBookedDate || undefined;
                 lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
                 lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
@@ -849,18 +857,66 @@ export function CreateOrderDialog({
                       Production Tracking (Local Order)
                     </summary>
                     <div className="space-y-4 mt-3">
-                      {/* Yarn Section */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <Label htmlFor={`line-${lineIndex}-yarnRequired`}>Yarn Required</Label>
-                          <Input
-                            id={`line-${lineIndex}-yarnRequired`}
-                            type="number"
-                            step="0.01"
-                            value={line.yarnRequired || ''}
-                            onChange={(e) => updateOrderLine(lineIndex, 'yarnRequired', e.target.value)}
-                          />
+                      {/* Greige & Yarn Calculation Section */}
+                      <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                        <Label className="text-sm font-semibold text-amber-800 mb-2 block">
+                          Greige & Yarn Calculation
+                        </Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label htmlFor={`line-${lineIndex}-processLossPercent`}>Process Loss (%)</Label>
+                            <Input
+                              id={`line-${lineIndex}-processLossPercent`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              placeholder="e.g., 10"
+                              value={line.processLossPercent || ''}
+                              onChange={(e) => updateOrderLine(lineIndex, 'processLossPercent', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`line-${lineIndex}-mixedFabricType`}>Mixed Fabric Type</Label>
+                            <Input
+                              id={`line-${lineIndex}-mixedFabricType`}
+                              placeholder="e.g., Lycra, Spandex"
+                              value={line.mixedFabricType || ''}
+                              onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricType', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`line-${lineIndex}-mixedFabricPercent`}>Mixed Fabric (%)</Label>
+                            <Input
+                              id={`line-${lineIndex}-mixedFabricPercent`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              placeholder="e.g., 4"
+                              value={line.mixedFabricPercent || ''}
+                              onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricPercent', e.target.value)}
+                            />
+                          </div>
                         </div>
+                        {/* Preview calculated values */}
+                        {line.quantity && (
+                          <div className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded">
+                            <span className="font-medium">Preview: </span>
+                            {(() => {
+                              const finished = parseFloat(line.quantity || '0');
+                              const loss = parseFloat(line.processLossPercent || '0') / 100;
+                              const mixed = parseFloat(line.mixedFabricPercent || '0') / 100;
+                              const greige = finished * (1 + loss);
+                              const yarn = greige * (1 - mixed);
+                              return `Greige: ${greige.toFixed(2)} ${line.unit} | Yarn Required: ${yarn.toFixed(2)} ${line.unit}`;
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Yarn Dates Section */}
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label htmlFor={`line-${lineIndex}-yarnBookedDate`}>Yarn Booked</Label>
                           <Input

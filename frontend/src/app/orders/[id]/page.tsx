@@ -57,6 +57,12 @@ interface OrderLine {
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
+  // Local order production fields - greige/yarn calculation
+  processLossPercent?: number;
+  mixedFabricType?: string;
+  mixedFabricPercent?: number;
+  greigeQuantity?: number;
+  yarnRequired?: number;
 }
 
 interface OrderColor {
@@ -150,6 +156,7 @@ interface ProductionSummary {
   totalKnitting: number;
   totalDyeing: number;
   totalFinishing: number;
+  totalGreige: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
