@@ -634,25 +634,29 @@ function LocalOrdersPageContent() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-500">Complete / Total Lines</span>
+                <span className="text-gray-500">
+                  {productionMetrics.knitting.entriesCount > 0 ? 'Progress' : 'Complete / Total Lines'}
+                </span>
                 <span className="font-semibold">
-                  {productionMetrics.knitting.complete} / {productionMetrics.totalLines}
+                  {productionMetrics.knitting.entriesCount > 0 
+                    ? `${productionMetrics.knitting.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    : `${productionMetrics.knitting.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
-              <Progress value={productionMetrics.knitting.percent} className="h-2" />
+              <Progress 
+                value={productionMetrics.knitting.entriesCount > 0 
+                  ? productionMetrics.knitting.qtyPercent 
+                  : productionMetrics.knitting.percent} 
+                className="h-2" 
+              />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Started: {productionMetrics.knitting.started}</span>
-                <span>{productionMetrics.knitting.percent.toFixed(1)}%</span>
+                <span>
+                  {(productionMetrics.knitting.entriesCount > 0 
+                    ? productionMetrics.knitting.qtyPercent 
+                    : productionMetrics.knitting.percent).toFixed(1)}%
+                </span>
               </div>
-              {productionMetrics.knitting.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2 space-y-1">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-blue-600 font-medium">Recorded: {productionMetrics.knitting.totalQty.toLocaleString()}</span>
-                    <span className="text-blue-600">{productionMetrics.knitting.qtyPercent.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={productionMetrics.knitting.qtyPercent} className="h-1.5" indicatorClassName="bg-blue-500" />
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -666,25 +670,30 @@ function LocalOrdersPageContent() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-500">Complete / Total Lines</span>
+                <span className="text-gray-500">
+                  {productionMetrics.dyeing.entriesCount > 0 ? 'Progress' : 'Complete / Total Lines'}
+                </span>
                 <span className="font-semibold">
-                  {productionMetrics.dyeing.complete} / {productionMetrics.totalLines}
+                  {productionMetrics.dyeing.entriesCount > 0 
+                    ? `${productionMetrics.dyeing.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    : `${productionMetrics.dyeing.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
-              <Progress value={productionMetrics.dyeing.percent} className="h-2" />
+              <Progress 
+                value={productionMetrics.dyeing.entriesCount > 0 
+                  ? productionMetrics.dyeing.qtyPercent 
+                  : productionMetrics.dyeing.percent} 
+                className="h-2" 
+                indicatorClassName="bg-purple-500"
+              />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Started: {productionMetrics.dyeing.started}</span>
-                <span>{productionMetrics.dyeing.percent.toFixed(1)}%</span>
+                <span>
+                  {(productionMetrics.dyeing.entriesCount > 0 
+                    ? productionMetrics.dyeing.qtyPercent 
+                    : productionMetrics.dyeing.percent).toFixed(1)}%
+                </span>
               </div>
-              {productionMetrics.dyeing.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2 space-y-1">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-purple-600 font-medium">Recorded: {productionMetrics.dyeing.totalQty.toLocaleString()}</span>
-                    <span className="text-purple-600">{productionMetrics.dyeing.qtyPercent.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={productionMetrics.dyeing.qtyPercent} className="h-1.5" indicatorClassName="bg-purple-500" />
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -698,25 +707,30 @@ function LocalOrdersPageContent() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-500">Ex-Factory / Total Lines</span>
+                <span className="text-gray-500">
+                  {productionMetrics.finishing.entriesCount > 0 ? 'Progress' : 'Ex-Factory / Total Lines'}
+                </span>
                 <span className="font-semibold">
-                  {productionMetrics.finishing.exFactory} / {productionMetrics.totalLines}
+                  {productionMetrics.finishing.entriesCount > 0 
+                    ? `${productionMetrics.finishing.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    : `${productionMetrics.finishing.exFactory} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
-              <Progress value={productionMetrics.finishing.percent} className="h-2" />
+              <Progress 
+                value={productionMetrics.finishing.entriesCount > 0 
+                  ? productionMetrics.finishing.qtyPercent 
+                  : productionMetrics.finishing.percent} 
+                className="h-2" 
+                indicatorClassName="bg-green-500"
+              />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Sewing Done: {productionMetrics.finishing.sewingComplete}</span>
-                <span>{productionMetrics.finishing.percent.toFixed(1)}%</span>
+                <span>
+                  {(productionMetrics.finishing.entriesCount > 0 
+                    ? productionMetrics.finishing.qtyPercent 
+                    : productionMetrics.finishing.percent).toFixed(1)}%
+                </span>
               </div>
-              {productionMetrics.finishing.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2 space-y-1">
-                  <div className="flex items-baseline justify-between text-xs">
-                    <span className="text-green-600 font-medium">Recorded: {productionMetrics.finishing.totalQty.toLocaleString()}</span>
-                    <span className="text-green-600">{productionMetrics.finishing.qtyPercent.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={productionMetrics.finishing.qtyPercent} className="h-1.5" indicatorClassName="bg-green-500" />
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
