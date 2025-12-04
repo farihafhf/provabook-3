@@ -170,7 +170,8 @@ function OrdersPageContent() {
       ) {
         return prev;
       }
-      return newFilters;
+      // Preserve orderType from URL when updating other filters
+      return { ...newFilters, orderType: prev.orderType };
     });
   }, []);
 

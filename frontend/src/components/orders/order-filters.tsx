@@ -105,6 +105,9 @@ export function OrderFilters({
     if (status && status !== 'all') params.set('status', status);
     if (orderDateFrom) params.set('order_date_from', orderDateFrom);
     if (orderDateTo) params.set('order_date_to', orderDateTo);
+    // Preserve order_type from current URL if it exists
+    const currentOrderType = searchParams.get('order_type');
+    if (currentOrderType) params.set('order_type', currentOrderType);
 
     const query = params.toString();
     const url = query ? `${pathname}?${query}` : pathname;
@@ -127,6 +130,9 @@ export function OrderFilters({
     if (value && value !== 'all') params.set('status', value);
     if (orderDateFrom) params.set('order_date_from', orderDateFrom);
     if (orderDateTo) params.set('order_date_to', orderDateTo);
+    // Preserve order_type from current URL if it exists
+    const currentOrderType = searchParams.get('order_type');
+    if (currentOrderType) params.set('order_type', currentOrderType);
     
     const query = params.toString();
     const url = query ? `${pathname}?${query}` : pathname;
