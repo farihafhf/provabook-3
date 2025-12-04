@@ -760,8 +760,77 @@ function OrdersPageContent() {
                             <tr>
                               <td colSpan={13} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
+                                  {/* Mobile Card View */}
+                                  <div className="md:hidden p-3 space-y-3">
+                                    {lines.map((line) => (
+                                      <div 
+                                        key={line.id}
+                                        className="bg-white rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          router.push(`/orders/${order.id}`);
+                                        }}
+                                      >
+                                        {/* Header with badges */}
+                                        <div className="flex flex-wrap gap-1.5 mb-2">
+                                          <Badge className="bg-indigo-100 text-indigo-700 text-xs">{line.styleNumber || '-'}</Badge>
+                                          {line.colorCode && <Badge className="bg-sky-100 text-sky-700 text-xs">{line.colorCode}</Badge>}
+                                          {line.cadCode && <Badge className="bg-amber-100 text-amber-700 text-xs">CAD: {line.cadCode}</Badge>}
+                                        </div>
+                                        {/* Description */}
+                                        {line.description && (
+                                          <p className="text-sm text-slate-600 mb-2">{line.description}</p>
+                                        )}
+                                        {/* Key details grid */}
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                          <div>
+                                            <span className="text-slate-500">Qty:</span>
+                                            <span className="font-semibold ml-1">{line.quantity.toLocaleString()} {line.unit}</span>
+                                          </div>
+                                          {line.deliveredQty !== undefined && line.deliveredQty > 0 && (
+                                            <div>
+                                              <span className="text-slate-500">Delivered:</span>
+                                              <span className="font-semibold ml-1 text-emerald-600">{line.deliveredQty.toLocaleString()}</span>
+                                            </div>
+                                          )}
+                                          {line.millPrice && (
+                                            <div>
+                                              <span className="text-slate-500">Price:</span>
+                                              <span className="font-medium ml-1">{line.currency || 'USD'} {line.millPrice.toFixed(2)}</span>
+                                            </div>
+                                          )}
+                                          {line.etd && (
+                                            <div>
+                                              <span className="text-slate-500">ETD:</span>
+                                              <span className="font-medium ml-1">{formatDate(line.etd)}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        {/* Approval badges */}
+                                        {Object.keys(line.approvalStatus || {}).filter(k => line.approvalStatus?.[k] && line.approvalStatus[k] !== 'default').length > 0 && (
+                                          <div className="mt-2 pt-2 border-t border-slate-100">
+                                            <div className="flex flex-wrap gap-1">
+                                              {Object.entries(line.approvalStatus || {})
+                                                .filter(([, v]) => v && v !== 'default')
+                                                .map(([type, status]) => {
+                                                  const badge = getApprovalBadge(status);
+                                                  return (
+                                                    <div key={type} className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-0.5 border">
+                                                      <span className="text-[10px] text-slate-600">{getApprovalAbbrev(type)}</span>
+                                                      <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1 py-0`}>{badge.label.substring(0, 3)}</Badge>
+                                                    </div>
+                                                  );
+                                                })}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Desktop Table View */}
                                   <div 
-                                    className="scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded"
+                                    className="hidden md:block scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded overflow-x-auto"
                                     tabIndex={0}
                                   >
                                   {/* Scroll hint */}

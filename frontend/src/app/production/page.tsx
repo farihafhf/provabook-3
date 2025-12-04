@@ -851,9 +851,7 @@ function LocalOrdersPageContent() {
                           <tr
                             className="text-sm cursor-pointer hover:bg-gray-50"
                             onClick={() => {
-                              if (lines.length > 0) {
-                                toggleOrderExpanded(order.id);
-                              }
+                              router.push(`/orders/${order.id}`);
                             }}
                           >
                             <td className="py-4 text-gray-500 font-medium">{index + 1}</td>
@@ -963,7 +961,106 @@ function LocalOrdersPageContent() {
                             <tr>
                               <td colSpan={14} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
-                                  <div>
+                                  {/* Mobile Card View */}
+                                  <div className="md:hidden p-3 space-y-3">
+                                    {lines.map((line) => {
+                                      const ps = order.productionSummary;
+                                      const orderQty = order.quantity || 0;
+                                      const lineQty = line.quantity || 0;
+                                      const lineRatio = orderQty > 0 ? lineQty / orderQty : 0;
+                                      const knitting = line.productionKnitting || (ps && lineRatio > 0 ? Math.round(ps.totalKnitting * lineRatio) : 0);
+                                      const knittingPct = line.productionKnittingPercent || (ps?.knittingPercent || 0);
+                                      const dyeing = line.productionDyeing || (ps && lineRatio > 0 ? Math.round(ps.totalDyeing * lineRatio) : 0);
+                                      const dyeingPct = line.productionDyeingPercent || (ps?.dyeingPercent || 0);
+                                      const finishing = line.productionFinishing || (ps && lineRatio > 0 ? Math.round(ps.totalFinishing * lineRatio) : 0);
+                                      const finishingPct = line.productionFinishingPercent || (ps?.finishingPercent || 0);
+                                      const delivered = line.deliveredQty || 0;
+                                      
+                                      return (
+                                        <div 
+                                          key={line.id}
+                                          className="bg-white rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            router.push(`/orders/${order.id}`);
+                                          }}
+                                        >
+                                          {/* Header with badges */}
+                                          <div className="flex flex-wrap gap-1.5 mb-2">
+                                            <Badge className="bg-indigo-100 text-indigo-700 text-xs">{line.styleNumber || '-'}</Badge>
+                                            {line.colorCode && <Badge className="bg-sky-100 text-sky-700 text-xs">{line.colorCode}</Badge>}
+                                            {line.cadCode && <Badge className="bg-amber-100 text-amber-700 text-xs">CAD: {line.cadCode}</Badge>}
+                                          </div>
+                                          
+                                          {/* Quantity and Delivery */}
+                                          <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                                            <div>
+                                              <span className="text-slate-500">Qty:</span>
+                                              <span className="font-semibold ml-1">{line.quantity?.toLocaleString()} {line.unit}</span>
+                                            </div>
+                                            {delivered > 0 && (
+                                              <div>
+                                                <span className="text-slate-500">Delivered:</span>
+                                                <span className="font-semibold ml-1 text-emerald-600">{delivered.toLocaleString()}</span>
+                                              </div>
+                                            )}
+                                            {line.etd && (
+                                              <div>
+                                                <span className="text-slate-500">ETD:</span>
+                                                <span className="font-medium ml-1">{formatDate(line.etd)}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                          
+                                          {/* Production Progress */}
+                                          <div className="space-y-2 pt-2 border-t border-slate-100">
+                                            <p className="text-[10px] text-slate-500 font-medium">Production Progress</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                              <div className="bg-blue-50 rounded p-2">
+                                                <div className="flex items-center gap-1 mb-1">
+                                                  <Scissors className="h-3 w-3 text-blue-500" />
+                                                  <span className="text-[10px] text-blue-700">Knitting</span>
+                                                </div>
+                                                <p className="text-xs font-semibold text-blue-700">{knitting > 0 ? `${knitting.toLocaleString()} (${knittingPct}%)` : '-'}</p>
+                                                {knitting > 0 && (
+                                                  <div className="w-full bg-blue-100 rounded-full h-1 mt-1">
+                                                    <div className="h-1 rounded-full bg-blue-500" style={{ width: `${Math.min(knittingPct, 100)}%` }} />
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className="bg-purple-50 rounded p-2">
+                                                <div className="flex items-center gap-1 mb-1">
+                                                  <Droplets className="h-3 w-3 text-purple-500" />
+                                                  <span className="text-[10px] text-purple-700">Dyeing</span>
+                                                </div>
+                                                <p className="text-xs font-semibold text-purple-700">{dyeing > 0 ? `${dyeing.toLocaleString()} (${dyeingPct}%)` : '-'}</p>
+                                                {dyeing > 0 && (
+                                                  <div className="w-full bg-purple-100 rounded-full h-1 mt-1">
+                                                    <div className="h-1 rounded-full bg-purple-500" style={{ width: `${Math.min(dyeingPct, 100)}%` }} />
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className="bg-green-50 rounded p-2">
+                                                <div className="flex items-center gap-1 mb-1">
+                                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                                  <span className="text-[10px] text-green-700">Finishing</span>
+                                                </div>
+                                                <p className="text-xs font-semibold text-green-700">{finishing > 0 ? `${finishing.toLocaleString()} (${finishingPct}%)` : '-'}</p>
+                                                {finishing > 0 && (
+                                                  <div className="w-full bg-green-100 rounded-full h-1 mt-1">
+                                                    <div className="h-1 rounded-full bg-green-500" style={{ width: `${Math.min(finishingPct, 100)}%` }} />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  
+                                  {/* Desktop Table View */}
+                                  <div className="hidden md:block overflow-x-auto">
                                     {/* Scroll hint */}
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                       <span>Line Items ({lines.length}) • Scroll horizontally to view all columns →</span>
