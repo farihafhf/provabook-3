@@ -51,6 +51,16 @@ interface Order {
   lines?: OrderLine[];
   lcIssueDate?: string;
   piSentDate?: string;
+  orderType?: 'local' | 'foreign';
+  // Local order specific fields
+  productionSummary?: {
+    totalKnitting: number;
+    totalDyeing: number;
+    totalFinishing: number;
+    knittingPercent: number;
+    dyeingPercent: number;
+    finishingPercent: number;
+  };
 }
 
 interface OrdersFilterParams {
@@ -201,6 +211,23 @@ function OrdersPageContent() {
       hasRestoredScroll.current = true;
     }
   }, [loading, orders]);
+
+  // Sync filters with URL params when they change (e.g., from dashboard chart click)
+  useEffect(() => {
+    const urlSearch = searchParams.get('search');
+    const urlStatus = searchParams.get('status');
+    const urlDateFrom = searchParams.get('order_date_from');
+    const urlDateTo = searchParams.get('order_date_to');
+    const urlOrderType = searchParams.get('order_type');
+    
+    setFilters({
+      search: urlSearch || undefined,
+      status: urlStatus || undefined,
+      orderDateFrom: urlDateFrom || undefined,
+      orderDateTo: urlDateTo || undefined,
+      orderType: urlOrderType || undefined,
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -648,6 +675,7 @@ function OrdersPageContent() {
                     <tr className="text-left text-sm text-gray-600">
                       <th className="pb-3 font-medium w-12">S/N</th>
                       <th className="pb-3 font-medium w-8"></th>
+                      {filters.orderType === 'all' && <th className="pb-3 font-medium">Type</th>}
                       <th className="pb-3 font-medium">PO #</th>
                       <th className="pb-3 font-medium">Vendor</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
@@ -703,6 +731,16 @@ function OrdersPageContent() {
                                 </Button>
                               )}
                             </td>
+                            {filters.orderType === 'all' && (
+                              <td className="py-4">
+                                <Badge 
+                                  variant={order.orderType === 'local' ? 'secondary' : 'outline'}
+                                  className={order.orderType === 'local' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
+                                >
+                                  {order.orderType === 'local' ? 'Local' : 'Foreign'}
+                                </Badge>
+                              </td>
+                            )}
                             <td className="py-4 font-medium">{order.poNumber}</td>
                             <td className="py-4">{order.customerName}</td>
                             <td className="py-4">{order.fabricType}</td>
@@ -783,7 +821,7 @@ function OrdersPageContent() {
                           {/* Expanded line items */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={13} className="p-0">
+                              <td colSpan={filters.orderType === 'all' ? 14 : 13} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
                                   {/* Mobile Card View */}
                                   <div className="md:hidden p-3 space-y-3">

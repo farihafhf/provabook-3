@@ -244,13 +244,14 @@ def dashboard_stats_view(request):
         # Managers see all orders
         orders = Order.objects.all()
     
-    # 1. Orders by Stage (aggregated from parent order status)
+    # 1. Orders by Stage (aggregated from LINE statuses, not parent order status)
+    # This counts orders that have at least one line with each status
     orders_by_stage = []
-
-    # Count parent orders by status within the filtered queryset
-    status_counts = orders.values('status').annotate(count=Count('id')).order_by('status')
-
-    # Map status to friendly names and ensure consistent naming
+    
+    from apps.orders.models_order_line import OrderLine
+    from django.db.models import Exists, OuterRef
+    
+    # Status map for display names
     status_map = {
         'upcoming': 'Upcoming',
         'in_development': 'In Development',
@@ -259,13 +260,23 @@ def dashboard_stats_view(request):
         'completed': 'Completed',
         'archived': 'Archived',
     }
-
-    for item in status_counts:
-        status = item['status']
-        if status:
+    
+    # Count orders by the status of their lines (aggregated approach)
+    # An order is counted for a status if it has at least one line with that status
+    for status_key, status_name in status_map.items():
+        order_count = orders.filter(
+            Exists(
+                OrderLine.objects.filter(
+                    style__order=OuterRef('pk'),
+                    status=status_key
+                )
+            )
+        ).distinct().count()
+        
+        if order_count > 0:
             orders_by_stage.append({
-                'name': status_map.get(status, status.replace('_', ' ').title()),
-                'value': item['count'],
+                'name': status_name,
+                'value': order_count,
             })
     
     # 2. Orders by Merchandiser (only for admin/manager)
