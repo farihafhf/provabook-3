@@ -58,6 +58,7 @@ interface OrdersFilterParams {
   status?: string | null;
   orderDateFrom?: string | null;
   orderDateTo?: string | null;
+  orderType?: string | null; // 'foreign', 'local', or 'all'
 }
 
 // Cache keys for sessionStorage
@@ -100,6 +101,7 @@ function getFilterKey(filters: OrdersFilterParams): string {
     status: filters.status || '',
     orderDateFrom: filters.orderDateFrom || '',
     orderDateTo: filters.orderDateTo || '',
+    orderType: filters.orderType || 'foreign',
   });
 }
 
@@ -121,11 +123,13 @@ function OrdersPageContent() {
     const urlStatus = searchParams.get('status');
     const urlDateFrom = searchParams.get('order_date_from');
     const urlDateTo = searchParams.get('order_date_to');
+    const urlOrderType = searchParams.get('order_type'); // 'all' to show both local and foreign
     return {
       search: urlSearch || undefined,
       status: urlStatus || undefined,
       orderDateFrom: urlDateFrom || undefined,
       orderDateTo: urlDateTo || undefined,
+      orderType: urlOrderType || undefined,
     };
   });
   const [sortByEtd, setSortByEtd] = useState(false);
@@ -245,8 +249,17 @@ function OrdersPageContent() {
 
       const params: Record<string, string> = { 
         _t: String(Date.now()),
-        order_type: 'foreign', // Filter for foreign orders only on this page
       };
+      // Support 'all' to show both local and foreign orders (for merchandiser workload view)
+      // Default to 'foreign' if not specified
+      const orderType = filtersToUse?.orderType;
+      if (orderType && orderType !== 'all') {
+        params.order_type = orderType;
+      } else if (!orderType) {
+        params.order_type = 'foreign'; // Default for this page
+      }
+      // Note: if orderType === 'all', we don't set order_type param, showing all orders
+      
       if (filtersToUse?.search) params.search = filtersToUse.search;
       if (filtersToUse?.status) params.status = filtersToUse.status;
       if (filtersToUse?.orderDateFrom) params.order_date_from = filtersToUse.orderDateFrom;
@@ -576,7 +589,19 @@ function OrdersPageContent() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>All Orders</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle>
+                {filters.orderType === 'all' ? 'All Orders' : 'Foreign Orders'}
+              </CardTitle>
+              {filters.orderType === 'all' && (
+                <Badge variant="secondary" className="text-xs">Local + Foreign</Badge>
+              )}
+              {filters.search && (
+                <Badge variant="outline" className="text-xs">
+                  Filtered: {filters.search}
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"

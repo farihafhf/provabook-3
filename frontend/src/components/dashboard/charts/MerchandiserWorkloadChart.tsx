@@ -37,9 +37,10 @@ export default function MerchandiserWorkloadChart({ data }: MerchandiserWorkload
   const handleBarClick = (barData: any) => {
     if (!barData || !barData.name) return;
 
+    // Search by merchandiser name, showing ALL orders (both local and foreign, all statuses)
     const params = new URLSearchParams();
-    params.set("status", "running");
     params.set("search", barData.name);
+    params.set("order_type", "all"); // Show both local and foreign orders
 
     router.push(`/orders?${params.toString()}`);
   };
