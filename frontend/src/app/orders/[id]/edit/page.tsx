@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
-import { ArrowLeft, Save, Plus, Trash2, Calendar, MapPin, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Calendar, MapPin, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -87,6 +87,17 @@ export default function OrderEditPage() {
   const [orderType, setOrderType] = useState<'foreign' | 'local'>('foreign');
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([]);
+  const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set([0])); // First line expanded by default
+
+  const toggleLineExpanded = (index: number) => {
+    const newExpanded = new Set(expandedLines);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedLines(newExpanded);
+  };
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -579,9 +590,17 @@ export default function OrderEditPage() {
                   key={line.id || lineIndex}
                   className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all"
                 >
-                  <CardHeader className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardHeader 
+                    className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50 cursor-pointer hover:bg-indigo-100 transition-colors"
+                    onClick={() => toggleLineExpanded(lineIndex)}
+                  >
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                        {expandedLines.has(lineIndex) ? (
+                          <ChevronDown className="h-5 w-5 text-indigo-600" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-indigo-600" />
+                        )}
                         <span className="bg-indigo-600 text-white px-3 py-1 rounded text-sm font-semibold">
                           Line {lineIndex + 1}
                         </span>
@@ -595,19 +614,28 @@ export default function OrderEditPage() {
                             {line.colorCode}
                           </span>
                         )}
+                        {line.cadName && (
+                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded font-mono">
+                            📐 {line.cadName}
+                          </span>
+                        )}
                       </CardTitle>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeOrderLine(lineIndex)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeOrderLine(lineIndex);
+                        }}
                         disabled={orderLines.length === 1}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  {expandedLines.has(lineIndex) && (
+                  <CardContent className="space-y-4 pt-4">
                     {/* Required Fields */}
                     <div className="border-b pb-3">
                       <div className="flex items-center justify-between mb-2">
@@ -1172,6 +1200,7 @@ export default function OrderEditPage() {
                       </div>
                     )}
                   </CardContent>
+                  )}
                 </Card>
               ))}
           </div>
