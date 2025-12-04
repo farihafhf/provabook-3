@@ -87,6 +87,7 @@ interface ProductionSummary {
   totalDyeing: number;
   totalFinishing: number;
   totalGreige: number;
+  totalYarn: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
@@ -238,11 +239,12 @@ function getApprovalBadge(status: string) {
 
 // Calculate aggregated production metrics from all lines across all orders
 // Includes data from both line dates AND productionEntry records
-// Uses total greige quantity as denominator for production percentages (textile industry standard)
+// Uses different denominators: greige for knitting/dyeing/finishing, yarn for yarn tracking
 function calculateProductionMetrics(orders: Order[]) {
   let totalLines = 0;
   let totalQuantity = 0;
-  let totalGreige = 0; // Total greige quantity for percentage calculations
+  let totalGreige = 0; // For knitting/dyeing/finishing denominator
+  let totalYarn = 0;   // For yarn progress denominator
   let yarnReceivedLines = 0;
   let knittingStartedLines = 0;
   let knittingCompleteLines = 0;
@@ -265,8 +267,11 @@ function calculateProductionMetrics(orders: Order[]) {
     // Line-level date-based metrics
     (order.lines || []).forEach(line => {
       totalLines++;
-      // Use greige quantity if available, otherwise fall back to quantity
+      // Greige quantity (for knitting/dyeing/finishing)
       totalGreige += line.greigeQuantity || line.quantity || 0;
+      // Yarn required (for yarn progress)
+      totalYarn += line.yarnRequired || line.greigeQuantity || line.quantity || 0;
+      
       if (line.yarnReceivedDate) yarnReceivedLines++;
       if (line.knittingStartDate) knittingStartedLines++;
       if (line.knittingCompleteDate) knittingCompleteLines++;
@@ -277,7 +282,6 @@ function calculateProductionMetrics(orders: Order[]) {
     });
 
     // Add productionSummary data from ProductionEntry records
-    // Also use totalGreige from production summary if available
     if (order.productionSummary) {
       totalKnittingQty += order.productionSummary.totalKnitting || 0;
       totalDyeingQty += order.productionSummary.totalDyeing || 0;
@@ -288,17 +292,20 @@ function calculateProductionMetrics(orders: Order[]) {
     }
   });
 
-  // Use total greige as denominator for production percentages
-  // This is textile industry standard: production is measured against greige requirement
-  const denominator = totalGreige > 0 ? totalGreige : totalQuantity;
+  // Different denominators for different progress types:
+  // - Greige for knitting/dyeing/finishing (production stages)
+  // - Yarn for yarn procurement tracking (currently tracks lines, not quantities)
+  const greigeDenominator = totalGreige > 0 ? totalGreige : totalQuantity;
 
   return {
     totalLines,
     totalQuantity,
     totalGreige,
+    totalYarn,
     yarn: {
       received: yarnReceivedLines,
       percent: totalLines > 0 ? (yarnReceivedLines / totalLines) * 100 : 0,
+      totalRequired: totalYarn,
     },
     knitting: {
       started: knittingStartedLines,
@@ -307,7 +314,8 @@ function calculateProductionMetrics(orders: Order[]) {
       // From ProductionEntry records - use greige as denominator
       totalQty: totalKnittingQty,
       entriesCount: totalKnittingEntries,
-      qtyPercent: denominator > 0 ? (totalKnittingQty / denominator) * 100 : 0,
+      qtyPercent: greigeDenominator > 0 ? (totalKnittingQty / greigeDenominator) * 100 : 0,
+      denominator: totalGreige,
     },
     dyeing: {
       started: dyeingStartedLines,
@@ -316,7 +324,8 @@ function calculateProductionMetrics(orders: Order[]) {
       // From ProductionEntry records - use greige as denominator
       totalQty: totalDyeingQty,
       entriesCount: totalDyeingEntries,
-      qtyPercent: denominator > 0 ? (totalDyeingQty / denominator) * 100 : 0,
+      qtyPercent: greigeDenominator > 0 ? (totalDyeingQty / greigeDenominator) * 100 : 0,
+      denominator: totalGreige,
     },
     finishing: {
       sewingComplete: sewingFinishLines,
@@ -325,7 +334,8 @@ function calculateProductionMetrics(orders: Order[]) {
       // From ProductionEntry records - use greige as denominator
       totalQty: totalFinishingQty,
       entriesCount: totalFinishingEntries,
-      qtyPercent: denominator > 0 ? (totalFinishingQty / denominator) * 100 : 0,
+      qtyPercent: greigeDenominator > 0 ? (totalFinishingQty / greigeDenominator) * 100 : 0,
+      denominator: totalGreige,
     },
   };
 }
@@ -617,7 +627,7 @@ function LocalOrdersPageContent() {
 
         {/* Production Stage Cards - Aggregated from line-level data */}
         <div className="grid gap-4 md:grid-cols-4">
-          {/* Yarn Card */}
+          {/* Yarn Card - uses Yarn Required as denominator */}
           <Card className="border-l-4 border-l-amber-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -627,19 +637,20 @@ function LocalOrdersPageContent() {
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-gray-500">Received / Total Lines</span>
+                <span className="text-gray-500">Lines Received / Total</span>
                 <span className="font-semibold">
                   {productionMetrics.yarn.received} / {productionMetrics.totalLines}
                 </span>
               </div>
               <Progress value={productionMetrics.yarn.percent} className="h-2" />
-              <div className="flex justify-end text-xs text-gray-500">
-                {productionMetrics.yarn.percent.toFixed(1)}%
+              <div className="flex justify-between text-xs text-gray-500">
+                <span className="text-blue-600">Yarn Req: {productionMetrics.totalYarn?.toLocaleString() || 0}</span>
+                <span>{productionMetrics.yarn.percent.toFixed(1)}%</span>
               </div>
             </CardContent>
           </Card>
 
-          {/* Knitting Card */}
+          {/* Knitting Card - uses Greige as denominator */}
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -654,7 +665,7 @@ function LocalOrdersPageContent() {
                 </span>
                 <span className="font-semibold">
                   {productionMetrics.knitting.entriesCount > 0 
-                    ? `${productionMetrics.knitting.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    ? `${productionMetrics.knitting.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.knitting.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
@@ -666,6 +677,7 @@ function LocalOrdersPageContent() {
               />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Started: {productionMetrics.knitting.started}</span>
+                <span className="text-amber-600">Greige base</span>
                 <span>
                   {(productionMetrics.knitting.entriesCount > 0 
                     ? productionMetrics.knitting.qtyPercent 
@@ -675,7 +687,7 @@ function LocalOrdersPageContent() {
             </CardContent>
           </Card>
 
-          {/* Dyeing Card */}
+          {/* Dyeing Card - uses Greige as denominator */}
           <Card className="border-l-4 border-l-purple-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -690,7 +702,7 @@ function LocalOrdersPageContent() {
                 </span>
                 <span className="font-semibold">
                   {productionMetrics.dyeing.entriesCount > 0 
-                    ? `${productionMetrics.dyeing.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    ? `${productionMetrics.dyeing.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.dyeing.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
@@ -703,6 +715,7 @@ function LocalOrdersPageContent() {
               />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Started: {productionMetrics.dyeing.started}</span>
+                <span className="text-amber-600">Greige base</span>
                 <span>
                   {(productionMetrics.dyeing.entriesCount > 0 
                     ? productionMetrics.dyeing.qtyPercent 
@@ -712,7 +725,7 @@ function LocalOrdersPageContent() {
             </CardContent>
           </Card>
 
-          {/* Finishing Card */}
+          {/* Finishing Card - uses Greige as denominator */}
           <Card className="border-l-4 border-l-green-500">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -727,7 +740,7 @@ function LocalOrdersPageContent() {
                 </span>
                 <span className="font-semibold">
                   {productionMetrics.finishing.entriesCount > 0 
-                    ? `${productionMetrics.finishing.totalQty.toLocaleString()} / ${productionMetrics.totalQuantity.toLocaleString()}`
+                    ? `${productionMetrics.finishing.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.finishing.exFactory} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
@@ -740,6 +753,7 @@ function LocalOrdersPageContent() {
               />
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Sewing Done: {productionMetrics.finishing.sewingComplete}</span>
+                <span className="text-amber-600">Greige base</span>
                 <span>
                   {(productionMetrics.finishing.entriesCount > 0 
                     ? productionMetrics.finishing.qtyPercent 

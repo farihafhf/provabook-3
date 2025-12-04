@@ -1004,33 +1004,50 @@ class OrderListSerializer(serializers.ModelSerializer):
                 total_finishing += qty
                 finishing_count += 1
         
-        # Calculate total greige quantity from all lines (for local orders, use as denominator)
+        # Calculate total greige and yarn quantities from all lines
         total_greige = 0.0
+        total_yarn = 0.0
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Iterate through styles and their lines to sum greige quantities
+        # Iterate through styles and their lines to sum greige and yarn quantities
         for style in obj.styles.all():
             for line in style.lines.all():
+                # Greige quantity (for knitting/dyeing/finishing denominator)
                 if line.greige_quantity:
                     total_greige += float(line.greige_quantity)
                 elif line.quantity:
                     # Fallback: if no greige calculated yet, use quantity
                     total_greige += float(line.quantity)
+                
+                # Yarn required (for yarn progress denominator)
+                if line.yarn_required:
+                    total_yarn += float(line.yarn_required)
+                elif line.greige_quantity:
+                    # Fallback: use greige if yarn not calculated
+                    total_yarn += float(line.greige_quantity)
+                elif line.quantity:
+                    # Final fallback: use finished quantity
+                    total_yarn += float(line.quantity)
         
-        # Use greige total as denominator, fallback to ordered_qty if no lines
-        denominator = total_greige if total_greige > 0 else ordered_qty
+        # Different denominators for different progress types:
+        # - Greige is used for knitting/dyeing/finishing (production stages)
+        # - Yarn is used for yarn procurement tracking
+        greige_denominator = total_greige if total_greige > 0 else ordered_qty
+        yarn_denominator = total_yarn if total_yarn > 0 else total_greige if total_greige > 0 else ordered_qty
         
         return {
             'totalKnitting': total_knitting,
             'totalDyeing': total_dyeing,
             'totalFinishing': total_finishing,
             'totalGreige': total_greige,
+            'totalYarn': total_yarn,
             'knittingEntriesCount': knitting_count,
             'dyeingEntriesCount': dyeing_count,
             'finishingEntriesCount': finishing_count,
-            'knittingPercent': round((total_knitting / denominator) * 100, 1) if denominator > 0 else 0,
-            'dyeingPercent': round((total_dyeing / denominator) * 100, 1) if denominator > 0 else 0,
-            'finishingPercent': round((total_finishing / denominator) * 100, 1) if denominator > 0 else 0,
+            # Knitting/Dyeing/Finishing use greige as denominator
+            'knittingPercent': round((total_knitting / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'dyeingPercent': round((total_dyeing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'finishingPercent': round((total_finishing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
         }
     
     def to_representation(self, instance):

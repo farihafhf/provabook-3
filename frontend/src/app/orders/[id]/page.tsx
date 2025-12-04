@@ -157,6 +157,7 @@ interface ProductionSummary {
   totalDyeing: number;
   totalFinishing: number;
   totalGreige: number;
+  totalYarn: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
@@ -2130,7 +2131,7 @@ export default function OrderDetailPage() {
             {/* Production Progress Bars - Only for Local Orders */}
             {order.orderType === 'local' && order.productionSummary && (
               <div className="grid gap-4 md:grid-cols-3">
-                {/* Knitting Progress */}
+                {/* Knitting Progress - uses Greige as denominator */}
                 <Card className="border-l-4 border-l-blue-500">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -2140,15 +2141,19 @@ export default function OrderDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
-                      <span className="text-gray-500">{order.productionSummary.totalKnitting.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="text-gray-500">
+                        {order.productionSummary.totalKnitting.toLocaleString()} / {(order.productionSummary.totalGreige || order.quantity).toLocaleString()} {order.unit}
+                      </span>
                       <span className="font-semibold text-blue-700">{order.productionSummary.knittingPercent}%</span>
                     </div>
                     <Progress value={Math.min(order.productionSummary.knittingPercent, 100)} className="h-2" />
-                    <div className="text-xs text-gray-500">{order.productionSummary.knittingEntriesCount} entries</div>
+                    <div className="text-xs text-gray-500">
+                      {order.productionSummary.knittingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                    </div>
                   </CardContent>
                 </Card>
 
-                {/* Dyeing Progress */}
+                {/* Dyeing Progress - uses Greige as denominator */}
                 <Card className="border-l-4 border-l-purple-500">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -2158,15 +2163,19 @@ export default function OrderDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
-                      <span className="text-gray-500">{order.productionSummary.totalDyeing.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="text-gray-500">
+                        {order.productionSummary.totalDyeing.toLocaleString()} / {(order.productionSummary.totalGreige || order.quantity).toLocaleString()} {order.unit}
+                      </span>
                       <span className="font-semibold text-purple-700">{order.productionSummary.dyeingPercent}%</span>
                     </div>
                     <Progress value={Math.min(order.productionSummary.dyeingPercent, 100)} className="h-2" />
-                    <div className="text-xs text-gray-500">{order.productionSummary.dyeingEntriesCount} entries</div>
+                    <div className="text-xs text-gray-500">
+                      {order.productionSummary.dyeingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                    </div>
                   </CardContent>
                 </Card>
 
-                {/* Finishing Progress */}
+                {/* Finishing Progress - uses Greige as denominator */}
                 <Card className="border-l-4 border-l-green-500">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
@@ -2176,11 +2185,15 @@ export default function OrderDetailPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
-                      <span className="text-gray-500">{order.productionSummary.totalFinishing.toLocaleString()} / {order.quantity.toLocaleString()} {order.unit}</span>
+                      <span className="text-gray-500">
+                        {order.productionSummary.totalFinishing.toLocaleString()} / {(order.productionSummary.totalGreige || order.quantity).toLocaleString()} {order.unit}
+                      </span>
                       <span className="font-semibold text-green-700">{order.productionSummary.finishingPercent}%</span>
                     </div>
                     <Progress value={Math.min(order.productionSummary.finishingPercent, 100)} className="h-2" />
-                    <div className="text-xs text-gray-500">{order.productionSummary.finishingEntriesCount} entries</div>
+                    <div className="text-xs text-gray-500">
+                      {order.productionSummary.finishingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
