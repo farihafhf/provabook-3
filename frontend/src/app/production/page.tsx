@@ -645,11 +645,12 @@ function LocalOrdersPageContent() {
                 <span>{productionMetrics.knitting.percent.toFixed(1)}%</span>
               </div>
               {productionMetrics.knitting.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2">
+                <div className="pt-2 border-t mt-2 space-y-1">
                   <div className="flex items-baseline justify-between text-xs">
                     <span className="text-blue-600 font-medium">Recorded: {productionMetrics.knitting.totalQty.toLocaleString()}</span>
                     <span className="text-blue-600">{productionMetrics.knitting.qtyPercent.toFixed(1)}%</span>
                   </div>
+                  <Progress value={productionMetrics.knitting.qtyPercent} className="h-1.5" indicatorClassName="bg-blue-500" />
                 </div>
               )}
             </CardContent>
@@ -676,11 +677,12 @@ function LocalOrdersPageContent() {
                 <span>{productionMetrics.dyeing.percent.toFixed(1)}%</span>
               </div>
               {productionMetrics.dyeing.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2">
+                <div className="pt-2 border-t mt-2 space-y-1">
                   <div className="flex items-baseline justify-between text-xs">
                     <span className="text-purple-600 font-medium">Recorded: {productionMetrics.dyeing.totalQty.toLocaleString()}</span>
                     <span className="text-purple-600">{productionMetrics.dyeing.qtyPercent.toFixed(1)}%</span>
                   </div>
+                  <Progress value={productionMetrics.dyeing.qtyPercent} className="h-1.5" indicatorClassName="bg-purple-500" />
                 </div>
               )}
             </CardContent>
@@ -707,11 +709,12 @@ function LocalOrdersPageContent() {
                 <span>{productionMetrics.finishing.percent.toFixed(1)}%</span>
               </div>
               {productionMetrics.finishing.entriesCount > 0 && (
-                <div className="pt-2 border-t mt-2">
+                <div className="pt-2 border-t mt-2 space-y-1">
                   <div className="flex items-baseline justify-between text-xs">
                     <span className="text-green-600 font-medium">Recorded: {productionMetrics.finishing.totalQty.toLocaleString()}</span>
                     <span className="text-green-600">{productionMetrics.finishing.qtyPercent.toFixed(1)}%</span>
                   </div>
+                  <Progress value={productionMetrics.finishing.qtyPercent} className="h-1.5" indicatorClassName="bg-green-500" />
                 </div>
               )}
             </CardContent>
@@ -971,6 +974,26 @@ function LocalOrdersPageContent() {
                                           const deliveryPct = total > 0 ? Math.round((delivered / total) * 100) : 0;
                                           const isComplete = deliveryPct >= 100;
                                           
+                                          // Calculate proportional production values from order-level data
+                                          // if line-specific data isn't available
+                                          const orderQty = order.quantity || 0;
+                                          const lineQty = line.quantity || 0;
+                                          const lineRatio = orderQty > 0 ? lineQty / orderQty : 0;
+                                          const ps = order.productionSummary;
+                                          
+                                          // Use line-specific data if available, otherwise calculate proportional from order
+                                          const knitting = line.productionKnitting || (ps && lineRatio > 0 ? Math.round(ps.totalKnitting * lineRatio) : 0);
+                                          const knittingPct = line.productionKnittingPercent || (ps?.knittingPercent || 0);
+                                          const dyeing = line.productionDyeing || (ps && lineRatio > 0 ? Math.round(ps.totalDyeing * lineRatio) : 0);
+                                          const dyeingPct = line.productionDyeingPercent || (ps?.dyeingPercent || 0);
+                                          const finishing = line.productionFinishing || (ps && lineRatio > 0 ? Math.round(ps.totalFinishing * lineRatio) : 0);
+                                          const finishingPct = line.productionFinishingPercent || (ps?.finishingPercent || 0);
+                                          
+                                          // Track if using proportional data (for visual indicator)
+                                          const isProportionalKnitting = !line.productionKnitting && knitting > 0;
+                                          const isProportionalDyeing = !line.productionDyeing && dyeing > 0;
+                                          const isProportionalFinishing = !line.productionFinishing && finishing > 0;
+                                          
                                           return (
                                             <tr 
                                               key={line.id} 
@@ -1027,21 +1050,19 @@ function LocalOrdersPageContent() {
                                               {/* Knitting Production Entry Progress */}
                                               <td className="py-2 px-3 min-w-[100px] bg-blue-50/30">
                                                 {(() => {
-                                                  const knitting = line.productionKnitting || 0;
-                                                  const knittingPct = line.productionKnittingPercent || 0;
                                                   const isKnitComplete = knittingPct >= 100;
                                                   if (knitting > 0) {
                                                     return (
                                                       <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-baseline gap-1">
                                                           <span className={`font-semibold text-xs ${isKnitComplete ? 'text-blue-600' : 'text-slate-700'}`}>
-                                                            {knitting.toLocaleString()}
+                                                            {isProportionalKnitting ? '~' : ''}{knitting.toLocaleString()}
                                                           </span>
                                                           <span className="text-slate-400 text-[10px]">({knittingPct}%)</span>
                                                         </div>
                                                         <div className="w-full bg-blue-100 rounded-full h-1">
                                                           <div 
-                                                            className={`h-1 rounded-full ${isKnitComplete ? 'bg-blue-600' : 'bg-blue-400'}`}
+                                                            className={`h-1 rounded-full ${isKnitComplete ? 'bg-blue-600' : 'bg-blue-400'} ${isProportionalKnitting ? 'opacity-60' : ''}`}
                                                             style={{ width: `${Math.min(knittingPct, 100)}%` }}
                                                           />
                                                         </div>
@@ -1054,21 +1075,19 @@ function LocalOrdersPageContent() {
                                               {/* Dyeing Production Entry Progress */}
                                               <td className="py-2 px-3 min-w-[100px] bg-purple-50/30">
                                                 {(() => {
-                                                  const dyeing = line.productionDyeing || 0;
-                                                  const dyeingPct = line.productionDyeingPercent || 0;
                                                   const isDyeComplete = dyeingPct >= 100;
                                                   if (dyeing > 0) {
                                                     return (
                                                       <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-baseline gap-1">
                                                           <span className={`font-semibold text-xs ${isDyeComplete ? 'text-purple-600' : 'text-slate-700'}`}>
-                                                            {dyeing.toLocaleString()}
+                                                            {isProportionalDyeing ? '~' : ''}{dyeing.toLocaleString()}
                                                           </span>
                                                           <span className="text-slate-400 text-[10px]">({dyeingPct}%)</span>
                                                         </div>
                                                         <div className="w-full bg-purple-100 rounded-full h-1">
                                                           <div 
-                                                            className={`h-1 rounded-full ${isDyeComplete ? 'bg-purple-600' : 'bg-purple-400'}`}
+                                                            className={`h-1 rounded-full ${isDyeComplete ? 'bg-purple-600' : 'bg-purple-400'} ${isProportionalDyeing ? 'opacity-60' : ''}`}
                                                             style={{ width: `${Math.min(dyeingPct, 100)}%` }}
                                                           />
                                                         </div>
@@ -1081,21 +1100,19 @@ function LocalOrdersPageContent() {
                                               {/* Finishing Production Entry Progress */}
                                               <td className="py-2 px-3 min-w-[100px] bg-green-50/30">
                                                 {(() => {
-                                                  const finishing = line.productionFinishing || 0;
-                                                  const finishingPct = line.productionFinishingPercent || 0;
                                                   const isFinishComplete = finishingPct >= 100;
                                                   if (finishing > 0) {
                                                     return (
                                                       <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-baseline gap-1">
                                                           <span className={`font-semibold text-xs ${isFinishComplete ? 'text-green-600' : 'text-slate-700'}`}>
-                                                            {finishing.toLocaleString()}
+                                                            {isProportionalFinishing ? '~' : ''}{finishing.toLocaleString()}
                                                           </span>
                                                           <span className="text-slate-400 text-[10px]">({finishingPct}%)</span>
                                                         </div>
                                                         <div className="w-full bg-green-100 rounded-full h-1">
                                                           <div 
-                                                            className={`h-1 rounded-full ${isFinishComplete ? 'bg-green-600' : 'bg-green-400'}`}
+                                                            className={`h-1 rounded-full ${isFinishComplete ? 'bg-green-600' : 'bg-green-400'} ${isProportionalFinishing ? 'opacity-60' : ''}`}
                                                             style={{ width: `${Math.min(finishingPct, 100)}%` }}
                                                           />
                                                         </div>
