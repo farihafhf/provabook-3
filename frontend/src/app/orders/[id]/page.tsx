@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight, Scissors, Droplets } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight, Scissors, Droplets, Calculator, FlaskConical, Percent } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -305,6 +305,9 @@ export default function OrderDetailPage() {
     notes: ''
   });
   const [savingProductionEntry, setSavingProductionEntry] = useState(false);
+
+  // Greige/Yarn Calculations Dialog state
+  const [showCalculationsDialog, setShowCalculationsDialog] = useState(false);
 
   const toggleOrderLineExpanded = (lineId: string) => {
     const newExpanded = new Set(expandedOrderLines);
@@ -1345,6 +1348,7 @@ export default function OrderDetailPage() {
                             styleNumber: style.styleNumber,
                           }}
                           orderId={order.id}
+                          orderType={order.orderType}
                           onClick={() => {
                             setSelectedLineItem({
                               ...line, 
@@ -2204,6 +2208,10 @@ export default function OrderDetailPage() {
                         <Plus className="h-4 w-4 mr-1" />
                         Finishing
                       </Button>
+                      <Button onClick={() => setShowCalculationsDialog(true)} size="sm" variant="outline" className="text-amber-700 border-amber-300 hover:bg-amber-50 ml-2">
+                        <Calculator className="h-4 w-4 mr-1" />
+                        Calculations
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -2835,6 +2843,138 @@ export default function OrderDetailPage() {
                 disabled={assigningTask}
               >
                 {assigningTask ? 'Assigning...' : 'Assign'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Greige & Yarn Calculations Dialog */}
+        <Dialog open={showCalculationsDialog} onOpenChange={setShowCalculationsDialog}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-amber-600" />
+                Production Calculations Summary
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Order-level summary */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-lg border border-amber-200">
+                <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4" />
+                  Order Summary
+                </h3>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500 text-xs mb-1">Total Finished Fabric</p>
+                    <p className="font-bold text-lg text-indigo-700">
+                      {order?.quantity?.toLocaleString() || 0} <span className="text-sm font-normal">{order?.unit}</span>
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500 text-xs mb-1">Total Greige Required</p>
+                    <p className="font-bold text-lg text-amber-700">
+                      {order?.productionSummary?.totalGreige?.toLocaleString() || order?.quantity?.toLocaleString() || 0} <span className="text-sm font-normal">{order?.unit}</span>
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <p className="text-gray-500 text-xs mb-1">Total Yarn Required</p>
+                    <p className="font-bold text-lg text-blue-700">
+                      {order?.styles?.reduce((sum, s) => sum + (s.lines?.reduce((lsum, l) => lsum + (l.yarnRequired || 0), 0) || 0), 0).toLocaleString() || 0} <span className="text-sm font-normal">{order?.unit}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line-by-line calculations */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Line Item Calculations
+                </h3>
+                {order?.styles?.map((style) =>
+                  style.lines?.map((line) => (
+                    <div key={line.id} className="border rounded-lg overflow-hidden">
+                      {/* Line header */}
+                      <div className="bg-gray-100 px-4 py-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-indigo-600 text-white">{style.styleNumber}</Badge>
+                          {line.colorCode && <Badge className="bg-blue-100 text-blue-800">{line.colorCode}</Badge>}
+                          {line.cadCode && <Badge className="bg-purple-100 text-purple-800">{line.cadCode}</Badge>}
+                        </div>
+                        <span className="text-sm font-medium">{line.quantity?.toLocaleString()} {line.unit}</span>
+                      </div>
+                      {/* Calculation details */}
+                      <div className="p-4 bg-white">
+                        {(line.processLossPercent || line.mixedFabricType || line.greigeQuantity || line.yarnRequired) ? (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {/* Input values */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-gray-500 uppercase">Inputs</p>
+                              <div className="flex items-center gap-2">
+                                <Percent className="h-4 w-4 text-red-500" />
+                                <span className="text-gray-600">Process Loss:</span>
+                                <span className="font-semibold text-red-600">{line.processLossPercent || 0}%</span>
+                              </div>
+                              {line.mixedFabricType && (
+                                <div className="flex items-center gap-2">
+                                  <FlaskConical className="h-4 w-4 text-purple-500" />
+                                  <span className="text-gray-600">{line.mixedFabricType}:</span>
+                                  <span className="font-semibold text-purple-600">{line.mixedFabricPercent || 0}%</span>
+                                </div>
+                              )}
+                            </div>
+                            {/* Calculation breakdown */}
+                            <div className="space-y-2 col-span-2">
+                              <p className="text-xs font-medium text-gray-500 uppercase">Calculation</p>
+                              <div className="bg-gray-50 p-2 rounded text-xs font-mono">
+                                <p>Greige = {line.quantity} × (1 + {line.processLossPercent || 0}%)</p>
+                                <p className="font-semibold text-amber-700">= {line.greigeQuantity?.toLocaleString() || line.quantity} {line.unit}</p>
+                                {line.mixedFabricType && (
+                                  <>
+                                    <p className="mt-1">Yarn = {line.greigeQuantity || line.quantity} × (1 - {line.mixedFabricPercent || 0}%)</p>
+                                    <p className="font-semibold text-blue-700">= {line.yarnRequired?.toLocaleString() || line.greigeQuantity || line.quantity} {line.unit}</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            {/* Result */}
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-gray-500 uppercase">Result</p>
+                              <div className="bg-amber-50 p-2 rounded border border-amber-200">
+                                <p className="text-xs text-gray-500">Greige:</p>
+                                <p className="font-bold text-amber-700">{line.greigeQuantity?.toLocaleString() || line.quantity} {line.unit}</p>
+                              </div>
+                              <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                                <p className="text-xs text-gray-500">Yarn:</p>
+                                <p className="font-bold text-blue-700">{line.yarnRequired?.toLocaleString() || line.greigeQuantity || line.quantity} {line.unit}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 text-sm italic">No calculation parameters set for this line.</p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Formula explanation */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm">
+                <h4 className="font-semibold text-blue-800 mb-2">Formula Reference</h4>
+                <div className="space-y-1 text-blue-700">
+                  <p><strong>Greige Quantity</strong> = Finished Fabric × (1 + Process Loss %)</p>
+                  <p><strong>Yarn Required</strong> = Greige Quantity × (1 - Mixed Fabric %)</p>
+                </div>
+                <p className="mt-2 text-xs text-blue-600">
+                  Production progress bars use Greige Quantity as the 100% baseline (textile industry standard).
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCalculationsDialog(false)}>
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>

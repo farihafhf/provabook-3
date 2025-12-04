@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, AlertTriangle, History } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, History, Percent, FlaskConical } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { ApprovalTimelineDialog } from './approval-timeline-dialog';
 
@@ -22,8 +22,15 @@ interface LineItemCardProps {
     etd?: string;
     provaPrice?: number;
     currency?: string;
+    // Greige/Yarn calculation fields
+    processLossPercent?: number;
+    mixedFabricType?: string;
+    mixedFabricPercent?: number;
+    greigeQuantity?: number;
+    yarnRequired?: number;
   };
   orderId?: string;
+  orderType?: string; // 'local' or 'foreign'
   onClick?: () => void;
   onRefresh?: () => void; // Callback to refresh parent data when approval stages are modified
 }
@@ -78,9 +85,12 @@ const getETDUrgency = (etdDate?: string): { text: string; color: string; days: n
   }
 };
 
-export function LineItemCard({ line, orderId, onClick, onRefresh }: LineItemCardProps) {
+export function LineItemCard({ line, orderId, orderType, onClick, onRefresh }: LineItemCardProps) {
   const [showApprovalTimeline, setShowApprovalTimeline] = useState(false);
   const urgency = getETDUrgency(line.etd);
+  
+  // Check if line has greige/yarn calculations (for local orders)
+  const hasCalculations = orderType === 'local' && (line.greigeQuantity || line.yarnRequired || line.processLossPercent);
   
   const lineLabel = [
     line.styleNumber,
@@ -152,8 +162,52 @@ export function LineItemCard({ line, orderId, onClick, onRefresh }: LineItemCard
           </div>
         </div>
 
+        {/* Greige/Yarn Calculation Summary - Only for Local Orders with calculations */}
+        {hasCalculations && (
+          <div className="mt-4 pt-3 border-t border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 -mx-6 px-6 py-3 rounded-b-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <FlaskConical className="h-4 w-4 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-800">Production Calculations</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              {/* Left column: Losses */}
+              <div className="space-y-1">
+                {line.processLossPercent !== undefined && line.processLossPercent > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Percent className="h-3 w-3 text-red-500" />
+                    <span className="text-gray-600">Loss:</span>
+                    <span className="font-semibold text-red-600">{line.processLossPercent}%</span>
+                  </div>
+                )}
+                {line.mixedFabricType && (
+                  <div className="flex items-center gap-1.5">
+                    <FlaskConical className="h-3 w-3 text-purple-500" />
+                    <span className="text-gray-600">{line.mixedFabricType}:</span>
+                    <span className="font-semibold text-purple-600">{line.mixedFabricPercent || 0}%</span>
+                  </div>
+                )}
+              </div>
+              {/* Right column: Calculated quantities */}
+              <div className="space-y-1">
+                {line.greigeQuantity && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-600">Greige:</span>
+                    <span className="font-bold text-amber-700">{line.greigeQuantity.toLocaleString()} {line.unit}</span>
+                  </div>
+                )}
+                {line.yarnRequired && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-600">Yarn:</span>
+                    <span className="font-bold text-blue-700">{line.yarnRequired.toLocaleString()} {line.unit}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ETD Section */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className={`mt-4 pt-4 border-t border-gray-100 ${hasCalculations ? '-mx-6 px-6' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Calendar className="h-4 w-4" />
