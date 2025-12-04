@@ -189,6 +189,94 @@ export function CreateOrderDialog({
     });
   };
 
+  const copyBasicInfoToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        unit: sourceLine.unit,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Basic Info Copied',
+      description: `Unit from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyColorCadToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        colorCode: sourceLine.colorCode,
+        cadCode: sourceLine.cadCode,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Color & CAD Copied',
+      description: `Color & CAD data from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyTechnicalDetailsToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        description: sourceLine.description,
+        fabricComposition: sourceLine.fabricComposition,
+        gsm: sourceLine.gsm,
+        cuttableWidth: sourceLine.cuttableWidth,
+        finishingWidth: sourceLine.finishingWidth,
+        construction: sourceLine.construction,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Technical Details Copied',
+      description: `Style technical details from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyProductionTrackingToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        processLossPercent: sourceLine.processLossPercent,
+        mixedFabricType: sourceLine.mixedFabricType,
+        mixedFabricPercent: sourceLine.mixedFabricPercent,
+        yarnBookedDate: sourceLine.yarnBookedDate,
+        yarnReceivedDate: sourceLine.yarnReceivedDate,
+        ppYards: sourceLine.ppYards,
+        fitCumPpSubmitDate: sourceLine.fitCumPpSubmitDate,
+        fitCumPpCommentsDate: sourceLine.fitCumPpCommentsDate,
+        dyeingCompleteDate: sourceLine.dyeingCompleteDate,
+        bulkSizeSetDate: sourceLine.bulkSizeSetDate,
+        cuttingStartDate: sourceLine.cuttingStartDate,
+        cuttingCompleteDate: sourceLine.cuttingCompleteDate,
+        printSendDate: sourceLine.printSendDate,
+        printReceivedDate: sourceLine.printReceivedDate,
+        sewingInputDate: sourceLine.sewingInputDate,
+        sewingFinishDate: sourceLine.sewingFinishDate,
+        packingCompleteDate: sourceLine.packingCompleteDate,
+        finalInspectionDate: sourceLine.finalInspectionDate,
+        exFactoryDate: sourceLine.exFactoryDate,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Production Tracking Copied',
+      description: `Production tracking data from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
   const validateForm = () => {
     // All fields are optional - only basic validation
     if (orderLines.length === 0) {
@@ -578,7 +666,25 @@ export function CreateOrderDialog({
                 <CardContent className="space-y-4 pt-4">
                 {/* Basic Fields */}
                 <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-indigo-700 mb-2 block">Basic Information</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm font-semibold text-indigo-700">Basic Information</Label>
+                    {orderLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyBasicInfoToAll(lineIndex);
+                        }}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy to All Lines
+                      </Button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <Label htmlFor={`line-${lineIndex}-styleNumber`}>Style Number</Label>
@@ -622,7 +728,25 @@ export function CreateOrderDialog({
 
                 {/* Optional: Color & CAD */}
                 <div className="border-b pb-4">
-                  <Label className="text-sm font-semibold text-blue-700 mb-2 block">Color & CAD (Optional)</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-sm font-semibold text-blue-700">Color & CAD (Optional)</Label>
+                    {orderLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyColorCadToAll(lineIndex);
+                        }}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy to All Lines
+                      </Button>
+                    )}
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor={`line-${lineIndex}-colorCode`}>Color Code</Label>
@@ -647,8 +771,24 @@ export function CreateOrderDialog({
 
                 {/* Optional: Style Technical Details */}
                 <details className="border-b pb-4">
-                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2">
-                    Style Technical Details (Optional)
+                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer mb-2 flex items-center justify-between">
+                    <span>Style Technical Details (Optional)</span>
+                    {orderLines.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyTechnicalDetailsToAll(lineIndex);
+                        }}
+                        className="text-xs"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy to All Lines
+                      </Button>
+                    )}
                   </summary>
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     <div className="col-span-2">
@@ -852,9 +992,27 @@ export function CreateOrderDialog({
                 {/* Local Order Production Fields - Only shown for local orders */}
                 {orderType === 'local' && (
                   <details className="border-t pt-4 mt-4">
-                    <summary className="text-sm font-semibold text-green-700 cursor-pointer mb-2 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Production Tracking (Local Order)
+                    <summary className="text-sm font-semibold text-green-700 cursor-pointer mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Production Tracking (Local Order)
+                      </span>
+                      {orderLines.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            copyProductionTrackingToAll(lineIndex);
+                          }}
+                          className="text-xs"
+                        >
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy to All Lines
+                        </Button>
+                      )}
                     </summary>
                     <div className="space-y-4 mt-3">
                       {/* Greige & Yarn Calculation Section */}

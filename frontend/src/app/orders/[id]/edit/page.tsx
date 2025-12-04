@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api';
-import { ArrowLeft, Save, Plus, Trash2, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Calendar, MapPin, Copy } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -357,6 +357,121 @@ export default function OrderEditPage() {
     }
   };
 
+  const copyBasicInfoToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        colorCode: sourceLine.colorCode,
+        cadName: sourceLine.cadName,
+        unit: sourceLine.unit,
+        currency: sourceLine.currency,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Basic Info Copied',
+      description: `Color, CAD, unit and currency from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyTechnicalDetailsToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        description: sourceLine.description,
+        fabricType: sourceLine.fabricType,
+        fabricComposition: sourceLine.fabricComposition,
+        gsm: sourceLine.gsm,
+        finishType: sourceLine.finishType,
+        cuttableWidth: sourceLine.cuttableWidth,
+        finishingWidth: sourceLine.finishingWidth,
+        construction: sourceLine.construction,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Technical Details Copied',
+      description: `Style technical details from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyCommercialDataToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        millName: sourceLine.millName,
+        millPrice: sourceLine.millPrice,
+        provaPrice: sourceLine.provaPrice,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Commercial Data Copied',
+      description: `Commercial data from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyDatesToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        etd: sourceLine.etd,
+        eta: sourceLine.eta,
+        submissionDate: sourceLine.submissionDate,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Dates Copied',
+      description: `Dates from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
+  const copyProductionTrackingToAll = (sourceIndex: number) => {
+    const sourceLine = orderLines[sourceIndex];
+    const newLines = orderLines.map((line, index) => {
+      if (index === sourceIndex) return line;
+      return {
+        ...line,
+        processLossPercent: sourceLine.processLossPercent,
+        mixedFabricType: sourceLine.mixedFabricType,
+        mixedFabricPercent: sourceLine.mixedFabricPercent,
+        yarnBookedDate: sourceLine.yarnBookedDate,
+        yarnReceivedDate: sourceLine.yarnReceivedDate,
+        ppYards: sourceLine.ppYards,
+        fitCumPpSubmitDate: sourceLine.fitCumPpSubmitDate,
+        fitCumPpCommentsDate: sourceLine.fitCumPpCommentsDate,
+        knittingStartDate: sourceLine.knittingStartDate,
+        knittingCompleteDate: sourceLine.knittingCompleteDate,
+        dyeingStartDate: sourceLine.dyeingStartDate,
+        dyeingCompleteDate: sourceLine.dyeingCompleteDate,
+        bulkSizeSetDate: sourceLine.bulkSizeSetDate,
+        cuttingStartDate: sourceLine.cuttingStartDate,
+        cuttingCompleteDate: sourceLine.cuttingCompleteDate,
+        printSendDate: sourceLine.printSendDate,
+        printReceivedDate: sourceLine.printReceivedDate,
+        sewingInputDate: sourceLine.sewingInputDate,
+        sewingFinishDate: sourceLine.sewingFinishDate,
+        packingCompleteDate: sourceLine.packingCompleteDate,
+        finalInspectionDate: sourceLine.finalInspectionDate,
+        exFactoryDate: sourceLine.exFactoryDate,
+      };
+    });
+    setOrderLines(newLines);
+    toast({
+      title: 'Production Tracking Copied',
+      description: `Production tracking data from Line ${sourceIndex + 1} copied to all other lines`,
+    });
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -494,6 +609,22 @@ export default function OrderEditPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Required Fields */}
+                    <div className="border-b pb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-semibold text-indigo-700">Basic Information</Label>
+                        {orderLines.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyBasicInfoToAll(lineIndex)}
+                            className="text-xs"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy to All Lines
+                          </Button>
+                        )}
+                      </div>
                     <div className="grid grid-cols-6 gap-3">
                       <div>
                         <Label className="text-sm">Style Number *</Label>
@@ -561,10 +692,25 @@ export default function OrderEditPage() {
                         />
                       </div>
                     </div>
+                    </div>
 
                     {/* Optional Style Technical Details */}
                     <div className="border-t pt-3">
-                      <Label className="text-sm font-semibold mb-2 block">Style Technical Details (Optional)</Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-semibold">Style Technical Details (Optional)</Label>
+                        {orderLines.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyTechnicalDetailsToAll(lineIndex)}
+                            className="text-xs"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy to All Lines
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-4 gap-3">
                         <div className="col-span-4">
                           <Label className="text-sm">Description</Label>
@@ -635,7 +781,21 @@ export default function OrderEditPage() {
 
                     {/* Commercial Data */}
                     <div className="border-t pt-3">
-                      <Label className="text-sm font-semibold mb-2 block">Commercial Data (Optional)</Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-semibold">Commercial Data (Optional)</Label>
+                        {orderLines.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyCommercialDataToAll(lineIndex)}
+                            className="text-xs"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy to All Lines
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-4 gap-3">
                         <div>
                           <Label className="text-sm">Mill Name</Label>
@@ -671,10 +831,24 @@ export default function OrderEditPage() {
 
                     {/* Dates */}
                     <div className="border-t pt-3">
-                      <Label className="text-sm font-semibold flex items-center gap-2 mb-2">
-                        <Calendar className="h-4 w-4" />
-                        Important Dates (Optional)
-                      </Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          Important Dates (Optional)
+                        </Label>
+                        {orderLines.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyDatesToAll(lineIndex)}
+                            className="text-xs"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy to All Lines
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <Label className="text-sm">ETD</Label>
@@ -721,10 +895,24 @@ export default function OrderEditPage() {
                     {/* Local Order Production Fields - Only shown for local orders */}
                     {orderType === 'local' && (
                       <div className="border-t pt-3 mt-3 bg-green-50 -mx-6 px-6 pb-3">
-                        <Label className="text-sm font-semibold text-green-700 flex items-center gap-2 mb-3">
-                          <MapPin className="h-4 w-4" />
-                          Production Tracking (Local Order)
-                        </Label>
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-sm font-semibold text-green-700 flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Production Tracking (Local Order)
+                          </Label>
+                          {orderLines.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyProductionTrackingToAll(lineIndex)}
+                              className="text-xs"
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy to All Lines
+                            </Button>
+                          )}
+                        </div>
                         
                         {/* Greige & Yarn Calculation Section */}
                         <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 mb-3">
