@@ -54,6 +54,7 @@ interface OrderLine {
   lineLabel?: string;
   // Style-level fields (populated when line is selected)
   description?: string;
+  fabricComposition?: string;
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
@@ -417,6 +418,7 @@ export default function OrderDetailPage() {
           ...updatedLine,
           styleNumber: style.styleNumber,
           description: style.description,
+          fabricComposition: style.fabricComposition,
           gsm: style.gsm,
           cuttableWidth: style.cuttableWidth,
           finishingWidth: style.finishingWidth,
@@ -1430,6 +1432,7 @@ export default function OrderDetailPage() {
                               ...line, 
                               styleNumber: style.styleNumber,
                               description: style.description,
+                              fabricComposition: style.fabricComposition,
                               gsm: style.gsm,
                               cuttableWidth: style.cuttableWidth,
                               finishingWidth: style.finishingWidth,

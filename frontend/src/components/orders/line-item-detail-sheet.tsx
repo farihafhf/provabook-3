@@ -45,6 +45,7 @@ interface OrderLine {
   lineLabel?: string;
   // Style details
   description?: string;
+  fabricComposition?: string;
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
@@ -281,13 +282,19 @@ export function LineItemDetailSheet({
               </div>
             )}
             {/* Style Details */}
-            {(line.description || line.gsm || line.cuttableWidth || line.finishingWidth) && (
+            {(line.description || line.fabricComposition || line.gsm || line.cuttableWidth || line.finishingWidth) && (
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   {line.description && (
                     <div className="col-span-2">
                       <span className="text-gray-500">Description:</span>{' '}
                       <span className="text-gray-800">{line.description}</span>
+                    </div>
+                  )}
+                  {line.fabricComposition && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Fabric Composition:</span>{' '}
+                      <span className="text-gray-800 font-medium">{line.fabricComposition}</span>
                     </div>
                   )}
                   {line.gsm && (
