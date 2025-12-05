@@ -265,7 +265,7 @@ class OrderLine(TimestampedModel):
         db_table = 'order_lines'
         verbose_name = 'Order Line'
         verbose_name_plural = 'Order Lines'
-        ordering = ['created_at']  # Order by creation time so first-created lines appear first
+        ordering = ['style', 'color_code', 'cad_code']
         constraints = [
             # Ensure unique combination of style+color+cad
             models.UniqueConstraint(
@@ -389,42 +389,3 @@ class OrderLine(TimestampedModel):
         if not parts:
             return "Base line"
         return " | ".join(parts)
-
-    @property
-    def total_delivered_quantity(self):
-        """Total quantity delivered for this line from SupplierDelivery records.
-        Uses the deliveries reverse relation. Returns 0.0 when no deliveries exist
-        or quantity is null.
-        """
-        from django.db.models import Sum
-
-        # Use the related deliveries queryset; this will leverage any prefetches
-        deliveries_qs = getattr(self, 'deliveries', None)
-        if deliveries_qs is None:
-            deliveries_qs = self.deliveries
-
-        result = deliveries_qs.aggregate(total=Sum('delivered_quantity'))
-        return float(result['total']) if result['total'] else 0.0
-
-    @property
-    def actual_delivery_date(self):
-        """Actual delivery date for this line based on SupplierDelivery records.
-        Returns the latest delivery_date for this line, or None if there are
-        no deliveries linked to this line.
-        """
-        deliveries_qs = getattr(self, 'deliveries', None)
-        if deliveries_qs is None:
-            deliveries_qs = self.deliveries
-
-        last_delivery = deliveries_qs.order_by('-delivery_date').first()
-        return last_delivery.delivery_date if last_delivery else None
-
-    @property
-    def days_overdue_at_delivery(self):
-        """Number of days this line was early/late at the time of actual delivery.
-        Positive value means delivered late, negative means delivered early.
-        Returns None when ETD or actual delivery date is missing.
-        """
-        if not self.etd or not self.actual_delivery_date:
-            return None
-        return (self.actual_delivery_date - self.etd).days

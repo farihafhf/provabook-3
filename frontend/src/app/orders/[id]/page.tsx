@@ -57,11 +57,6 @@ interface OrderLine {
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
-  fabricComposition?: string;
-  // Delivery metrics
-  totalDeliveredQuantity?: number;
-  actualDeliveryDate?: string;
-  daysOverdueAtDelivery?: number;
   // Local order production fields - greige/yarn calculation
   processLossPercent?: number;
   mixedFabricType?: string;
@@ -425,7 +420,6 @@ export default function OrderDetailPage() {
           gsm: style.gsm,
           cuttableWidth: style.cuttableWidth,
           finishingWidth: style.finishingWidth,
-          fabricComposition: style.fabricComposition,
         });
         return;
       }
@@ -1439,7 +1433,6 @@ export default function OrderDetailPage() {
                               gsm: style.gsm,
                               cuttableWidth: style.cuttableWidth,
                               finishingWidth: style.finishingWidth,
-                              fabricComposition: style.fabricComposition,
                             });
                             setShowLineItemSheet(true);
                           }}

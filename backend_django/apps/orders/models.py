@@ -445,12 +445,3 @@ class ApprovalHistory(TimestampedModel):
         if self.order_line:
             return f"{self.order.order_number} - {self.order_line.line_label} - {self.get_approval_type_display()} - {self.get_status_display()}"
         return f"{self.order.order_number} - {self.get_approval_type_display()} - {self.get_status_display()}"
-
-
-# Import all model classes at the end to avoid circular imports
-# These imports ensure Django discovers all models and their relationships
-from .models_style_color import OrderStyle, OrderColor  # noqa: E402, F401
-from .models_order_line import OrderLine  # noqa: E402, F401
-from .models_supplier_delivery import SupplierDelivery  # noqa: E402, F401
-from .models_production_entry import ProductionEntry  # noqa: E402, F401
-from .models_task import Task  # noqa: E402, F401

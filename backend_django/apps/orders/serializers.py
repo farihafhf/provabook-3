@@ -1173,7 +1173,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = Document
         fields = [
             'id', 'order', 'order_line', 'order_line_label', 'file', 'file_name', 'file_type', 'file_size',
-            'category', 'subcategory', 'description', 'document_date',
+            'category', 'subcategory', 'description',
             'uploaded_by', 'uploaded_by_name', 'file_url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'uploaded_by', 'file_url', 'created_at', 'updated_at']
@@ -1202,7 +1202,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             'category': data['category'],
             'subcategory': data.get('subcategory'),
             'description': data.get('description'),
-            'documentDate': data.get('document_date'),
             'uploadedBy': str(data['uploaded_by']) if data.get('uploaded_by') else None,
             'uploadedByName': data.get('uploaded_by_name'),
             'createdAt': data['created_at'],
