@@ -2,7 +2,44 @@
 Serializers for OrderLine - handles style+color+CAD combinations
 """
 from rest_framework import serializers
-from .models_order_line import OrderLine
+from .models_order_line import OrderLine, MillOffer
+
+
+class MillOfferSerializer(serializers.ModelSerializer):
+    """Serializer for MillOffer with camelCase conversion"""
+    
+    class Meta:
+        model = MillOffer
+        fields = ['id', 'order_line', 'mill_name', 'price', 'currency', 'notes', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Convert to camelCase for frontend"""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'orderLineId': str(data['order_line']),
+            'millName': data.get('mill_name'),
+            'price': float(data['price']) if data.get('price') else None,
+            'currency': data.get('currency', 'USD'),
+            'notes': data.get('notes'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }
+    
+    def to_internal_value(self, data):
+        """Convert camelCase to snake_case"""
+        field_mapping = {
+            'orderLineId': 'order_line',
+            'millName': 'mill_name',
+        }
+        
+        converted_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            converted_data[new_key] = value
+        
+        return super().to_internal_value(converted_data)
 
 
 class OrderLineSerializer(serializers.ModelSerializer):
@@ -18,6 +55,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
     total_delivered_quantity = serializers.SerializerMethodField()
     actual_delivery_date = serializers.SerializerMethodField()
     days_overdue_at_delivery = serializers.SerializerMethodField()
+    # Mill offers for development stage
+    mill_offers = MillOfferSerializer(many=True, read_only=True)
     
     class Meta:
         model = OrderLine
@@ -40,6 +79,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
+            'mill_offers',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -127,6 +167,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'packingCompleteDate': data.get('packing_complete_date'),
             'finalInspectionDate': data.get('final_inspection_date'),
             'exFactoryDate': data.get('ex_factory_date'),
+            'millOffers': data.get('mill_offers', []),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }

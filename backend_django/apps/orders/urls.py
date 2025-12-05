@@ -7,6 +7,7 @@ from .views import OrderViewSet
 from .views_task import TaskViewSet
 from .views_supplier_delivery import SupplierDeliveryViewSet
 from .views_production_entry import ProductionEntryViewSet
+from .views_mill_offer import MillOfferViewSet
 
 app_name = 'orders'
 
@@ -15,6 +16,7 @@ router = DefaultRouter()
 router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'supplier-deliveries', SupplierDeliveryViewSet, basename='supplier-delivery')
 router.register(r'production-entries', ProductionEntryViewSet, basename='production-entry')
+router.register(r'mill-offers', MillOfferViewSet, basename='mill-offer')
 router.register(r'', OrderViewSet, basename='order')
 
 urlpatterns = [

@@ -15,8 +15,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+
+interface MillOffer {
+  id: string;
+  orderLineId: string;
+  millName: string;
+  price: number;
+  currency: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface OrderLine {
   id: string;
@@ -49,6 +60,8 @@ interface OrderLine {
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
+  // Mill offers for development stage
+  millOffers?: MillOffer[];
 }
 
 interface LineItemDetailSheetProps {
@@ -58,6 +71,8 @@ interface LineItemDetailSheetProps {
   orderStatus?: string;
   onStatusChange?: (lineId: string, newStatus: string) => Promise<void>;
   onApprovalChange?: (approvalType: string, newStatus: string, lineId: string, lineLabel: string, customTimestamp?: string) => Promise<void>;
+  onMillOfferAdd?: (lineId: string, millName: string, price: number, currency: string) => Promise<void>;
+  onMillOfferDelete?: (millOfferId: string) => Promise<void>;
   updating?: boolean;
 }
 
@@ -127,6 +142,8 @@ export function LineItemDetailSheet({
   orderStatus,
   onStatusChange,
   onApprovalChange,
+  onMillOfferAdd,
+  onMillOfferDelete,
   updating = false,
 }: LineItemDetailSheetProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
@@ -138,6 +155,11 @@ export function LineItemDetailSheet({
   const [useCustomTimestamp, setUseCustomTimestamp] = useState(false);
   const [customDate, setCustomDate] = useState('');
   const [customTime, setCustomTime] = useState('');
+  
+  // Mill offer input state
+  const [newMillName, setNewMillName] = useState('');
+  const [newMillPrice, setNewMillPrice] = useState('');
+  const [addingMillOffer, setAddingMillOffer] = useState(false);
 
   // Sync local state when the sheet opens or when line data changes
   // This ensures the UI updates immediately when approval/status changes are made
@@ -150,8 +172,34 @@ export function LineItemDetailSheet({
     } else {
       setSelectedStatus('');
       setSelectedApprovals({});
+      // Reset mill offer inputs when dialog closes
+      setNewMillName('');
+      setNewMillPrice('');
     }
   }, [open, line?.id, line?.approvalStatus, line?.status]);
+
+  // Handle adding a new mill offer
+  const handleAddMillOffer = async () => {
+    if (!line || !onMillOfferAdd || !newMillName.trim() || !newMillPrice) return;
+    
+    const price = parseFloat(newMillPrice);
+    if (isNaN(price) || price <= 0) return;
+    
+    setAddingMillOffer(true);
+    try {
+      await onMillOfferAdd(line.id, newMillName.trim(), price, line.currency || 'USD');
+      setNewMillName('');
+      setNewMillPrice('');
+    } finally {
+      setAddingMillOffer(false);
+    }
+  };
+
+  // Handle deleting a mill offer
+  const handleDeleteMillOffer = async (millOfferId: string) => {
+    if (!onMillOfferDelete) return;
+    await onMillOfferDelete(millOfferId);
+  };
 
   // Reset dialog state when closed
   const resetTimestampDialog = () => {
@@ -368,6 +416,80 @@ export function LineItemDetailSheet({
               )}
             </div>
           </div>
+
+          {/* Mill Offers Section - Only show for In Development status */}
+          {(line.status === 'in_development' || selectedStatus === 'in_development') && onMillOfferAdd && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Factory className="h-5 w-5 text-blue-600" />
+                Mill Price Quotes
+                <span className="text-sm font-normal text-gray-600">(Development Stage)</span>
+              </h3>
+              
+              {/* Existing Mill Offers */}
+              {line.millOffers && line.millOffers.length > 0 && (
+                <div className="space-y-2">
+                  {line.millOffers.map((offer) => (
+                    <div key={offer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-center gap-3">
+                        <div className="font-medium text-gray-900">{offer.millName}</div>
+                        <div className="text-lg font-semibold text-green-700">
+                          ${offer.price.toFixed(2)}
+                        </div>
+                      </div>
+                      {onMillOfferDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteMillOffer(offer.id)}
+                          disabled={updating}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Add New Mill Offer */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                <Label className="text-sm font-semibold text-blue-900">Add Mill Price Quote</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">Mill Name</Label>
+                    <Input
+                      placeholder="e.g., First Concept"
+                      value={newMillName}
+                      onChange={(e) => setNewMillName(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">Mill Price ($/unit)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g., 1.05"
+                      value={newMillPrice}
+                      onChange={(e) => setNewMillPrice(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleAddMillOffer}
+                  disabled={addingMillOffer || !newMillName.trim() || !newMillPrice}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {addingMillOffer ? 'Adding...' : 'Add Mill Price'}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Status Update Section */}
           {onStatusChange && (

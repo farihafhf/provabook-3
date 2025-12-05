@@ -389,3 +389,61 @@ class OrderLine(TimestampedModel):
         if not parts:
             return "Base line"
         return " | ".join(parts)
+
+
+class MillOffer(TimestampedModel):
+    """
+    MillOffer model - Represents a price quote from a mill for a specific order line.
+    
+    When an order is in 'In Development' stage, multiple mills may offer different prices
+    to produce the fabric. This model stores those quotes for comparison.
+    
+    Example:
+    - First Concept: $1.05/yard
+    - Shanchey: $1.10/yard
+    - CompX: $1.00/yard
+    """
+    order_line = models.ForeignKey(
+        OrderLine,
+        on_delete=models.CASCADE,
+        related_name='mill_offers',
+        db_index=True,
+        help_text='Order line this mill offer belongs to'
+    )
+    
+    mill_name = models.CharField(
+        max_length=255,
+        help_text='Name of the mill offering the price'
+    )
+    
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text='Price per unit offered by the mill'
+    )
+    
+    currency = models.CharField(
+        max_length=10,
+        default='USD',
+        help_text='Currency of the price'
+    )
+    
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Additional notes about this offer'
+    )
+    
+    class Meta:
+        db_table = 'mill_offers'
+        verbose_name = 'Mill Offer'
+        verbose_name_plural = 'Mill Offers'
+        ordering = ['mill_name']
+    
+    def __str__(self):
+        return f"{self.mill_name} - {self.currency} {self.price}"
+    
+    @property
+    def formatted_display(self):
+        """Format for display: 'Mill Name - $Price'"""
+        return f"{self.mill_name} - ${self.price:.2f}"

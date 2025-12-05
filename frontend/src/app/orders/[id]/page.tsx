@@ -26,6 +26,17 @@ import { LineItemCard } from '@/components/orders/line-item-card';
 import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
 import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
 
+interface MillOffer {
+  id: string;
+  orderLineId: string;
+  millName: string;
+  price: number;
+  currency: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface OrderLine {
   id: string;
   styleId: string;
@@ -64,6 +75,8 @@ interface OrderLine {
   mixedFabricPercent?: number;
   greigeQuantity?: number;
   yarnRequired?: number;
+  // Mill offers for development stage
+  millOffers?: MillOffer[];
 }
 
 interface OrderColor {
@@ -1114,6 +1127,58 @@ export default function OrderDetailPage() {
     }
   };
 
+  // Mill Offer Handlers
+  const handleMillOfferAdd = async (lineId: string, millName: string, price: number, currency: string) => {
+    if (!order) return;
+    
+    try {
+      await api.post('/orders/mill-offers/', {
+        order_line: lineId,
+        mill_name: millName,
+        price: price,
+        currency: currency,
+      });
+
+      toast({
+        title: 'Success',
+        description: `Mill offer from ${millName} added`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to add mill offer:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to add mill offer',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMillOfferDelete = async (millOfferId: string) => {
+    if (!order) return;
+    
+    try {
+      await api.delete(`/orders/mill-offers/${millOfferId}/`);
+
+      toast({
+        title: 'Success',
+        description: 'Mill offer removed',
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to delete mill offer:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete mill offer',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
@@ -1561,6 +1626,36 @@ export default function OrderDetailPage() {
                                 </p>
                               </div>
                             </div>
+
+                            {/* Mill Offers & Prova Price - For In Development status */}
+                            {line.status === 'in_development' && (
+                              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Mill Offer</p>
+                                    <div className="text-sm">
+                                      {line.millOffers && line.millOffers.length > 0 ? (
+                                        <div className="space-y-1">
+                                          {line.millOffers.map((offer: MillOffer) => (
+                                            <div key={offer.id} className="font-medium text-gray-900">
+                                              {offer.millName} - ${offer.price.toFixed(2)}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <span className="text-gray-400 italic">No offers yet</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Prova Price</p>
+                                    <p className="text-sm font-semibold text-green-700">
+                                      {line.provaPrice ? `$${line.provaPrice.toFixed(2)}` : <span className="text-orange-600 italic font-normal">Pending</span>}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Production Calculations - For Local Orders */}
                             {order.orderType === 'local' && (
@@ -2928,6 +3023,8 @@ export default function OrderDetailPage() {
           orderStatus={order.status}
           onStatusChange={handleLineStatusChange}
           onApprovalChange={handleLineApprovalChange}
+          onMillOfferAdd={handleMillOfferAdd}
+          onMillOfferDelete={handleMillOfferDelete}
           updating={updating}
         />
 

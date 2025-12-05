@@ -9,6 +9,21 @@
  * - (Style, no Color, no CAD) - style-only line
  */
 
+/**
+ * MillOffer represents a price quote from a mill for a specific order line.
+ * Used during the 'In Development' stage when multiple mills offer different prices.
+ */
+export interface MillOffer {
+  id: string;
+  orderLineId: string;
+  millName: string;
+  price: number;
+  currency: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OrderLine {
   id: string;
   styleId: string;
@@ -64,6 +79,12 @@ export interface OrderLine {
   totalDeliveredQuantity?: number;
   actualDeliveryDate?: string;
   daysOverdueAtDelivery?: number;
+  
+  // Mill offers for development stage
+  millOffers?: MillOffer[];
+  
+  // Line status (e.g., upcoming, in_development, running, bulk, completed)
+  status?: string;
   
   // Timestamps
   createdAt: string;
