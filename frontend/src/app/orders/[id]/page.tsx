@@ -58,6 +58,10 @@ interface OrderLine {
   cuttableWidth?: string;
   finishingWidth?: string;
   fabricComposition?: string;
+  // Delivery metrics
+  totalDeliveredQuantity?: number;
+  actualDeliveryDate?: string;
+  daysOverdueAtDelivery?: number;
   // Local order production fields - greige/yarn calculation
   processLossPercent?: number;
   mixedFabricType?: string;

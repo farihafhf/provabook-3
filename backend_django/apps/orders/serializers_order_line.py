@@ -25,6 +25,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes',
             'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
+            'total_delivered_quantity', 'actual_delivery_date', 'days_overdue_at_delivery',
             # Local order production fields - greige/yarn calculation
             'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent', 'greige_quantity',
             'yarn_required', 'yarn_booked_date', 'yarn_received_date',
@@ -39,7 +40,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'style_number', 'order_id', 'created_at', 'updated_at',
-            'total_value', 'total_cost', 'total_commission', 'profit', 'line_label'
+            'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
+            'total_delivered_quantity', 'actual_delivery_date', 'days_overdue_at_delivery'
         ]
     
     def to_representation(self, instance):
@@ -73,6 +75,9 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'totalCommission': data.get('total_commission'),
             'profit': data.get('profit'),
             'lineLabel': data.get('line_label'),
+            'totalDeliveredQuantity': data.get('total_delivered_quantity'),
+            'actualDeliveryDate': data.get('actual_delivery_date'),
+            'daysOverdueAtDelivery': data.get('days_overdue_at_delivery'),
             # Local order production fields - greige/yarn calculation
             'processLossPercent': float(data['process_loss_percent']) if data.get('process_loss_percent') else None,
             'mixedFabricType': data.get('mixed_fabric_type'),

@@ -60,6 +60,10 @@ export interface OrderLine {
   totalCommission?: number;
   profit?: number;
   lineLabel?: string;
+  // Delivery metrics
+  totalDeliveredQuantity?: number;
+  actualDeliveryDate?: string;
+  daysOverdueAtDelivery?: number;
   
   // Timestamps
   createdAt: string;

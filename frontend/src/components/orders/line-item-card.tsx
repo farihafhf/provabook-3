@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, AlertTriangle, History, Percent, FlaskConical } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, History, Percent, FlaskConical, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { ApprovalTimelineDialog } from './approval-timeline-dialog';
 
@@ -22,6 +22,10 @@ interface LineItemCardProps {
     etd?: string;
     provaPrice?: number;
     currency?: string;
+    // Delivery metrics
+    totalDeliveredQuantity?: number;
+    actualDeliveryDate?: string;
+    daysOverdueAtDelivery?: number;
     // Greige/Yarn calculation fields
     processLossPercent?: number;
     mixedFabricType?: string;
@@ -85,9 +89,74 @@ const getETDUrgency = (etdDate?: string): { text: string; color: string; days: n
   }
 };
 
+const getLineTimingDisplay = (line: { status?: string; etd?: string; actualDeliveryDate?: string; daysOverdueAtDelivery?: number }) => {
+  const status = line.status || 'upcoming';
+  const isCompleted = status === 'completed';
+
+  if (isCompleted) {
+    // For completed lines, use actual delivery date and fixed "days late/early" info
+    if (line.actualDeliveryDate) {
+      const baseText = `Delivered on ${formatDate(line.actualDeliveryDate)}`;
+      const daysOffset = typeof line.daysOverdueAtDelivery === 'number' ? line.daysOverdueAtDelivery : null;
+
+      if (daysOffset !== null) {
+        if (daysOffset > 0) {
+          return {
+            icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+            text: `${baseText} (${daysOffset} days late)` ,
+            color: 'text-emerald-700 font-semibold',
+          };
+        }
+        if (daysOffset < 0) {
+          return {
+            icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+            text: `${baseText} (${Math.abs(daysOffset)} days early)`,
+            color: 'text-emerald-700 font-semibold',
+          };
+        }
+        // On-time delivery
+        return {
+          icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+          text: `${baseText} (on time)`,
+          color: 'text-emerald-700 font-semibold',
+        };
+      }
+
+      // No ETD or offset, but we know delivery date
+      return {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+        text: baseText,
+        color: 'text-emerald-700 font-semibold',
+      };
+    }
+
+    // Completed with no delivery record - show neutral completed state
+    return {
+      icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+      text: 'Completed',
+      color: 'text-emerald-700 font-semibold',
+    };
+  }
+
+  // Non-completed lines: use existing ETD urgency logic
+  const urgency = getETDUrgency(line.etd);
+  let icon = null as JSX.Element | null;
+  if (urgency.days < 0) {
+    icon = <AlertTriangle className="h-4 w-4" />;
+  } else if (urgency.days >= 0 && urgency.days <= 7) {
+    icon = <Clock className="h-4 w-4" />;
+  }
+
+  return {
+    icon,
+    text: urgency.text,
+    color: urgency.color,
+  };
+};
+
 export function LineItemCard({ line, orderId, orderType, onClick, onRefresh }: LineItemCardProps) {
   const [showApprovalTimeline, setShowApprovalTimeline] = useState(false);
-  const urgency = getETDUrgency(line.etd);
+  const timing = getLineTimingDisplay(line);
   
   // Check if line has greige/yarn calculations (for local orders)
   const hasCalculations = orderType === 'local' && (line.greigeQuantity || line.yarnRequired || line.processLossPercent);
@@ -213,10 +282,9 @@ export function LineItemCard({ line, orderId, orderType, onClick, onRefresh }: L
               <Calendar className="h-4 w-4" />
               <span>ETD: {line.etd ? formatDate(line.etd) : 'Not set'}</span>
             </div>
-            <div className={`flex items-center gap-1.5 text-sm ${urgency.color}`}>
-              {urgency.days < 0 && <AlertTriangle className="h-4 w-4" />}
-              {urgency.days >= 0 && urgency.days <= 7 && <Clock className="h-4 w-4" />}
-              <span>{urgency.text}</span>
+            <div className={`flex items-center gap-1.5 text-sm ${timing.color}`}>
+              {timing.icon}
+              <span>{timing.text}</span>
             </div>
           </div>
         </div>
