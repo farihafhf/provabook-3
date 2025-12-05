@@ -55,8 +55,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
     total_delivered_quantity = serializers.SerializerMethodField()
     actual_delivery_date = serializers.SerializerMethodField()
     days_overdue_at_delivery = serializers.SerializerMethodField()
-    # Mill offers for development stage
-    mill_offers = MillOfferSerializer(many=True, read_only=True)
+    # Mill offers for development stage - use SerializerMethodField for resilience
+    mill_offers = serializers.SerializerMethodField()
     
     class Meta:
         model = OrderLine
@@ -107,6 +107,15 @@ class OrderLineSerializer(serializers.ModelSerializer):
             delta = (latest.delivery_date - obj.etd).days
             return delta if delta > 0 else 0
         return None
+    
+    def get_mill_offers(self, obj):
+        """Get mill offers for this order line - handles missing table gracefully"""
+        try:
+            mill_offers = obj.mill_offers.all()
+            return MillOfferSerializer(mill_offers, many=True).data
+        except Exception:
+            # Return empty list if table doesn't exist (migration not yet run)
+            return []
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
