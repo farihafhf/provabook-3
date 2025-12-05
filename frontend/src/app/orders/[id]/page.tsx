@@ -1636,9 +1636,9 @@ export default function OrderDetailPage() {
                                     <div className="text-sm">
                                       {line.millOffers && line.millOffers.length > 0 ? (
                                         <div className="space-y-1">
-                                          {line.millOffers.map((offer: MillOffer) => (
+                                          {line.millOffers.map((offer) => (
                                             <div key={offer.id} className="font-medium text-gray-900">
-                                              {offer.millName} - ${offer.price.toFixed(2)}
+                                              {offer.millName} - ${offer.price?.toFixed(2) ?? '0.00'}
                                             </div>
                                           ))}
                                         </div>
