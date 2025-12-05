@@ -1383,20 +1383,26 @@ export default function OrderDetailPage() {
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="lineitems">
-              <Package className="h-4 w-4 mr-2" />
-              Line Items ({order.styles?.reduce((sum, s) => sum + (s.lines?.length || 0), 0) || 0})
+            <TabsTrigger value="lineitems" className="text-xs sm:text-sm">
+              <Package className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">
+                <span className="hidden sm:inline">Line Items</span><span className="sm:hidden">Items</span> ({order.styles?.reduce((sum, s) => sum + (s.lines?.length || 0), 0) || 0})
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="deliveries">
-              <Truck className="h-4 w-4 mr-2" />
-              {order.orderType === 'local' 
-                ? `Deliveries, Knitting, Dyeing, Finishing (${deliveries.length + productionEntries.length})`
-                : `ETD & Deliveries (${deliveries.length})`
-              }
+            <TabsTrigger value="deliveries" className="text-xs sm:text-sm">
+              <Truck className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">
+                {order.orderType === 'local' 
+                  ? <><span className="hidden sm:inline">Deliveries & Production</span><span className="sm:hidden">Del/Prod</span> ({deliveries.length + productionEntries.length})</>
+                  : <><span className="hidden sm:inline">ETD & Deliveries</span><span className="sm:hidden">Deliveries</span> ({deliveries.length})</>
+                }
+              </span>
             </TabsTrigger>
-            <TabsTrigger value="documents">
-              <FileText className="h-4 w-4 mr-2" />
-              Documents ({documents.length})
+            <TabsTrigger value="documents" className="text-xs sm:text-sm">
+              <FileText className="h-4 w-4 mr-1 sm:mr-2 flex-shrink-0" />
+              <span className="truncate">
+                <span className="hidden sm:inline">Documents</span><span className="sm:hidden">Docs</span> ({documents.length})
+              </span>
             </TabsTrigger>
           </TabsList>
 

@@ -62,10 +62,10 @@ export default function HomePage() {
       gradient: 'from-indigo-500 to-blue-500'
     },
     { 
-      name: 'Orders', 
+      name: 'Foreign Orders', 
       href: '/orders', 
       icon: ShoppingCart,
-      description: 'Manage all orders',
+      description: 'Manage foreign orders',
       gradient: 'from-purple-500 to-pink-500'
     },
     { 

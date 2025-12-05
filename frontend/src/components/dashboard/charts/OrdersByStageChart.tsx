@@ -50,7 +50,8 @@ export default function OrdersByStageChart({ data }: OrdersByStageChartProps) {
     
     const status = statusMap[entry.name];
     if (status) {
-      router.push(`/orders?status=${status}`);
+      // Navigate to orders page with status filter and order_type=all to show both local and foreign orders
+      router.push(`/orders?status=${status}&order_type=all`);
     }
   };
 
@@ -72,8 +73,12 @@ export default function OrdersByStageChart({ data }: OrdersByStageChartProps) {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-            outerRadius={80}
+            label={({ name, percent, cx, x }) => {
+              // Abbreviate "In Development" to "In Dev" for mobile
+              const displayName = name === 'In Development' ? 'In Dev' : name;
+              return `${displayName} ${(percent * 100).toFixed(0)}%`;
+            }}
+            outerRadius={70}
             fill="#8884d8"
             dataKey="value"
             onClick={handlePieClick}
