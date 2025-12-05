@@ -57,6 +57,7 @@ interface OrderLine {
   gsm?: number;
   cuttableWidth?: string;
   finishingWidth?: string;
+  fabricComposition?: string;
   // Local order production fields - greige/yarn calculation
   processLossPercent?: number;
   mixedFabricType?: string;
@@ -420,6 +421,7 @@ export default function OrderDetailPage() {
           gsm: style.gsm,
           cuttableWidth: style.cuttableWidth,
           finishingWidth: style.finishingWidth,
+          fabricComposition: style.fabricComposition,
         });
         return;
       }
@@ -1433,6 +1435,7 @@ export default function OrderDetailPage() {
                               gsm: style.gsm,
                               cuttableWidth: style.cuttableWidth,
                               finishingWidth: style.finishingWidth,
+                              fabricComposition: style.fabricComposition,
                             });
                             setShowLineItemSheet(true);
                           }}

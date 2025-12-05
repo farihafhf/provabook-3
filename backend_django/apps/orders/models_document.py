@@ -59,6 +59,7 @@ class Document(TimestampedModel):
     category = models.CharField(max_length=50, choices=Category.choices)
     subcategory = models.CharField(max_length=50, choices=Subcategory.choices, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    document_date = models.DateField(blank=True, null=True, help_text='Date associated with the document (e.g., LC issue date, PI date)')
     
     # User tracking
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='uploaded_documents')

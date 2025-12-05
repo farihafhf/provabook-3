@@ -265,7 +265,7 @@ class OrderLine(TimestampedModel):
         db_table = 'order_lines'
         verbose_name = 'Order Line'
         verbose_name_plural = 'Order Lines'
-        ordering = ['style', 'color_code', 'cad_code']
+        ordering = ['created_at']  # Order by creation time so first-created lines appear first
         constraints = [
             # Ensure unique combination of style+color+cad
             models.UniqueConstraint(

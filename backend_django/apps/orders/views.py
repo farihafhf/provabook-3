@@ -466,6 +466,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         subcategory = request.data.get('subcategory', None)
         description = request.data.get('description', None)
         order_line_id = request.data.get('orderLine', None)
+        document_date = request.data.get('documentDate', None)
         
         if not uploaded_file:
             return Response({
@@ -533,6 +534,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             category=category,
             subcategory=subcategory if subcategory else None,
             description=description if description else None,
+            document_date=document_date if document_date else None,
             uploaded_by=request.user
         )
         

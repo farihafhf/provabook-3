@@ -47,6 +47,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
   const [subcategory, setSubcategory] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [orderLine, setOrderLine] = useState<string>('none');
+  const [documentDate, setDocumentDate] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string>('');
 
@@ -134,6 +135,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       if (subcategory) formData.append('subcategory', subcategory);
       if (description) formData.append('description', description);
       if (orderLine && orderLine !== 'none') formData.append('orderLine', orderLine);
+      if (documentDate) formData.append('documentDate', documentDate);
 
       const token = localStorage.getItem('access_token');
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
@@ -182,6 +184,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       setSubcategory('');
       setDescription('');
       setOrderLine('none');
+      setDocumentDate('');
       setPreview('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -304,6 +307,22 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
                 </Select>
               </div>
             )}
+          </div>
+
+          {/* Document Date */}
+          <div className="space-y-2">
+            <Label htmlFor="documentDate">
+              Document Date
+              {(category === 'lc' || category === 'pi') && <span className="text-gray-500 ml-1">(e.g., {category === 'lc' ? 'LC Issue Date' : 'PI Date'})</span>}
+            </Label>
+            <Input
+              id="documentDate"
+              type="date"
+              value={documentDate}
+              onChange={(e) => setDocumentDate(e.target.value)}
+              className="w-full md:w-1/2"
+            />
+            <p className="text-xs text-gray-500">Optional: Set the date associated with this document</p>
           </div>
 
           {/* Order Line Association */}
