@@ -14,6 +14,10 @@ class OrderLineSerializer(serializers.ModelSerializer):
     line_label = serializers.ReadOnlyField()
     style_number = serializers.CharField(source='style.style_number', read_only=True)
     order_id = serializers.CharField(source='style.order.id', read_only=True)
+    # Computed fields for delivery tracking
+    total_delivered_quantity = serializers.SerializerMethodField()
+    actual_delivery_date = serializers.SerializerMethodField()
+    days_overdue_at_delivery = serializers.SerializerMethodField()
     
     class Meta:
         model = OrderLine
@@ -40,9 +44,29 @@ class OrderLineSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'style_number', 'order_id', 'created_at', 'updated_at',
-            'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
-            'total_delivered_quantity', 'actual_delivery_date', 'days_overdue_at_delivery'
+            'total_value', 'total_cost', 'total_commission', 'profit', 'line_label'
         ]
+    
+    def get_total_delivered_quantity(self, obj):
+        """Calculate total delivered quantity from supplier deliveries"""
+        from .models_supplier_delivery import SupplierDelivery
+        deliveries = SupplierDelivery.objects.filter(order_line=obj)
+        return sum(d.delivered_quantity for d in deliveries) if deliveries.exists() else 0
+    
+    def get_actual_delivery_date(self, obj):
+        """Get the latest delivery date from supplier deliveries"""
+        from .models_supplier_delivery import SupplierDelivery
+        latest = SupplierDelivery.objects.filter(order_line=obj).order_by('-delivery_date').first()
+        return str(latest.delivery_date) if latest else None
+    
+    def get_days_overdue_at_delivery(self, obj):
+        """Calculate days overdue when delivery was made"""
+        from .models_supplier_delivery import SupplierDelivery
+        latest = SupplierDelivery.objects.filter(order_line=obj).order_by('-delivery_date').first()
+        if latest and obj.etd:
+            delta = (latest.delivery_date - obj.etd).days
+            return delta if delta > 0 else 0
+        return None
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
