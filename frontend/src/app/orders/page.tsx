@@ -15,6 +15,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { OrderFilters } from '@/components/orders/order-filters';
 import { CreateOrderDialog } from '@/components/orders/create-order-dialog';
 
+interface MillOffer {
+  id: string;
+  millName: string;
+  price: number;
+  currency?: string;
+}
+
 interface OrderLine {
   id: string;
   styleNumber?: string;
@@ -25,12 +32,14 @@ interface OrderLine {
   unit: string;
   millPrice?: number;
   millPriceTotal?: number;
+  provaPrice?: number;
   currency?: string;
   etd?: string;
   status?: string;
   approvalStatus?: Record<string, string>;
   approvalDates?: Record<string, string>;
   deliveredQty?: number;
+  millOffers?: MillOffer[];
 }
 
 interface Order {
@@ -909,6 +918,7 @@ function OrdersPageContent() {
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Prova Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-violet-50">PI Sent</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-emerald-50">LC Issue</th>
@@ -991,9 +1001,18 @@ function OrdersPageContent() {
                                             })()}
                                           </td>
                                           
-                                          {/* Mill Price - Unit and Total stacked */}
+                                          {/* Mill Price - Show mill offers for in_development, else show single price */}
                                           <td className="py-3 px-3 min-w-[140px]">
-                                            {line.millPrice ? (
+                                            {line.status === 'in_development' && line.millOffers && line.millOffers.length > 0 ? (
+                                              <div className="flex flex-col gap-1">
+                                                {line.millOffers.map((offer) => (
+                                                  <div key={offer.id} className="text-xs">
+                                                    <span className="font-medium text-slate-700">{offer.millName}</span>
+                                                    <span className="text-slate-500 ml-1">${offer.price?.toFixed(2) ?? '0.00'}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            ) : line.millPrice ? (
                                               <div className="flex flex-col">
                                                 <div className="flex items-baseline gap-1">
                                                   <span className="text-xs text-slate-500">{line.currency || 'USD'}</span>
@@ -1006,6 +1025,17 @@ function OrdersPageContent() {
                                                   </div>
                                                 )}
                                               </div>
+                                            ) : (
+                                              <span className="text-slate-400 text-xs">-</span>
+                                            )}
+                                          </td>
+                                          
+                                          {/* Prova Price */}
+                                          <td className="py-3 px-3 min-w-[100px]">
+                                            {line.provaPrice ? (
+                                              <span className="font-medium text-green-700">${line.provaPrice.toFixed(2)}</span>
+                                            ) : line.status === 'in_development' ? (
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             ) : (
                                               <span className="text-slate-400 text-xs">-</span>
                                             )}
