@@ -681,7 +681,7 @@ function OrdersPageContent() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b">
+                  <thead className="border-b sticky top-0 z-20 bg-white">
                     <tr className="text-left text-sm text-gray-600">
                       <th className="pb-3 font-medium w-12">S/N</th>
                       <th className="pb-3 font-medium w-8"></th>
