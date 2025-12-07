@@ -143,6 +143,8 @@ def get_file_presigned_url(file_field, expiration=3600):
         # If public domain is configured, use direct public URL (recommended)
         r2_custom_domain = getattr(settings, 'R2_CUSTOM_DOMAIN', '')
         if r2_custom_domain:
+            # Strip protocol prefix if accidentally included
+            r2_custom_domain = r2_custom_domain.replace('https://', '').replace('http://', '').rstrip('/')
             # Public r2.dev or custom domain - no auth needed
             return f"https://{r2_custom_domain}/{file_path}"
         
