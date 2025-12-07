@@ -103,6 +103,49 @@ def get_r2_file_url(file_path, expiration=3600):
         return None
 
 
+def is_r2_storage_enabled():
+    """
+    Check if Cloudflare R2 storage is configured and enabled.
+    
+    Returns:
+        bool: True if R2 is configured, False otherwise
+    """
+    return bool(
+        getattr(settings, 'R2_ACCESS_KEY_ID', '') and 
+        getattr(settings, 'R2_SECRET_ACCESS_KEY', '') and 
+        getattr(settings, 'R2_ENDPOINT_URL', '')
+    )
+
+
+def get_file_presigned_url(file_field, expiration=3600):
+    """
+    Get a presigned URL for a file stored in R2, or return the direct URL for local storage.
+    
+    For R2 storage (production), generates a presigned URL that provides temporary
+    authenticated access to private bucket files.
+    For local storage (development), returns the file's direct URL.
+    
+    Args:
+        file_field: Django FileField or ImageField instance
+        expiration: URL expiration time in seconds (default 1 hour)
+        
+    Returns:
+        str: Presigned URL for R2, or direct URL for local storage
+        None: If file_field is empty
+    """
+    if not file_field:
+        return None
+    
+    # Check if R2 storage is enabled
+    if is_r2_storage_enabled():
+        # Get the file path (key) from the file field
+        file_path = file_field.name
+        return get_r2_file_url(file_path, expiration)
+    
+    # For local storage, return the direct URL
+    return file_field.url
+
+
 def validate_file(file):
     """
     Validate uploaded file

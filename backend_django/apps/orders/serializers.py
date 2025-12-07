@@ -5,6 +5,7 @@ from rest_framework import serializers
 from django.utils import timezone
 from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory
 from apps.authentication.serializers import UserSerializer
+from apps.core.utils import get_file_presigned_url
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
 
 
@@ -921,13 +922,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                     line_sample_docs = [d for d in line.documents.all() if getattr(d, 'category', None) == 'sample']
                     if line_sample_docs:
                         sample_doc = max(line_sample_docs, key=lambda d: d.created_at)
-                        if sample_doc.file:
-                            if request is not None:
-                                file_url = request.build_absolute_uri(sample_doc.file.url)
-                            else:
-                                file_url = sample_doc.file.url
-                        else:
-                            file_url = None
+                        # Use presigned URL for R2 storage, direct URL for local storage
+                        file_url = get_file_presigned_url(sample_doc.file) if sample_doc.file else None
                         sample_photo = {
                             'id': str(sample_doc.id),
                             'fileName': sample_doc.file_name,
@@ -1234,12 +1230,10 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uploaded_by', 'file_url', 'created_at', 'updated_at']
     
     def get_file_url(self, obj):
-        """Get the file URL"""
+        """Get the file URL - uses presigned URL for R2 storage"""
         if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
+            # Use presigned URL for R2 storage, direct URL for local storage
+            return get_file_presigned_url(obj.file)
         return None
     
     def to_representation(self, instance):
