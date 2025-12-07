@@ -844,7 +844,9 @@ class OrderListSerializer(serializers.ModelSerializer):
         result = []
         
         for style in obj.styles.all():
-            for line in style.lines.all():
+            # Sort lines by created_at to maintain insertion order
+            sorted_lines = sorted(style.lines.all(), key=lambda x: x.created_at)
+            for line in sorted_lines:
                 # Get approval data from prefetched approval_history
                 # Group by approval_type and get first/last records
                 approval_dates = {}

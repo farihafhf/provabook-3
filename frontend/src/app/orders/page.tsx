@@ -953,20 +953,21 @@ function OrdersPageContent() {
                                                   </Badge>
                                                 )}
                                               </div>
-                                              {/* Line Status Badge */}
+                                              {/* Line Status Badge - colors match collapsed order view */}
                                               {line.status && (
                                                 <Badge className={`text-[10px] w-fit ${
-                                                  line.status === 'running' ? 'bg-blue-100 text-blue-700' :
-                                                  line.status === 'in_development' ? 'bg-purple-100 text-purple-700' :
-                                                  line.status === 'bulk' ? 'bg-green-100 text-green-700' :
+                                                  line.status === 'running' ? 'bg-green-100 text-green-700' :
+                                                  line.status === 'in_development' ? 'bg-blue-100 text-blue-700' :
+                                                  line.status === 'upcoming' ? 'bg-amber-100 text-amber-700' :
+                                                  line.status === 'bulk' ? 'bg-purple-100 text-purple-700' :
                                                   line.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
                                                   'bg-gray-100 text-gray-600'
                                                 }`}>
                                                   {line.status === 'running' ? 'Running' :
                                                    line.status === 'in_development' ? 'In Development' :
+                                                   line.status === 'upcoming' ? 'Upcoming' :
                                                    line.status === 'bulk' ? 'Bulk' :
                                                    line.status === 'completed' ? 'Completed' :
-                                                   line.status === 'upcoming' ? 'Upcoming' :
                                                    line.status}
                                                 </Badge>
                                               )}
