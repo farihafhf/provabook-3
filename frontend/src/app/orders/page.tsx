@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown, Image as ImageIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -40,6 +40,12 @@ interface OrderLine {
   approvalDates?: Record<string, string>;
   deliveredQty?: number;
   millOffers?: MillOffer[];
+  samplePhoto?: {
+    id: string;
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+  } | null;
 }
 
 interface Order {
@@ -136,6 +142,7 @@ function OrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
   // Initialize filters from URL params to preserve filter state when navigating back
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
     const urlSearch = searchParams.get('search');
@@ -868,6 +875,31 @@ function OrdersPageContent() {
                                             </Badge>
                                           )}
                                         </div>
+                                        {line.samplePhoto && line.samplePhoto.fileUrl && (
+                                          <div className="mt-1">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 px-2 text-[11px]"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const photo = line.samplePhoto;
+                                                if (!photo || !photo.fileUrl) return;
+                                                if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                  window.open(photo.fileUrl, '_blank');
+                                                  return;
+                                                }
+                                                setSamplePhotoViewer({
+                                                  fileName: photo.fileName,
+                                                  fileUrl: photo.fileUrl,
+                                                });
+                                              }}
+                                            >
+                                              <ImageIcon className="h-3 w-3 mr-1" />
+                                              Sample Photo
+                                            </Button>
+                                          </div>
+                                        )}
                                         {/* Description */}
                                         {line.description && (
                                           <p className="text-sm text-slate-600 mb-2">{line.description}</p>
@@ -965,6 +997,7 @@ function OrdersPageContent() {
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
@@ -1029,6 +1062,33 @@ function OrdersPageContent() {
                                             <span className="text-sm">
                                               {line.description || <span className="text-slate-400">-</span>}
                                             </span>
+                                          </td>
+                                          <td className="py-3 px-3 min-w-[90px]">
+                                            {line.samplePhoto && line.samplePhoto.fileUrl ? (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const photo = line.samplePhoto;
+                                                  if (!photo || !photo.fileUrl) return;
+                                                  if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                    window.open(photo.fileUrl, '_blank');
+                                                    return;
+                                                  }
+                                                  setSamplePhotoViewer({
+                                                    fileName: photo.fileName,
+                                                    fileUrl: photo.fileUrl,
+                                                  });
+                                                }}
+                                                title="View Sample Photo"
+                                              >
+                                                <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                              </Button>
+                                            ) : (
+                                              <span className="text-slate-400 text-xs">-</span>
+                                            )}
                                           </td>
                                           
                                           {/* Quantity with unit */}
@@ -1219,6 +1279,25 @@ function OrdersPageContent() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) setSamplePhotoViewer(null); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="truncate">
+                {samplePhotoViewer?.fileName || 'Sample Photo'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4 flex items-center justify-center">
+              {samplePhotoViewer && (
+                <img
+                  src={samplePhotoViewer.fileUrl}
+                  alt={samplePhotoViewer.fileName}
+                  className="max-h-[70vh] w-full object-contain rounded-md"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

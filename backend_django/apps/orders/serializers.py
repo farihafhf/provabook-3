@@ -842,6 +842,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     def get_lines(self, obj):
         """Get line details from prefetched data - no extra queries per line"""
         result = []
+        request = self.context.get('request') if hasattr(self, 'context') else None
         
         for style in obj.styles.all():
             # Sort lines by created_at to maintain insertion order
@@ -915,6 +916,27 @@ class OrderListSerializer(serializers.ModelSerializer):
                 except Exception:
                     pass  # Gracefully handle if table doesn't exist
                 
+                sample_photo = None
+                try:
+                    line_sample_docs = [d for d in line.documents.all() if getattr(d, 'category', None) == 'sample']
+                    if line_sample_docs:
+                        sample_doc = max(line_sample_docs, key=lambda d: d.created_at)
+                        if sample_doc.file:
+                            if request is not None:
+                                file_url = request.build_absolute_uri(sample_doc.file.url)
+                            else:
+                                file_url = sample_doc.file.url
+                        else:
+                            file_url = None
+                        sample_photo = {
+                            'id': str(sample_doc.id),
+                            'fileName': sample_doc.file_name,
+                            'fileType': sample_doc.file_type,
+                            'fileUrl': file_url,
+                        }
+                except Exception:
+                    sample_photo = None
+                
                 line_data = {
                     'id': str(line.id),
                     'styleNumber': style.style_number,
@@ -935,6 +957,7 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'millOffers': mill_offers_data,
                     # Delivery summary
                     'deliveredQty': delivered_qty,
+                    'samplePhoto': sample_photo,
                     # Local order production fields - greige/yarn calculation
                     'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
                     'mixedFabricType': line.mixed_fabric_type,

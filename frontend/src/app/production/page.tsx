@@ -26,6 +26,7 @@ import {
   Droplets,
   CheckCircle2,
   Download,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { OrderFilters } from '@/components/orders/order-filters';
@@ -80,6 +81,12 @@ interface OrderLine {
   productionKnittingPercent?: number;
   productionDyeingPercent?: number;
   productionFinishingPercent?: number;
+  samplePhoto?: {
+    id: string;
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+  } | null;
 }
 
 interface ProductionSummary {
@@ -353,6 +360,7 @@ function LocalOrdersPageContent() {
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
   // Initialize filters from URL params to preserve filter state when navigating back
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
     const urlSearch = searchParams.get('search');
@@ -649,6 +657,25 @@ function LocalOrdersPageContent() {
               </div>
             </CardContent>
           </Card>
+
+        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) setSamplePhotoViewer(null); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="truncate">
+                {samplePhotoViewer?.fileName || 'Sample Photo'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4 flex items-center justify-center">
+              {samplePhotoViewer && (
+                <img
+                  src={samplePhotoViewer.fileUrl}
+                  alt={samplePhotoViewer.fileName}
+                  className="max-h-[70vh] w-full object-contain rounded-md"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
           {/* Knitting Card - uses Greige as denominator */}
           <Card className="border-l-4 border-l-blue-500">
@@ -992,6 +1019,32 @@ function LocalOrdersPageContent() {
                                             {line.cadCode && <Badge className="bg-amber-100 text-amber-700 text-xs">CAD: {line.cadCode}</Badge>}
                                           </div>
                                           
+                                          {line.samplePhoto && line.samplePhoto.fileUrl && (
+                                            <div className="mt-1">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 px-2 text-[11px]"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const photo = line.samplePhoto;
+                                                  if (!photo || !photo.fileUrl) return;
+                                                  if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                    window.open(photo.fileUrl, '_blank');
+                                                    return;
+                                                  }
+                                                  setSamplePhotoViewer({
+                                                    fileName: photo.fileName,
+                                                    fileUrl: photo.fileUrl,
+                                                  });
+                                                }}
+                                              >
+                                                <ImageIcon className="h-3 w-3 mr-1" />
+                                                Sample Photo
+                                              </Button>
+                                            </div>
+                                          )}
+                                          
                                           {/* Quantity and Delivery */}
                                           <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                                             <div>
@@ -1065,7 +1118,7 @@ function LocalOrdersPageContent() {
                                     <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
                                       <span>Line Items ({lines.length}) • Scroll horizontally to view all columns →</span>
                                     </div>
-                                    <table className="w-full text-xs min-w-[2100px]">
+                                    <table className="w-full text-xs min-w-[2200px]">
                                       <thead>
                                         <tr className="text-slate-600 bg-slate-100/50">
                                           <th className="py-2 px-3 text-left font-semibold min-w-[180px] sticky left-0 bg-slate-100/95 z-10">Style / Color / CAD</th>
@@ -1090,6 +1143,7 @@ function LocalOrdersPageContent() {
                                               <span>Finishing</span>
                                             </div>
                                           </th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Mill Price</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[100px]">Stage</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px]">ETD</th>
@@ -1261,6 +1315,33 @@ function LocalOrdersPageContent() {
                                                   }
                                                   return <span className="text-green-200">-</span>;
                                                 })()}
+                                              </td>
+                                              <td className="py-2 px-3 min-w-[90px]">
+                                                {line.samplePhoto && line.samplePhoto.fileUrl ? (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const photo = line.samplePhoto;
+                                                      if (!photo || !photo.fileUrl) return;
+                                                      if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                        window.open(photo.fileUrl, '_blank');
+                                                        return;
+                                                      }
+                                                      setSamplePhotoViewer({
+                                                        fileName: photo.fileName,
+                                                        fileUrl: photo.fileUrl,
+                                                      });
+                                                    }}
+                                                    title="View Sample Photo"
+                                                  >
+                                                    <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                                  </Button>
+                                                ) : (
+                                                  <span className="text-slate-400 text-[10px]">-</span>
+                                                )}
                                               </td>
                                               {/* Mill Price */}
                                               <td className="py-2 px-3 min-w-[100px]">
