@@ -1008,11 +1008,11 @@ function OrdersPageContent() {
                                       <tr className="text-xs text-slate-600 bg-slate-100/50">
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Recv</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Sent</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Prova Price</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
@@ -1076,33 +1076,6 @@ function OrdersPageContent() {
                                               {line.description || <span className="text-slate-400">-</span>}
                                             </span>
                                           </td>
-                                          <td className="py-3 px-3 min-w-[90px]">
-                                            {line.samplePhoto && line.samplePhoto.fileUrl ? (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  const photo = line.samplePhoto;
-                                                  if (!photo || !photo.fileUrl) return;
-                                                  if (photo.fileType && !photo.fileType.startsWith('image/')) {
-                                                    window.open(photo.fileUrl, '_blank');
-                                                    return;
-                                                  }
-                                                  setSamplePhotoViewer({
-                                                    fileName: photo.fileName,
-                                                    fileUrl: photo.fileUrl,
-                                                  });
-                                                }}
-                                                title="View Sample Photo"
-                                              >
-                                                <Eye className="h-4 w-4 text-indigo-600" />
-                                              </Button>
-                                            ) : (
-                                              <span className="text-slate-400 text-xs">-</span>
-                                            )}
-                                          </td>
                                           {/* Swatch Received - only meaningful for in_development status */}
                                           <td className="py-3 px-3 min-w-[90px] bg-blue-50/30">
                                             {line.status === 'in_development' && line.swatchReceivedDate ? (
@@ -1158,6 +1131,35 @@ function OrdersPageContent() {
                                                 </div>
                                               );
                                             })()}
+                                          </td>
+                                          
+                                          {/* Sample Photo - right before Mill Price */}
+                                          <td className="py-3 px-3 min-w-[90px]">
+                                            {line.samplePhoto && line.samplePhoto.fileUrl ? (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const photo = line.samplePhoto;
+                                                  if (!photo || !photo.fileUrl) return;
+                                                  if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                    window.open(photo.fileUrl, '_blank');
+                                                    return;
+                                                  }
+                                                  setSamplePhotoViewer({
+                                                    fileName: photo.fileName,
+                                                    fileUrl: photo.fileUrl,
+                                                  });
+                                                }}
+                                                title="View Sample Photo"
+                                              >
+                                                <Eye className="h-4 w-4 text-indigo-600" />
+                                              </Button>
+                                            ) : (
+                                              <span className="text-slate-400 text-xs">-</span>
+                                            )}
                                           </td>
                                           
                                           {/* Mill Price - Show final price if set, else show mill offers, else Pending */}

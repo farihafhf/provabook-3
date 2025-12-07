@@ -1182,6 +1182,33 @@ export default function OrderDetailPage() {
     }
   };
 
+  // Swatch Dates Handler
+  const handleSwatchDatesChange = async (lineId: string, swatchReceivedDate: string | null, swatchSentDate: string | null) => {
+    if (!order) return;
+    
+    try {
+      await api.patch(`/orders/${order.id}/lines/${lineId}/swatch-dates/`, {
+        swatchReceivedDate: swatchReceivedDate || '',
+        swatchSentDate: swatchSentDate || '',
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Swatch dates updated',
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update swatch dates:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update swatch dates',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
@@ -3040,6 +3067,7 @@ export default function OrderDetailPage() {
           onApprovalChange={handleLineApprovalChange}
           onMillOfferAdd={handleMillOfferAdd}
           onMillOfferDelete={handleMillOfferDelete}
+          onSwatchDatesChange={handleSwatchDatesChange}
           updating={updating}
         />
 

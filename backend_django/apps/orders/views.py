@@ -437,6 +437,70 @@ class OrderViewSet(viewsets.ModelViewSet):
         response_serializer = OrderSerializer(order)
         return Response(response_serializer.data)
     
+    @action(detail=True, methods=['patch'], url_path='lines/(?P<line_id>[^/.]+)/swatch-dates')
+    def update_swatch_dates(self, request, pk=None, line_id=None):
+        """
+        PATCH /orders/{id}/lines/{line_id}/swatch-dates/
+        Update order line swatch dates (for In Development status)
+        
+        Request body:
+        {
+            "swatchReceivedDate": "2024-01-15",  // optional
+            "swatchSentDate": "2024-01-20"  // optional
+        }
+        """
+        from .models_order_line import OrderLine
+        from datetime import datetime
+        
+        order = self.get_object()
+        
+        # Get the line
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Parse and update dates
+        update_fields = ['updated_at']
+        
+        swatch_received = request.data.get('swatchReceivedDate')
+        swatch_sent = request.data.get('swatchSentDate')
+        
+        if swatch_received is not None:
+            if swatch_received == '' or swatch_received == 'null':
+                line.swatch_received_date = None
+            else:
+                try:
+                    line.swatch_received_date = datetime.strptime(swatch_received, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response(
+                        {'error': 'Invalid swatchReceivedDate format. Use YYYY-MM-DD'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            update_fields.append('swatch_received_date')
+        
+        if swatch_sent is not None:
+            if swatch_sent == '' or swatch_sent == 'null':
+                line.swatch_sent_date = None
+            else:
+                try:
+                    line.swatch_sent_date = datetime.strptime(swatch_sent, '%Y-%m-%d').date()
+                except ValueError:
+                    return Response(
+                        {'error': 'Invalid swatchSentDate format. Use YYYY-MM-DD'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            update_fields.append('swatch_sent_date')
+        
+        line.save(update_fields=update_fields)
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data)
+    
     @action(detail=True, methods=['get'], url_path='documents')
     def get_documents(self, request, pk=None):
         """

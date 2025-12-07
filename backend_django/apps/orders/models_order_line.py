@@ -330,9 +330,12 @@ class OrderLine(TimestampedModel):
     
     def save(self, *args, **kwargs):
         """Auto-calculate local order fields and assign sequence number"""
-        # Auto-assign sequence_number for new lines
+        # Auto-assign sequence_number for new lines - ORDER-WIDE (not style-wide)
+        # This ensures lines maintain insertion order across all styles within an order
         if not self.pk and self.style:
-            max_seq = OrderLine.objects.filter(style=self.style).aggregate(
+            # Get max sequence number across ALL lines in this order (not just this style)
+            order = self.style.order
+            max_seq = OrderLine.objects.filter(style__order=order).aggregate(
                 models.Max('sequence_number')
             )['sequence_number__max']
             self.sequence_number = (max_seq or 0) + 1

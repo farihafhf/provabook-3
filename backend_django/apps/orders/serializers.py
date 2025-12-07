@@ -845,153 +845,160 @@ class OrderListSerializer(serializers.ModelSerializer):
         result = []
         request = self.context.get('request') if hasattr(self, 'context') else None
         
+        # Collect ALL lines from ALL styles, then sort globally by sequence_number
+        # This ensures lines maintain insertion order regardless of which style they belong to
+        all_lines_with_style = []
         for style in obj.styles.all():
-            # Sort lines by sequence_number then created_at to maintain insertion order
-            sorted_lines = sorted(style.lines.all(), key=lambda x: (x.sequence_number, x.created_at))
-            for line in sorted_lines:
-                # Get approval data from prefetched approval_history
-                # Group by approval_type and get first/last records
-                approval_dates = {}
-                approval_statuses_from_history = {}
-                
-                # Use prefetched approval_history - already ordered by created_at
-                history_by_type = {}
-                for record in line.approval_history.all():
-                    atype = record.approval_type
-                    if atype not in history_by_type:
-                        history_by_type[atype] = []
-                    history_by_type[atype].append(record)
-                
-                for atype, records in history_by_type.items():
-                    if records:
-                        # First record date (when it started)
-                        approval_dates[atype] = records[0].created_at.date().isoformat()
-                        # Latest record status (current state)
-                        approval_statuses_from_history[atype] = records[-1].status
-                
-                # Merge: prefer history-based status, fall back to stored approval_status
-                merged_approval_status = {}
-                stored_status = line.approval_status or {}
-                
-                # First, add all from history (source of truth)
-                for key, value in approval_statuses_from_history.items():
+            for line in style.lines.all():
+                all_lines_with_style.append((line, style))
+        
+        # Sort all lines globally by sequence_number, then created_at
+        all_lines_with_style.sort(key=lambda x: (x[0].sequence_number, x[0].created_at))
+        
+        for line, style in all_lines_with_style:
+            # Get approval data from prefetched approval_history
+            # Group by approval_type and get first/last records
+            approval_dates = {}
+            approval_statuses_from_history = {}
+            
+            # Use prefetched approval_history - already ordered by created_at
+            history_by_type = {}
+            for record in line.approval_history.all():
+                atype = record.approval_type
+                if atype not in history_by_type:
+                    history_by_type[atype] = []
+                history_by_type[atype].append(record)
+            
+            for atype, records in history_by_type.items():
+                if records:
+                    # First record date (when it started)
+                    approval_dates[atype] = records[0].created_at.date().isoformat()
+                    # Latest record status (current state)
+                    approval_statuses_from_history[atype] = records[-1].status
+            
+            # Merge: prefer history-based status, fall back to stored approval_status
+            merged_approval_status = {}
+            stored_status = line.approval_status or {}
+            
+            # First, add all from history (source of truth)
+            for key, value in approval_statuses_from_history.items():
+                merged_approval_status[key] = value
+            
+            # Then add any from stored status that aren't in history (edge case)
+            for key, value in stored_status.items():
+                if key not in merged_approval_status and value and value != 'default':
                     merged_approval_status[key] = value
-                
-                # Then add any from stored status that aren't in history (edge case)
-                for key, value in stored_status.items():
-                    if key not in merged_approval_status and value and value != 'default':
-                        merged_approval_status[key] = value
-                
-                # Calculate delivery summary for this line using prefetched deliveries
-                delivered_qty = sum(
-                    float(d.delivered_quantity) for d in line.deliveries.all()
-                )
-                
-                # Calculate line-level production entry summary using prefetched production_entries
-                line_knitting = 0
-                line_dyeing = 0
-                line_finishing = 0
-                for entry in line.production_entries.all():
-                    qty = float(entry.quantity) if entry.quantity else 0
-                    if entry.entry_type == 'knitting':
-                        line_knitting += qty
-                    elif entry.entry_type == 'dyeing':
-                        line_dyeing += qty
-                    elif entry.entry_type == 'finishing':
-                        line_finishing += qty
-                
-                line_qty = float(line.quantity) if line.quantity else 0
-                # For local orders, use greige quantity as denominator for production percentages
-                line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
-                
-                # Get mill offers from prefetched data
-                mill_offers_data = []
-                try:
-                    for offer in line.mill_offers.all():
-                        mill_offers_data.append({
-                            'id': str(offer.id),
-                            'millName': offer.mill_name,
-                            'price': float(offer.price) if offer.price else None,
-                            'currency': offer.currency,
-                        })
-                except Exception:
-                    pass  # Gracefully handle if table doesn't exist
-                
+            
+            # Calculate delivery summary for this line using prefetched deliveries
+            delivered_qty = sum(
+                float(d.delivered_quantity) for d in line.deliveries.all()
+            )
+            
+            # Calculate line-level production entry summary using prefetched production_entries
+            line_knitting = 0
+            line_dyeing = 0
+            line_finishing = 0
+            for entry in line.production_entries.all():
+                qty = float(entry.quantity) if entry.quantity else 0
+                if entry.entry_type == 'knitting':
+                    line_knitting += qty
+                elif entry.entry_type == 'dyeing':
+                    line_dyeing += qty
+                elif entry.entry_type == 'finishing':
+                    line_finishing += qty
+            
+            line_qty = float(line.quantity) if line.quantity else 0
+            # For local orders, use greige quantity as denominator for production percentages
+            line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
+            
+            # Get mill offers from prefetched data
+            mill_offers_data = []
+            try:
+                for offer in line.mill_offers.all():
+                    mill_offers_data.append({
+                        'id': str(offer.id),
+                        'millName': offer.mill_name,
+                        'price': float(offer.price) if offer.price else None,
+                        'currency': offer.currency,
+                    })
+            except Exception:
+                pass  # Gracefully handle if table doesn't exist
+            
+            sample_photo = None
+            try:
+                line_sample_docs = [d for d in line.documents.all() if getattr(d, 'category', None) == 'sample']
+                if line_sample_docs:
+                    sample_doc = max(line_sample_docs, key=lambda d: d.created_at)
+                    # Use presigned URL for R2 storage, direct URL for local storage
+                    file_url = get_file_presigned_url(sample_doc.file) if sample_doc.file else None
+                    sample_photo = {
+                        'id': str(sample_doc.id),
+                        'fileName': sample_doc.file_name,
+                        'fileType': sample_doc.file_type,
+                        'fileUrl': file_url,
+                    }
+            except Exception:
                 sample_photo = None
-                try:
-                    line_sample_docs = [d for d in line.documents.all() if getattr(d, 'category', None) == 'sample']
-                    if line_sample_docs:
-                        sample_doc = max(line_sample_docs, key=lambda d: d.created_at)
-                        # Use presigned URL for R2 storage, direct URL for local storage
-                        file_url = get_file_presigned_url(sample_doc.file) if sample_doc.file else None
-                        sample_photo = {
-                            'id': str(sample_doc.id),
-                            'fileName': sample_doc.file_name,
-                            'fileType': sample_doc.file_type,
-                            'fileUrl': file_url,
-                        }
-                except Exception:
-                    sample_photo = None
-                
-                line_data = {
-                    'id': str(line.id),
-                    'styleNumber': style.style_number,
-                    'colorCode': line.color_code,
-                    'cadCode': line.cad_code,
-                    'description': style.description,
-                    'quantity': float(line.quantity) if line.quantity else 0,
-                    'unit': line.unit,
-                    'millPrice': float(line.mill_price) if line.mill_price else None,
-                    'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
-                    'provaPrice': float(line.prova_price) if line.prova_price else None,
-                    'currency': line.currency,
-                    'etd': line.etd.isoformat() if line.etd else None,
-                    'status': line.status,
-                    'approvalStatus': merged_approval_status,
-                    'approvalDates': approval_dates,
-                    # Mill offers for development stage
-                    'millOffers': mill_offers_data,
-                    # Delivery summary
-                    'deliveredQty': delivered_qty,
-                    'samplePhoto': sample_photo,
-                    # Swatch dates for In Development status
-                    'swatchReceivedDate': line.swatch_received_date.isoformat() if line.swatch_received_date else None,
-                    'swatchSentDate': line.swatch_sent_date.isoformat() if line.swatch_sent_date else None,
-                    # Local order production fields - greige/yarn calculation
-                    'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
-                    'mixedFabricType': line.mixed_fabric_type,
-                    'mixedFabricPercent': float(line.mixed_fabric_percent) if line.mixed_fabric_percent else None,
-                    'greigeQuantity': float(line.greige_quantity) if line.greige_quantity else None,
-                    'yarnRequired': float(line.yarn_required) if line.yarn_required else None,
-                    'yarnBookedDate': line.yarn_booked_date.isoformat() if line.yarn_booked_date else None,
-                    'yarnReceivedDate': line.yarn_received_date.isoformat() if line.yarn_received_date else None,
-                    'ppYards': float(line.pp_yards) if line.pp_yards else None,
-                    'fitCumPpSubmitDate': line.fit_cum_pp_submit_date.isoformat() if line.fit_cum_pp_submit_date else None,
-                    'fitCumPpCommentsDate': line.fit_cum_pp_comments_date.isoformat() if line.fit_cum_pp_comments_date else None,
-                    'knittingStartDate': line.knitting_start_date.isoformat() if line.knitting_start_date else None,
-                    'knittingCompleteDate': line.knitting_complete_date.isoformat() if line.knitting_complete_date else None,
-                    'dyeingStartDate': line.dyeing_start_date.isoformat() if line.dyeing_start_date else None,
-                    'dyeingCompleteDate': line.dyeing_complete_date.isoformat() if line.dyeing_complete_date else None,
-                    'bulkSizeSetDate': line.bulk_size_set_date.isoformat() if line.bulk_size_set_date else None,
-                    'cuttingStartDate': line.cutting_start_date.isoformat() if line.cutting_start_date else None,
-                    'cuttingCompleteDate': line.cutting_complete_date.isoformat() if line.cutting_complete_date else None,
-                    'printSendDate': line.print_send_date.isoformat() if line.print_send_date else None,
-                    'printReceivedDate': line.print_received_date.isoformat() if line.print_received_date else None,
-                    'sewingInputDate': line.sewing_input_date.isoformat() if line.sewing_input_date else None,
-                    'sewingFinishDate': line.sewing_finish_date.isoformat() if line.sewing_finish_date else None,
-                    'packingCompleteDate': line.packing_complete_date.isoformat() if line.packing_complete_date else None,
-                    'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
-                    'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
-                    # Line-level production entry summary (from ProductionEntry records)
-                    # Use greige quantity as denominator for local orders
-                    'productionKnitting': line_knitting,
-                    'productionDyeing': line_dyeing,
-                    'productionFinishing': line_finishing,
-                    'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                    'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                    'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                }
-                result.append(line_data)
+            
+            line_data = {
+                'id': str(line.id),
+                'styleNumber': style.style_number,
+                'colorCode': line.color_code,
+                'cadCode': line.cad_code,
+                'description': style.description,
+                'quantity': float(line.quantity) if line.quantity else 0,
+                'unit': line.unit,
+                'millPrice': float(line.mill_price) if line.mill_price else None,
+                'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
+                'provaPrice': float(line.prova_price) if line.prova_price else None,
+                'currency': line.currency,
+                'etd': line.etd.isoformat() if line.etd else None,
+                'status': line.status,
+                'approvalStatus': merged_approval_status,
+                'approvalDates': approval_dates,
+                # Mill offers for development stage
+                'millOffers': mill_offers_data,
+                # Delivery summary
+                'deliveredQty': delivered_qty,
+                'samplePhoto': sample_photo,
+                # Swatch dates for In Development status
+                'swatchReceivedDate': line.swatch_received_date.isoformat() if line.swatch_received_date else None,
+                'swatchSentDate': line.swatch_sent_date.isoformat() if line.swatch_sent_date else None,
+                # Local order production fields - greige/yarn calculation
+                'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
+                'mixedFabricType': line.mixed_fabric_type,
+                'mixedFabricPercent': float(line.mixed_fabric_percent) if line.mixed_fabric_percent else None,
+                'greigeQuantity': float(line.greige_quantity) if line.greige_quantity else None,
+                'yarnRequired': float(line.yarn_required) if line.yarn_required else None,
+                'yarnBookedDate': line.yarn_booked_date.isoformat() if line.yarn_booked_date else None,
+                'yarnReceivedDate': line.yarn_received_date.isoformat() if line.yarn_received_date else None,
+                'ppYards': float(line.pp_yards) if line.pp_yards else None,
+                'fitCumPpSubmitDate': line.fit_cum_pp_submit_date.isoformat() if line.fit_cum_pp_submit_date else None,
+                'fitCumPpCommentsDate': line.fit_cum_pp_comments_date.isoformat() if line.fit_cum_pp_comments_date else None,
+                'knittingStartDate': line.knitting_start_date.isoformat() if line.knitting_start_date else None,
+                'knittingCompleteDate': line.knitting_complete_date.isoformat() if line.knitting_complete_date else None,
+                'dyeingStartDate': line.dyeing_start_date.isoformat() if line.dyeing_start_date else None,
+                'dyeingCompleteDate': line.dyeing_complete_date.isoformat() if line.dyeing_complete_date else None,
+                'bulkSizeSetDate': line.bulk_size_set_date.isoformat() if line.bulk_size_set_date else None,
+                'cuttingStartDate': line.cutting_start_date.isoformat() if line.cutting_start_date else None,
+                'cuttingCompleteDate': line.cutting_complete_date.isoformat() if line.cutting_complete_date else None,
+                'printSendDate': line.print_send_date.isoformat() if line.print_send_date else None,
+                'printReceivedDate': line.print_received_date.isoformat() if line.print_received_date else None,
+                'sewingInputDate': line.sewing_input_date.isoformat() if line.sewing_input_date else None,
+                'sewingFinishDate': line.sewing_finish_date.isoformat() if line.sewing_finish_date else None,
+                'packingCompleteDate': line.packing_complete_date.isoformat() if line.packing_complete_date else None,
+                'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
+                'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
+                # Line-level production entry summary (from ProductionEntry records)
+                # Use greige quantity as denominator for local orders
+                'productionKnitting': line_knitting,
+                'productionDyeing': line_dyeing,
+                'productionFinishing': line_finishing,
+                'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+            }
+            result.append(line_data)
         
         return result
     

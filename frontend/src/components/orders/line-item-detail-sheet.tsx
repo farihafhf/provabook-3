@@ -62,6 +62,9 @@ interface OrderLine {
   finishingWidth?: string;
   // Mill offers for development stage
   millOffers?: MillOffer[];
+  // Swatch dates for In Development status
+  swatchReceivedDate?: string;
+  swatchSentDate?: string;
 }
 
 interface LineItemDetailSheetProps {
@@ -73,6 +76,7 @@ interface LineItemDetailSheetProps {
   onApprovalChange?: (approvalType: string, newStatus: string, lineId: string, lineLabel: string, customTimestamp?: string) => Promise<void>;
   onMillOfferAdd?: (lineId: string, millName: string, price: number, currency: string) => Promise<void>;
   onMillOfferDelete?: (millOfferId: string) => Promise<void>;
+  onSwatchDatesChange?: (lineId: string, swatchReceivedDate: string | null, swatchSentDate: string | null) => Promise<void>;
   updating?: boolean;
 }
 
@@ -144,6 +148,7 @@ export function LineItemDetailSheet({
   onApprovalChange,
   onMillOfferAdd,
   onMillOfferDelete,
+  onSwatchDatesChange,
   updating = false,
 }: LineItemDetailSheetProps) {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
@@ -160,6 +165,11 @@ export function LineItemDetailSheet({
   const [newMillName, setNewMillName] = useState('');
   const [newMillPrice, setNewMillPrice] = useState('');
   const [addingMillOffer, setAddingMillOffer] = useState(false);
+  
+  // Swatch dates input state
+  const [swatchReceivedDate, setSwatchReceivedDate] = useState('');
+  const [swatchSentDate, setSwatchSentDate] = useState('');
+  const [savingSwatchDates, setSavingSwatchDates] = useState(false);
 
   // Sync local state when the sheet opens or when line data changes
   // This ensures the UI updates immediately when approval/status changes are made
@@ -169,14 +179,19 @@ export function LineItemDetailSheet({
     if (open) {
       setSelectedStatus(line.status || '');
       setSelectedApprovals(line.approvalStatus || {});
+      // Initialize swatch dates
+      setSwatchReceivedDate(line.swatchReceivedDate || '');
+      setSwatchSentDate(line.swatchSentDate || '');
     } else {
       setSelectedStatus('');
       setSelectedApprovals({});
       // Reset mill offer inputs when dialog closes
       setNewMillName('');
       setNewMillPrice('');
+      setSwatchReceivedDate('');
+      setSwatchSentDate('');
     }
-  }, [open, line?.id, line?.approvalStatus, line?.status]);
+  }, [open, line?.id, line?.approvalStatus, line?.status, line?.swatchReceivedDate, line?.swatchSentDate]);
 
   // Handle adding a new mill offer
   const handleAddMillOffer = async () => {
@@ -199,6 +214,22 @@ export function LineItemDetailSheet({
   const handleDeleteMillOffer = async (millOfferId: string) => {
     if (!onMillOfferDelete) return;
     await onMillOfferDelete(millOfferId);
+  };
+
+  // Handle saving swatch dates
+  const handleSaveSwatchDates = async () => {
+    if (!line || !onSwatchDatesChange) return;
+    
+    setSavingSwatchDates(true);
+    try {
+      await onSwatchDatesChange(
+        line.id,
+        swatchReceivedDate || null,
+        swatchSentDate || null
+      );
+    } finally {
+      setSavingSwatchDates(false);
+    }
   };
 
   // Reset dialog state when closed
@@ -486,6 +517,48 @@ export function LineItemDetailSheet({
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {addingMillOffer ? 'Adding...' : 'Add Mill Price'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Swatch Dates Section - Only show for In Development status */}
+          {(line.status === 'in_development' || selectedStatus === 'in_development') && onSwatchDatesChange && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                Swatch Tracking
+                <span className="text-sm font-normal text-gray-600">(Development Stage)</span>
+              </h3>
+              
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">Swatch Received Date</Label>
+                    <Input
+                      type="date"
+                      value={swatchReceivedDate}
+                      onChange={(e) => setSwatchReceivedDate(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-600">Swatch Sent Date</Label>
+                    <Input
+                      type="date"
+                      value={swatchSentDate}
+                      onChange={(e) => setSwatchSentDate(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleSaveSwatchDates}
+                  disabled={savingSwatchDates || (swatchReceivedDate === (line.swatchReceivedDate || '') && swatchSentDate === (line.swatchSentDate || ''))}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {savingSwatchDates ? 'Saving...' : 'Save Swatch Dates'}
                 </Button>
               </div>
             </div>
