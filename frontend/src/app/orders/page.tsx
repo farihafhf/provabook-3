@@ -1001,18 +1001,9 @@ function OrdersPageContent() {
                                             })()}
                                           </td>
                                           
-                                          {/* Mill Price - Show mill offers for in_development, else show single price */}
+                                          {/* Mill Price - Show final price if set, else show mill offers, else Pending */}
                                           <td className="py-3 px-3 min-w-[140px]">
-                                            {line.status === 'in_development' && line.millOffers && line.millOffers.length > 0 ? (
-                                              <div className="flex flex-col gap-1">
-                                                {line.millOffers.map((offer) => (
-                                                  <div key={offer.id} className="text-xs">
-                                                    <span className="font-medium text-slate-700">{offer.millName}</span>
-                                                    <span className="text-slate-500 ml-1">${offer.price?.toFixed(2) ?? '0.00'}</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            ) : line.millPrice ? (
+                                            {line.millPrice ? (
                                               <div className="flex flex-col">
                                                 <div className="flex items-baseline gap-1">
                                                   <span className="text-xs text-slate-500">{line.currency || 'USD'}</span>
@@ -1025,8 +1016,17 @@ function OrdersPageContent() {
                                                   </div>
                                                 )}
                                               </div>
+                                            ) : line.millOffers && line.millOffers.length > 0 ? (
+                                              <div className="flex flex-col gap-1">
+                                                {line.millOffers.map((offer) => (
+                                                  <div key={offer.id} className="text-xs">
+                                                    <span className="font-medium text-slate-700">{offer.millName}</span>
+                                                    <span className="text-slate-500 ml-1">${offer.price?.toFixed(2) ?? '0.00'}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
                                             ) : (
-                                              <span className="text-slate-400 text-xs">-</span>
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             )}
                                           </td>
                                           
@@ -1034,10 +1034,8 @@ function OrdersPageContent() {
                                           <td className="py-3 px-3 min-w-[100px]">
                                             {line.provaPrice ? (
                                               <span className="font-medium text-green-700">${line.provaPrice.toFixed(2)}</span>
-                                            ) : line.status === 'in_development' ? (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             ) : (
-                                              <span className="text-slate-400 text-xs">-</span>
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             )}
                                           </td>
                                           
@@ -1046,7 +1044,7 @@ function OrdersPageContent() {
                                             {line.etd ? (
                                               <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
                                             ) : (
-                                              <span className="text-slate-400 text-xs">-</span>
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             )}
                                           </td>
                                           
@@ -1055,7 +1053,7 @@ function OrdersPageContent() {
                                             {order.piSentDate ? (
                                               <span className="text-violet-600 font-medium text-xs">{formatDate(order.piSentDate)}</span>
                                             ) : (
-                                              <span className="text-violet-200">-</span>
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             )}
                                           </td>
                                           
@@ -1064,7 +1062,7 @@ function OrdersPageContent() {
                                             {order.lcIssueDate ? (
                                               <span className="text-emerald-600 font-medium text-xs">{formatDate(order.lcIssueDate)}</span>
                                             ) : (
-                                              <span className="text-emerald-200">-</span>
+                                              <span className="text-orange-600 italic text-xs">Pending</span>
                                             )}
                                           </td>
                                           
