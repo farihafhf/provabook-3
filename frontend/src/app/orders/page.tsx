@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown, Image as ImageIcon } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -40,6 +40,8 @@ interface OrderLine {
   approvalDates?: Record<string, string>;
   deliveredQty?: number;
   millOffers?: MillOffer[];
+  swatchReceivedDate?: string;
+  swatchSentDate?: string;
   samplePhoto?: {
     id: string;
     fileName: string;
@@ -52,6 +54,7 @@ interface Order {
   id: string;
   poNumber: string;
   customerName: string;
+  buyerName?: string;
   fabricType: string;
   quantity: number;
   unit: string;
@@ -693,14 +696,15 @@ function OrdersPageContent() {
                       <th className="pb-3 font-medium w-12">S/N</th>
                       <th className="pb-3 font-medium w-8"></th>
                       {filters.orderType === 'all' && <th className="pb-3 font-medium">Type</th>}
-                      <th className="pb-3 font-medium">PO #</th>
+                      <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Vendor</th>
+                      <th className="pb-3 font-medium">Buyer</th>
+                      <th className="pb-3 font-medium">PO #</th>
                       <th className="pb-3 font-medium">Fabric Type</th>
                       <th className="pb-3 font-medium">Quantity</th>
                       <th className="pb-3 font-medium">ETD</th>
                       <th className="pb-3 font-medium">PI Sent</th>
                       <th className="pb-3 font-medium">LC Issue</th>
-                      <th className="pb-3 font-medium">Merchandiser</th>
                       <th className="pb-3 font-medium">Status</th>
                       <th className="pb-3 font-medium">Order Date</th>
                       <th className="pb-3 font-medium">Actions</th>
@@ -758,8 +762,22 @@ function OrdersPageContent() {
                                 </Badge>
                               </td>
                             )}
-                            <td className="py-4 font-medium">{order.poNumber}</td>
+                            <td className="py-4">
+                              {order.merchandiserName ? (
+                                <span className="text-gray-700">{order.merchandiserName}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="py-4">{order.customerName}</td>
+                            <td className="py-4">
+                              {order.buyerName ? (
+                                <span className="text-gray-700">{order.buyerName}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-4 font-medium">{order.poNumber}</td>
                             <td className="py-4">{order.fabricType}</td>
                             <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
                             <td className="py-4">
@@ -779,13 +797,6 @@ function OrdersPageContent() {
                             <td className="py-4">
                               {order.lcIssueDate ? (
                                 <span className="text-emerald-600 font-medium">{formatDate(order.lcIssueDate)}</span>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-4">
-                              {order.merchandiserName ? (
-                                <span className="text-gray-700">{order.merchandiserName}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
@@ -838,7 +849,7 @@ function OrdersPageContent() {
                           {/* Expanded line items */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={filters.orderType === 'all' ? 14 : 13} className="p-0">
+                              <td colSpan={filters.orderType === 'all' ? 16 : 15} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
                                   {/* Mobile Card View */}
                                   <div className="md:hidden p-3 space-y-3">
@@ -895,7 +906,7 @@ function OrdersPageContent() {
                                                 });
                                               }}
                                             >
-                                              <ImageIcon className="h-3 w-3 mr-1" />
+                                              <Eye className="h-3 w-3 mr-1" />
                                               Sample Photo
                                             </Button>
                                           </div>
@@ -998,6 +1009,8 @@ function OrdersPageContent() {
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Recv</th>
+                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Sent</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
                                         <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
@@ -1084,10 +1097,26 @@ function OrdersPageContent() {
                                                 }}
                                                 title="View Sample Photo"
                                               >
-                                                <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                                <Eye className="h-4 w-4 text-indigo-600" />
                                               </Button>
                                             ) : (
                                               <span className="text-slate-400 text-xs">-</span>
+                                            )}
+                                          </td>
+                                          {/* Swatch Received - only meaningful for in_development status */}
+                                          <td className="py-3 px-3 min-w-[90px] bg-blue-50/30">
+                                            {line.status === 'in_development' && line.swatchReceivedDate ? (
+                                              <span className="text-blue-700 font-medium text-xs">{formatDate(line.swatchReceivedDate)}</span>
+                                            ) : (
+                                              <span className="text-slate-300 text-xs">-</span>
+                                            )}
+                                          </td>
+                                          {/* Swatch Sent - only meaningful for in_development status */}
+                                          <td className="py-3 px-3 min-w-[90px] bg-blue-50/30">
+                                            {line.status === 'in_development' && line.swatchSentDate ? (
+                                              <span className="text-blue-700 font-medium text-xs">{formatDate(line.swatchSentDate)}</span>
+                                            ) : (
+                                              <span className="text-slate-300 text-xs">-</span>
                                             )}
                                           </td>
                                           

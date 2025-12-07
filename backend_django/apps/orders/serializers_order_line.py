@@ -79,6 +79,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
+            'swatch_received_date', 'swatch_sent_date',
             'mill_offers',
             'created_at', 'updated_at'
         ]
@@ -176,6 +177,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'packingCompleteDate': data.get('packing_complete_date'),
             'finalInspectionDate': data.get('final_inspection_date'),
             'exFactoryDate': data.get('ex_factory_date'),
+            'swatchReceivedDate': data.get('swatch_received_date'),
+            'swatchSentDate': data.get('swatch_sent_date'),
             'millOffers': data.get('mill_offers', []),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
@@ -220,6 +223,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'packingCompleteDate': 'packing_complete_date',
             'finalInspectionDate': 'final_inspection_date',
             'exFactoryDate': 'ex_factory_date',
+            'swatchReceivedDate': 'swatch_received_date',
+            'swatchSentDate': 'swatch_sent_date',
         }
         
         converted_data = {}
@@ -250,7 +255,8 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'bulk_size_set_date', 'cutting_start_date', 'cutting_complete_date',
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
-            'packing_complete_date', 'final_inspection_date', 'ex_factory_date'
+            'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
+            'swatch_received_date', 'swatch_sent_date'
         ]
         # CRITICAL: Make 'id' writable so nested update logic can identify existing lines
         extra_kwargs = {
@@ -295,6 +301,8 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'packingCompleteDate': 'packing_complete_date',
             'finalInspectionDate': 'final_inspection_date',
             'exFactoryDate': 'ex_factory_date',
+            'swatchReceivedDate': 'swatch_received_date',
+            'swatchSentDate': 'swatch_sent_date',
         }
         
         converted_data = {}

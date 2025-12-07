@@ -77,6 +77,9 @@ interface OrderLine {
   yarnRequired?: number;
   // Mill offers for development stage
   millOffers?: MillOffer[];
+  // Swatch dates for In Development status
+  swatchReceivedDate?: string;
+  swatchSentDate?: string;
 }
 
 interface OrderColor {
@@ -1627,10 +1630,10 @@ export default function OrderDetailPage() {
                               </div>
                             </div>
 
-                            {/* Mill Offers & Prova Price - For In Development status */}
+                            {/* Mill Offers & Prova Price & Swatch Dates - For In Development status */}
                             {line.status === 'in_development' && (
                               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                   <div className="space-y-1">
                                     <p className="text-xs text-gray-500 font-medium">Mill Offer</p>
                                     <div className="text-sm">
@@ -1651,6 +1654,18 @@ export default function OrderDetailPage() {
                                     <p className="text-xs text-gray-500 font-medium">Prova Price</p>
                                     <p className="text-sm font-semibold text-green-700">
                                       {line.provaPrice ? `$${line.provaPrice.toFixed(2)}` : <span className="text-orange-600 italic font-normal">Pending</span>}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Swatch Received</p>
+                                    <p className="text-sm font-medium text-blue-700">
+                                      {line.swatchReceivedDate ? formatDate(line.swatchReceivedDate) : <span className="text-gray-400 italic font-normal">-</span>}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-gray-500 font-medium">Swatch Sent</p>
+                                    <p className="text-sm font-medium text-blue-700">
+                                      {line.swatchSentDate ? formatDate(line.swatchSentDate) : <span className="text-gray-400 italic font-normal">-</span>}
                                     </p>
                                   </div>
                                 </div>

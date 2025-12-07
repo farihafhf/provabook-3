@@ -26,7 +26,6 @@ import {
   Droplets,
   CheckCircle2,
   Download,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { OrderFilters } from '@/components/orders/order-filters';
@@ -81,6 +80,8 @@ interface OrderLine {
   productionKnittingPercent?: number;
   productionDyeingPercent?: number;
   productionFinishingPercent?: number;
+  swatchReceivedDate?: string;
+  swatchSentDate?: string;
   samplePhoto?: {
     id: string;
     fileName: string;
@@ -107,6 +108,7 @@ interface Order {
   id: string;
   poNumber: string;
   customerName: string;
+  buyerName?: string;
   fabricType: string;
   quantity: number;
   unit: string;
@@ -1039,7 +1041,7 @@ function LocalOrdersPageContent() {
                                                   });
                                                 }}
                                               >
-                                                <ImageIcon className="h-3 w-3 mr-1" />
+                                                <Eye className="h-3 w-3 mr-1" />
                                                 Sample Photo
                                               </Button>
                                             </div>
@@ -1337,7 +1339,7 @@ function LocalOrdersPageContent() {
                                                     }}
                                                     title="View Sample Photo"
                                                   >
-                                                    <ImageIcon className="h-4 w-4 text-indigo-600" />
+                                                    <Eye className="h-4 w-4 text-indigo-600" />
                                                   </Button>
                                                 ) : (
                                                   <span className="text-slate-400 text-[10px]">-</span>

@@ -144,6 +144,22 @@ class OrderLine(TimestampedModel):
     # Notes specific to this line
     notes = models.TextField(blank=True, null=True)
     
+    # Sequence number for maintaining insertion order
+    sequence_number = models.PositiveIntegerField(
+        default=0,
+        help_text='Order of this line within the style (for maintaining insertion order)'
+    )
+    
+    # Swatch dates for In Development status
+    swatch_received_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date when swatch was received'
+    )
+    swatch_sent_date = models.DateField(
+        blank=True, null=True,
+        help_text='Date when swatch was sent'
+    )
+    
     # ========== Local Order Production Fields ==========
     # These fields are only relevant for local orders (order.order_type == 'local')
     
@@ -265,7 +281,7 @@ class OrderLine(TimestampedModel):
         db_table = 'order_lines'
         verbose_name = 'Order Line'
         verbose_name_plural = 'Order Lines'
-        ordering = ['style', 'color_code', 'cad_code']
+        ordering = ['style', 'sequence_number', 'created_at']
         constraints = [
             # Ensure unique combination of style+color+cad
             models.UniqueConstraint(
@@ -313,7 +329,14 @@ class OrderLine(TimestampedModel):
         self.yarn_required = self.greige_quantity * (Decimal('1') - mixed_percent)
     
     def save(self, *args, **kwargs):
-        """Auto-calculate local order fields"""
+        """Auto-calculate local order fields and assign sequence number"""
+        # Auto-assign sequence_number for new lines
+        if not self.pk and self.style:
+            max_seq = OrderLine.objects.filter(style=self.style).aggregate(
+                models.Max('sequence_number')
+            )['sequence_number__max']
+            self.sequence_number = (max_seq or 0) + 1
+        
         # Only auto-calculate for local orders
         if self.style and self.style.order and self.style.order.order_type == 'local':
             # Calculate greige and yarn requirements

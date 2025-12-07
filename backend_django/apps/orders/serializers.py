@@ -805,7 +805,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'customer_name', 'fabric_type',
+            'id', 'order_number', 'customer_name', 'buyer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date', 'order_type',
             'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
@@ -845,8 +845,8 @@ class OrderListSerializer(serializers.ModelSerializer):
         request = self.context.get('request') if hasattr(self, 'context') else None
         
         for style in obj.styles.all():
-            # Sort lines by created_at to maintain insertion order
-            sorted_lines = sorted(style.lines.all(), key=lambda x: x.created_at)
+            # Sort lines by sequence_number then created_at to maintain insertion order
+            sorted_lines = sorted(style.lines.all(), key=lambda x: (x.sequence_number, x.created_at))
             for line in sorted_lines:
                 # Get approval data from prefetched approval_history
                 # Group by approval_type and get first/last records
@@ -958,6 +958,9 @@ class OrderListSerializer(serializers.ModelSerializer):
                     # Delivery summary
                     'deliveredQty': delivered_qty,
                     'samplePhoto': sample_photo,
+                    # Swatch dates for In Development status
+                    'swatchReceivedDate': line.swatch_received_date.isoformat() if line.swatch_received_date else None,
+                    'swatchSentDate': line.swatch_sent_date.isoformat() if line.swatch_sent_date else None,
                     # Local order production fields - greige/yarn calculation
                     'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
                     'mixedFabricType': line.mixed_fabric_type,
@@ -1108,6 +1111,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'id': str(data['id']),
             'poNumber': data['order_number'],
             'customerName': data['customer_name'],
+            'buyerName': data.get('buyer_name'),
             'fabricType': data['fabric_type'],
             'quantity': float(data['quantity']) if data['quantity'] else 0,
             'unit': data['unit'],
