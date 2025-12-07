@@ -467,6 +467,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         subcategory = request.data.get('subcategory', None)
         description = request.data.get('description', None)
         order_line_id = request.data.get('orderLine', None)
+        document_date_str = request.data.get('documentDate', None)
         
         if not uploaded_file:
             return Response({
@@ -523,6 +524,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             else:
                 file_name = "Amended_LC"
         
+        # Parse document date if provided
+        document_date = None
+        if document_date_str:
+            try:
+                document_date = datetime.strptime(document_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                pass  # If invalid format, use None (will fall back to created_at)
+        
         # Create document record and save file
         document = Document.objects.create(
             order=order,
@@ -534,6 +543,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             category=category,
             subcategory=subcategory if subcategory else None,
             description=description if description else None,
+            document_date=document_date,
             uploaded_by=request.user
         )
         

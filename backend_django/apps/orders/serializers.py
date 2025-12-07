@@ -974,21 +974,31 @@ class OrderListSerializer(serializers.ModelSerializer):
         return result
     
     def get_lc_issue_date(self, obj):
-        """Get the earliest LC document upload date from prefetched documents"""
+        """Get the earliest LC document date from prefetched documents
+        Uses document_date if set, otherwise falls back to created_at
+        """
         # Use prefetched documents
         lc_docs = [d for d in obj.documents.all() if d.category == 'lc']
         if lc_docs:
-            lc_docs.sort(key=lambda d: d.created_at)
-            return lc_docs[0].created_at.date().isoformat()
+            # Sort by document_date if available, else created_at
+            lc_docs.sort(key=lambda d: d.document_date or d.created_at.date())
+            doc = lc_docs[0]
+            # Return document_date if set, else created_at
+            return (doc.document_date or doc.created_at.date()).isoformat()
         return None
     
     def get_pi_sent_date(self, obj):
-        """Get the earliest PI document upload date from prefetched documents"""
+        """Get the earliest PI document date from prefetched documents
+        Uses document_date if set, otherwise falls back to created_at
+        """
         # Use prefetched documents
         pi_docs = [d for d in obj.documents.all() if d.category == 'pi']
         if pi_docs:
-            pi_docs.sort(key=lambda d: d.created_at)
-            return pi_docs[0].created_at.date().isoformat()
+            # Sort by document_date if available, else created_at
+            pi_docs.sort(key=lambda d: d.document_date or d.created_at.date())
+            doc = pi_docs[0]
+            # Return document_date if set, else created_at
+            return (doc.document_date or doc.created_at.date()).isoformat()
         return None
     
     def get_production_summary(self, obj):

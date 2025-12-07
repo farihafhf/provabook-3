@@ -60,6 +60,13 @@ class Document(TimestampedModel):
     subcategory = models.CharField(max_length=50, choices=Subcategory.choices, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     
+    # Document date (user can specify when they received the document, defaults to upload date)
+    document_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date when the document was received/issued (defaults to upload date if not specified)'
+    )
+    
     # User tracking
     uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='uploaded_documents')
     

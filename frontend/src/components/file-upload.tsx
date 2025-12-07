@@ -49,6 +49,10 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
   const [orderLine, setOrderLine] = useState<string>('none');
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string>('');
+  const [documentDate, setDocumentDate] = useState<string>(() => {
+    // Default to today's date in YYYY-MM-DD format
+    return new Date().toISOString().split('T')[0];
+  });
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -134,6 +138,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       if (subcategory) formData.append('subcategory', subcategory);
       if (description) formData.append('description', description);
       if (orderLine && orderLine !== 'none') formData.append('orderLine', orderLine);
+      if (documentDate) formData.append('documentDate', documentDate);
 
       const token = localStorage.getItem('access_token');
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
@@ -183,6 +188,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       setDescription('');
       setOrderLine('none');
       setPreview('');
+      setDocumentDate(new Date().toISOString().split('T')[0]);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -327,15 +333,28 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Add notes about this document..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={2}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="documentDate">Document Date *</Label>
+              <Input
+                id="documentDate"
+                type="date"
+                value={documentDate}
+                onChange={(e) => setDocumentDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-gray-500">Date when you received this document (e.g., when LC was issued)</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (optional)</Label>
+              <Textarea
+                id="description"
+                placeholder="Add notes about this document..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">

@@ -1037,11 +1037,11 @@ function OrdersPageContent() {
                                                 )}
                                               </div>
                                             ) : line.millOffers && line.millOffers.length > 0 ? (
-                                              <div className="flex flex-col gap-1">
+                                              <div className="flex flex-col gap-1.5">
                                                 {line.millOffers.map((offer) => (
-                                                  <div key={offer.id} className="text-xs">
-                                                    <span className="font-medium text-slate-700">{offer.millName}</span>
-                                                    <span className="text-slate-500 ml-1">${offer.price?.toFixed(2) ?? '0.00'}</span>
+                                                  <div key={offer.id} className="flex items-center gap-2 text-sm bg-slate-50 px-2 py-1 rounded">
+                                                    <span className="font-semibold text-slate-800">{offer.millName}</span>
+                                                    <span className="font-bold text-blue-600">${offer.price?.toFixed(2) ?? '0.00'}</span>
                                                   </div>
                                                 ))}
                                               </div>
