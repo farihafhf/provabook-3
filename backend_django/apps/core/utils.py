@@ -119,18 +119,18 @@ def is_r2_storage_enabled():
 
 def get_file_presigned_url(file_field, expiration=3600):
     """
-    Get a presigned URL for a file stored in R2, or return the direct URL for local storage.
+    Get a URL for a file stored in R2, or return the direct URL for local storage.
     
-    For R2 storage (production), generates a presigned URL that provides temporary
-    authenticated access to private bucket files.
-    For local storage (development), returns the file's direct URL.
+    For R2 storage with public domain (recommended): Returns direct public URL.
+    For R2 storage without public domain: Generates presigned URL.
+    For local storage (development): Returns file's direct URL.
     
     Args:
         file_field: Django FileField or ImageField instance
-        expiration: URL expiration time in seconds (default 1 hour)
+        expiration: URL expiration time in seconds (default 1 hour, only for presigned)
         
     Returns:
-        str: Presigned URL for R2, or direct URL for local storage
+        str: Public URL, presigned URL, or direct URL depending on configuration
         None: If file_field is empty
     """
     if not file_field:
@@ -138,8 +138,15 @@ def get_file_presigned_url(file_field, expiration=3600):
     
     # Check if R2 storage is enabled
     if is_r2_storage_enabled():
-        # Get the file path (key) from the file field
         file_path = file_field.name
+        
+        # If public domain is configured, use direct public URL (recommended)
+        r2_custom_domain = getattr(settings, 'R2_CUSTOM_DOMAIN', '')
+        if r2_custom_domain:
+            # Public r2.dev or custom domain - no auth needed
+            return f"https://{r2_custom_domain}/{file_path}"
+        
+        # Fall back to presigned URL for private bucket access
         return get_r2_file_url(file_path, expiration)
     
     # For local storage, return the direct URL
