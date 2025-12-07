@@ -935,20 +935,39 @@ function OrdersPageContent() {
                                             router.push(`/orders/${order.id}`);
                                           }}
                                         >
-                                          {/* Style / Color / CAD - Stacked badges */}
+                                          {/* Style / Color / CAD - Stacked badges with status */}
                                           <td className="py-3 px-3 min-w-[180px]">
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                              <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
-                                                {line.styleNumber || '-'}
-                                              </Badge>
-                                              {line.colorCode && (
-                                                <Badge className="bg-sky-100 text-sky-700 text-xs font-mono">
-                                                  {line.colorCode}
+                                            <div className="flex flex-col gap-1">
+                                              <div className="flex flex-wrap items-center gap-1.5">
+                                                <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
+                                                  {line.styleNumber || '-'}
                                                 </Badge>
-                                              )}
-                                              {line.cadCode && (
-                                                <Badge className="bg-amber-100 text-amber-700 text-xs font-mono">
-                                                  CAD: {line.cadCode}
+                                                {line.colorCode && (
+                                                  <Badge className="bg-sky-100 text-sky-700 text-xs font-mono">
+                                                    {line.colorCode}
+                                                  </Badge>
+                                                )}
+                                                {line.cadCode && (
+                                                  <Badge className="bg-amber-100 text-amber-700 text-xs font-mono">
+                                                    CAD: {line.cadCode}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              {/* Line Status Badge */}
+                                              {line.status && (
+                                                <Badge className={`text-[10px] w-fit ${
+                                                  line.status === 'running' ? 'bg-blue-100 text-blue-700' :
+                                                  line.status === 'in_development' ? 'bg-purple-100 text-purple-700' :
+                                                  line.status === 'bulk' ? 'bg-green-100 text-green-700' :
+                                                  line.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                                  'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                  {line.status === 'running' ? 'Running' :
+                                                   line.status === 'in_development' ? 'In Development' :
+                                                   line.status === 'bulk' ? 'Bulk' :
+                                                   line.status === 'completed' ? 'Completed' :
+                                                   line.status === 'upcoming' ? 'Upcoming' :
+                                                   line.status}
                                                 </Badge>
                                               )}
                                             </div>

@@ -900,6 +900,19 @@ class OrderListSerializer(serializers.ModelSerializer):
                 # For local orders, use greige quantity as denominator for production percentages
                 line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
                 
+                # Get mill offers from prefetched data
+                mill_offers_data = []
+                try:
+                    for offer in line.mill_offers.all():
+                        mill_offers_data.append({
+                            'id': str(offer.id),
+                            'millName': offer.mill_name,
+                            'price': float(offer.price) if offer.price else None,
+                            'currency': offer.currency,
+                        })
+                except Exception:
+                    pass  # Gracefully handle if table doesn't exist
+                
                 line_data = {
                     'id': str(line.id),
                     'styleNumber': style.style_number,
@@ -910,11 +923,14 @@ class OrderListSerializer(serializers.ModelSerializer):
                     'unit': line.unit,
                     'millPrice': float(line.mill_price) if line.mill_price else None,
                     'millPriceTotal': float(line.mill_price) * float(line.quantity) if line.mill_price and line.quantity else None,
+                    'provaPrice': float(line.prova_price) if line.prova_price else None,
                     'currency': line.currency,
                     'etd': line.etd.isoformat() if line.etd else None,
                     'status': line.status,
                     'approvalStatus': merged_approval_status,
                     'approvalDates': approval_dates,
+                    # Mill offers for development stage
+                    'millOffers': mill_offers_data,
                     # Delivery summary
                     'deliveredQty': delivered_qty,
                     # Local order production fields - greige/yarn calculation
