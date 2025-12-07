@@ -1,8 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ChevronDown, ChevronUp, Search, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -185,81 +186,152 @@ export function OrderFilters({
     });
   }, [searchParams, emitFilterChange]);
 
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hasActiveFilters = search || (status && status !== 'all') || orderDateFrom || orderDateTo;
+
   return (
     <form onSubmit={handleSubmit} className={cn('w-full', className)}>
-      <section className="w-full rounded-lg bg-white border border-gray-200 p-4 md:p-5 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
-        {/* Search */}
-        <div className="md:col-span-2 flex flex-col gap-1">
-          <Label htmlFor="order-search">Search</Label>
-          <Input
-            id="order-search"
-            type="text"
-            placeholder="Search customer, order #, style, or merchandiser"
-            value={search}
-            onChange={(event) => {
-              const value = event.target.value;
-              setSearch(value);
-            }}
-          />
+      <section className="w-full rounded-lg bg-white border border-gray-200 shadow-sm">
+        {/* Mobile: Compact search bar with expand button */}
+        <div className="md:hidden">
+          <div className="p-3 flex gap-2">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                id="order-search-mobile"
+                type="text"
+                placeholder="Search orders..."
+                value={search}
+                className="pl-9"
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
+              />
+            </div>
+            <Button 
+              type="button" 
+              variant={hasActiveFilters ? "default" : "outline"}
+              size="icon"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="shrink-0"
+            >
+              <Filter className="h-4 w-4" />
+              {hasActiveFilters && <span className="sr-only">Filters active</span>}
+            </Button>
+          </div>
+          
+          {/* Expandable filters on mobile */}
+          {isExpanded && (
+            <div className="px-3 pb-3 pt-0 space-y-3 border-t border-gray-100">
+              <div className="pt-3 flex flex-col gap-1">
+                <Label htmlFor="order-status-mobile">Status</Label>
+                <Select value={status} onValueChange={handleStatusChange}>
+                  <SelectTrigger id="order-status-mobile">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="order-date-from-mobile" className="text-xs">From Date</Label>
+                  <Input
+                    id="order-date-from-mobile"
+                    type="date"
+                    value={orderDateFrom}
+                    onChange={(event) => handleOrderDateFromChange(event.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="order-date-to-mobile" className="text-xs">To Date</Label>
+                  <Input
+                    id="order-date-to-mobile"
+                    type="date"
+                    value={orderDateTo}
+                    onChange={(event) => handleOrderDateToChange(event.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" className="flex-1">Search</Button>
+                <Button type="button" variant="outline" size="sm" onClick={handleReset}>Reset</Button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Status */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="order-status">Status</Label>
-          <Select value={status} onValueChange={handleStatusChange}>
-            <SelectTrigger id="order-status">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Desktop: Full layout */}
+        <div className="hidden md:block p-4 md:p-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
+            {/* Search */}
+            <div className="md:col-span-2 flex flex-col gap-1">
+              <Label htmlFor="order-search">Search</Label>
+              <Input
+                id="order-search"
+                type="text"
+                placeholder="Search customer, order #, style, or merchandiser"
+                value={search}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                }}
+              />
+            </div>
 
-        {/* Reset */}
-        <div className="flex justify-start md:justify-end gap-2">
-          <Button type="submit" className="mt-6 md:mt-0">
-            Search
-          </Button>
-          <Button type="button" variant="outline" className="mt-6 md:mt-0" onClick={handleReset}>
-            Reset filters
-          </Button>
-        </div>
-        </div>
+            {/* Status */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="order-status">Status</Label>
+              <Select value={status} onValueChange={handleStatusChange}>
+                <SelectTrigger id="order-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Order Date From */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="order-date-from">Order Date (From)</Label>
-          <Input
-            id="order-date-from"
-            type="date"
-            value={orderDateFrom}
-            onChange={(event) => {
-              const value = event.target.value;
-              handleOrderDateFromChange(value);
-            }}
-          />
-        </div>
+            {/* Buttons */}
+            <div className="flex justify-start md:justify-end gap-2">
+              <Button type="submit">Search</Button>
+              <Button type="button" variant="outline" onClick={handleReset}>Reset</Button>
+            </div>
+          </div>
 
-        {/* Order Date To */}
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="order-date-to">Order Date (To)</Label>
-          <Input
-            id="order-date-to"
-            type="date"
-            value={orderDateTo}
-            onChange={(event) => {
-              const value = event.target.value;
-              handleOrderDateToChange(value);
-            }}
-          />
-        </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* Order Date From */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="order-date-from">Order Date (From)</Label>
+              <Input
+                id="order-date-from"
+                type="date"
+                value={orderDateFrom}
+                onChange={(event) => handleOrderDateFromChange(event.target.value)}
+              />
+            </div>
+
+            {/* Order Date To */}
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="order-date-to">Order Date (To)</Label>
+              <Input
+                id="order-date-to"
+                type="date"
+                value={orderDateTo}
+                onChange={(event) => handleOrderDateToChange(event.target.value)}
+              />
+            </div>
+          </div>
         </div>
       </section>
     </form>

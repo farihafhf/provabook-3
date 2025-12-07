@@ -844,11 +844,29 @@ function OrdersPageContent() {
                                           router.push(`/orders/${order.id}`);
                                         }}
                                       >
-                                        {/* Header with badges */}
+                                        {/* Header with badges and status */}
                                         <div className="flex flex-wrap gap-1.5 mb-2">
                                           <Badge className="bg-indigo-100 text-indigo-700 text-xs">{line.styleNumber || '-'}</Badge>
                                           {line.colorCode && <Badge className="bg-sky-100 text-sky-700 text-xs">{line.colorCode}</Badge>}
                                           {line.cadCode && <Badge className="bg-amber-100 text-amber-700 text-xs">CAD: {line.cadCode}</Badge>}
+                                          {/* Line Status Badge */}
+                                          {line.status && (
+                                            <Badge className={`text-[10px] ${
+                                              line.status === 'running' ? 'bg-green-100 text-green-700' :
+                                              line.status === 'in_development' ? 'bg-blue-100 text-blue-700' :
+                                              line.status === 'upcoming' ? 'bg-amber-100 text-amber-700' :
+                                              line.status === 'bulk' ? 'bg-purple-100 text-purple-700' :
+                                              line.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                              'bg-gray-100 text-gray-600'
+                                            }`}>
+                                              {line.status === 'running' ? 'Running' :
+                                               line.status === 'in_development' ? 'In Dev' :
+                                               line.status === 'upcoming' ? 'Upcoming' :
+                                               line.status === 'bulk' ? 'Bulk' :
+                                               line.status === 'completed' ? 'Done' :
+                                               line.status}
+                                            </Badge>
+                                          )}
                                         </div>
                                         {/* Description */}
                                         {line.description && (
@@ -866,19 +884,51 @@ function OrdersPageContent() {
                                               <span className="font-semibold ml-1 text-emerald-600">{line.deliveredQty.toLocaleString()}</span>
                                             </div>
                                           )}
-                                          {line.millPrice && (
-                                            <div>
-                                              <span className="text-slate-500">Price:</span>
-                                              <span className="font-medium ml-1">{line.currency || 'USD'} {line.millPrice.toFixed(2)}</span>
-                                            </div>
-                                          )}
-                                          {line.etd && (
-                                            <div>
-                                              <span className="text-slate-500">ETD:</span>
-                                              <span className="font-medium ml-1">{formatDate(line.etd)}</span>
-                                            </div>
-                                          )}
+                                          <div>
+                                            <span className="text-slate-500">ETD:</span>
+                                            <span className="font-medium ml-1">{line.etd ? formatDate(line.etd) : <span className="text-orange-600 italic">Pending</span>}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-slate-500">PI:</span>
+                                            <span className="font-medium ml-1">{order.piSentDate ? formatDate(order.piSentDate) : <span className="text-orange-600 italic">Pending</span>}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-slate-500">LC:</span>
+                                            <span className="font-medium ml-1">{order.lcIssueDate ? formatDate(order.lcIssueDate) : <span className="text-orange-600 italic">Pending</span>}</span>
+                                          </div>
                                         </div>
+                                        
+                                        {/* Mill Price / Mill Offers */}
+                                        <div className="mt-2 pt-2 border-t border-slate-100">
+                                          <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                              <span className="text-slate-500 block mb-1">Mill Price:</span>
+                                              {line.millPrice ? (
+                                                <span className="font-semibold text-slate-800">{line.currency || 'USD'} {line.millPrice.toFixed(2)}</span>
+                                              ) : line.millOffers && line.millOffers.length > 0 ? (
+                                                <div className="space-y-1">
+                                                  {line.millOffers.map((offer) => (
+                                                    <div key={offer.id} className="bg-slate-50 px-1.5 py-0.5 rounded">
+                                                      <span className="font-semibold text-slate-700">{offer.millName}</span>
+                                                      <span className="text-blue-600 font-bold ml-1">${offer.price?.toFixed(2) ?? '0.00'}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              ) : (
+                                                <span className="text-orange-600 italic">Pending</span>
+                                              )}
+                                            </div>
+                                            <div>
+                                              <span className="text-slate-500 block mb-1">Prova Price:</span>
+                                              {line.provaPrice ? (
+                                                <span className="font-bold text-green-700">${line.provaPrice.toFixed(2)}</span>
+                                              ) : (
+                                                <span className="text-orange-600 italic">Pending</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
                                         {/* Approval badges */}
                                         {Object.keys(line.approvalStatus || {}).filter(k => line.approvalStatus?.[k] && line.approvalStatus[k] !== 'default').length > 0 && (
                                           <div className="mt-2 pt-2 border-t border-slate-100">
