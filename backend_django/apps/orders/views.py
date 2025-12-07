@@ -61,6 +61,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         'buyer_name',
         'fabric_type',
         'style_number',
+        'styles__style_number',  # Search through related OrderStyle model
         'merchandiser__full_name',
         'merchandiser__email',
     ]
