@@ -37,7 +37,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     - PATCH /orders/{id}/approvals/ - Update approval status
     - POST /orders/{id}/change_stage/ - Change order stage
     """
-    queryset = Order.objects.select_related('merchandiser').prefetch_related(
+    queryset = Order.objects.select_related('merchandiser', 'created_by').prefetch_related(
         # Prefetch approval history with explicit ascending order by created_at
         # This ensures the serializer can correctly get first record (oldest) and last record (newest)
         Prefetch(

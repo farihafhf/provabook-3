@@ -826,7 +826,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer_name', 'buyer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
             'order_date', 'expected_delivery_date', 'order_type',
-            'merchandiser', 'merchandiser_name', 'created_at', 'earliest_etd',
+            'merchandiser', 'merchandiser_name', 'created_by', 'created_at', 'earliest_etd',
             'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date',
             'production_summary'
         ]
@@ -1150,7 +1150,18 @@ class OrderListSerializer(serializers.ModelSerializer):
             'piSentDate': data.get('pi_sent_date'),
             'orderType': data.get('order_type'),
             'productionSummary': data.get('production_summary'),
+            'createdById': str(data['created_by']) if data.get('created_by') else None,
+            'createdByDetails': self._get_created_by_details(instance),
         }
+    
+    def _get_created_by_details(self, obj):
+        """Get created_by user details"""
+        if obj.created_by:
+            return {
+                'id': str(obj.created_by.id),
+                'fullName': obj.created_by.full_name,
+            }
+        return None
 
 
 class OrderAlertSerializer(serializers.ModelSerializer):
