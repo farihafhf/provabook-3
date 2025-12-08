@@ -70,6 +70,11 @@ interface Order {
   lcIssueDate?: string;
   piSentDate?: string;
   orderType?: 'local' | 'foreign';
+  createdById?: string;
+  createdByDetails?: {
+    id: string;
+    fullName: string;
+  };
   // Local order specific fields
   productionSummary?: {
     totalKnitting: number;
@@ -554,7 +559,22 @@ function OrdersPageContent() {
 
   const handleDeleteClick = (order: Order) => {
     setOrderToDelete(order);
-    setDeleteDialogOpen(true);
+    
+    // Check if current user is the creator - if not, go directly to request approval
+    const isCreator = !order.createdById || currentUser?.id === order.createdById;
+    const isAdmin = currentUser?.role === 'admin';
+    
+    if (isCreator || isAdmin) {
+      // User is creator or admin - show normal delete dialog
+      setDeleteDialogOpen(true);
+    } else {
+      // User is not the creator - show request approval dialog directly
+      setOrderCreatorInfo({
+        id: order.createdById!,
+        name: order.createdByDetails?.fullName || 'the creator',
+      });
+      setRequestApprovalDialogOpen(true);
+    }
   };
 
   const handleDeleteConfirm = async () => {

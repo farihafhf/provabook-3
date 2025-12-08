@@ -95,8 +95,10 @@ export default function NotificationsPage() {
       case 'deletion_request':
         return <Trash2 className="h-5 w-5 text-amber-600" />;
       case 'deletion_approved':
+      case 'deletion_request_approved':
         return <CheckCircle className="h-5 w-5 text-green-600" />;
       case 'deletion_declined':
+      case 'deletion_request_declined':
         return <XCircle className="h-5 w-5 text-red-600" />;
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;

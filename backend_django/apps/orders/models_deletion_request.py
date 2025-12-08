@@ -88,6 +88,18 @@ class DeletionRequest(TimestampedModel):
         order_number = self.order.order_number
         style_number = self.order.style_number or self.order.base_style_number or ''
         
+        # Update the original notification to the approver (mark as processed)
+        Notification.objects.filter(
+            user=self.approver,
+            related_id=str(self.id),
+            related_type='deletion_request',
+            notification_type='deletion_request'
+        ).update(
+            notification_type='deletion_request_approved',
+            message=f'You approved the deletion of Order #{order_number} - {style_number}.',
+            title='Deletion Approved'
+        )
+        
         # Create success notification for the requester
         Notification.objects.create(
             user=self.requester,
@@ -114,11 +126,27 @@ class DeletionRequest(TimestampedModel):
         self.responded_at = timezone.now()
         self.save()
         
+        # Store order info
+        order_number = self.order.order_number
+        style_number = self.order.style_number or self.order.base_style_number or ''
+        
+        # Update the original notification to the approver (mark as processed)
+        Notification.objects.filter(
+            user=self.approver,
+            related_id=str(self.id),
+            related_type='deletion_request',
+            notification_type='deletion_request'
+        ).update(
+            notification_type='deletion_request_declined',
+            message=f'You declined the deletion of Order #{order_number} - {style_number}.',
+            title='Deletion Declined'
+        )
+        
         # Create notification for the requester
         Notification.objects.create(
             user=self.requester,
             title='Deletion Request Declined',
-            message=f'{self.approver.full_name} declined your deletion request for Order #{self.order.order_number}.',
+            message=f'{self.approver.full_name} declined your deletion request for Order #{order_number}.',
             notification_type='deletion_declined',
             related_id=str(self.order.id),
             related_type='order',
