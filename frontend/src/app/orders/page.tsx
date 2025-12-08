@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
-import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Plus, Eye, Trash2, Download, Edit, ArrowUpDown, ChevronRight, ChevronDown, ChevronsUpDown, Image as ImageIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { formatDate, downloadBlob } from '@/lib/utils';
@@ -1155,7 +1155,7 @@ function OrdersPageContent() {
                                                 }}
                                                 title="View Sample Photo"
                                               >
-                                                <Eye className="h-4 w-4 text-indigo-600" />
+                                                <ImageIcon className="h-4 w-4 text-indigo-600" />
                                               </Button>
                                             ) : (
                                               <span className="text-slate-400 text-xs">-</span>

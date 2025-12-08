@@ -136,26 +136,21 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
     }
   };
 
-  const handleDownload = async (documentId: string, fileName: string) => {
+  const handleDownload = async (documentId: string, fileName: string, fileUrl: string) => {
     try {
-      // Use the backend download endpoint which sets Content-Disposition: attachment
-      const token = localStorage.getItem('access_token');
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/${documentId}/download/`;
-      
       toast({
         title: 'Download started',
         description: `Downloading ${fileName}...`,
       });
 
-      const response = await fetch(apiUrl, {
+      // Fetch the file directly and force download via blob
+      const response = await fetch(fileUrl, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        mode: 'cors',
       });
 
       if (!response.ok) {
-        throw new Error('Download failed');
+        throw new Error(`HTTP ${response.status}`);
       }
 
       // Get the blob and download it
@@ -164,10 +159,15 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      
+      // Cleanup after a short delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
 
       toast({
         title: 'Download complete',
@@ -175,10 +175,11 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
       });
     } catch (error) {
       console.error('Download error:', error);
+      // Fallback: open in new tab and let user save
+      window.open(fileUrl, '_blank');
       toast({
-        title: 'Download failed',
-        description: 'Failed to download file. Please try again.',
-        variant: 'destructive',
+        title: 'Opening file',
+        description: 'Right-click the file and select "Save As" to download',
       });
     }
   };
@@ -324,7 +325,7 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDownload(doc.id, doc.fileName)}
+                        onClick={() => handleDownload(doc.id, doc.fileName, doc.fileUrl)}
                         title="Download"
                       >
                         <Download className="h-4 w-4" />
@@ -381,7 +382,7 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
               variant="outline"
               onClick={() => {
                 if (viewingDocument) {
-                  handleDownload(viewingDocument.id, viewingDocument.fileName);
+                  handleDownload(viewingDocument.id, viewingDocument.fileName, viewingDocument.signedUrl);
                 }
               }}
             >
