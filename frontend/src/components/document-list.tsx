@@ -36,6 +36,7 @@ interface Document {
 
 interface DocumentListProps {
   documents: Document[];
+  orderId: string;
   onDelete: (documentId: string) => void;
 }
 
@@ -55,7 +56,7 @@ const SUBCATEGORY_LABELS: Record<string, string> = {
   pp_sample: 'PP Sample',
 };
 
-export function DocumentList({ documents, onDelete }: DocumentListProps) {
+export function DocumentList({ documents, orderId, onDelete }: DocumentListProps) {
   const { toast } = useToast();
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterOrderLine, setFilterOrderLine] = useState<string>('all');
@@ -135,30 +136,49 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     }
   };
 
-  const handleDownload = (documentId: string, fileName: string, fileUrl: string) => {
+  const handleDownload = async (documentId: string, fileName: string) => {
     try {
-      // Create a temporary anchor element and trigger download directly
-      // This approach avoids CORS issues by letting the browser handle the download
+      // Use the backend download endpoint which sets Content-Disposition: attachment
+      const token = localStorage.getItem('access_token');
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/${documentId}/download/`;
+      
+      toast({
+        title: 'Download started',
+        description: `Downloading ${fileName}...`,
+      });
+
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      // Get the blob and download it
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = fileUrl;
+      a.href = url;
       a.download = fileName;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
+      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
       toast({
-        title: 'Download started',
-        description: `Downloading ${fileName}`,
+        title: 'Download complete',
+        description: `${fileName} downloaded successfully`,
       });
     } catch (error) {
       console.error('Download error:', error);
-      // Fallback: open in new tab
-      window.open(fileUrl, '_blank');
       toast({
-        title: 'Opening file',
-        description: 'File opened in new tab - right-click to save',
+        title: 'Download failed',
+        description: 'Failed to download file. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -304,7 +324,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDownload(doc.id, doc.fileName, doc.fileUrl)}
+                        onClick={() => handleDownload(doc.id, doc.fileName)}
                         title="Download"
                       >
                         <Download className="h-4 w-4" />
@@ -361,7 +381,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
               variant="outline"
               onClick={() => {
                 if (viewingDocument) {
-                  handleDownload(viewingDocument.id, viewingDocument.fileName, viewingDocument.signedUrl);
+                  handleDownload(viewingDocument.id, viewingDocument.fileName);
                 }
               }}
             >

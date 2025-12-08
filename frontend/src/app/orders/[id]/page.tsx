@@ -2749,6 +2749,7 @@ export default function OrderDetailPage() {
               <CardContent>
                 <DocumentList 
                   documents={documents}
+                  orderId={params.id as string}
                   onDelete={handleDeleteDocument}
                 />
               </CardContent>

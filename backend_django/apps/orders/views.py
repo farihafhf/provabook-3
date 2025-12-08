@@ -617,6 +617,68 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = DocumentSerializer(document, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
+    @action(detail=True, methods=['get'], url_path='documents/(?P<doc_id>[^/.]+)/download')
+    def download_document(self, request, pk=None, doc_id=None):
+        """
+        GET /orders/{id}/documents/{doc_id}/download/
+        Download a document with Content-Disposition: attachment header
+        This forces the browser to download instead of displaying the file
+        """
+        import requests
+        from django.conf import settings
+        from apps.core.utils import get_file_presigned_url, is_r2_storage_enabled
+        
+        order = self.get_object()
+        
+        try:
+            document = Document.objects.get(id=doc_id, order=order)
+        except Document.DoesNotExist:
+            return Response(
+                {'error': 'Document not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get the file
+        if document.file:
+            try:
+                # For R2 storage, fetch file from URL and serve with download headers
+                if is_r2_storage_enabled():
+                    file_url = get_file_presigned_url(document.file)
+                    if file_url:
+                        # Fetch the file from R2
+                        file_response = requests.get(file_url, timeout=30)
+                        if file_response.status_code == 200:
+                            response = HttpResponse(
+                                file_response.content,
+                                content_type=document.file_type or 'application/octet-stream'
+                            )
+                            response['Content-Disposition'] = f'attachment; filename="{document.file_name}"'
+                            response['Content-Length'] = len(file_response.content)
+                            return response
+                        else:
+                            return Response(
+                                {'error': 'Failed to fetch file from storage'},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
+                else:
+                    # For local storage, serve file directly
+                    response = FileResponse(
+                        document.file.open('rb'),
+                        content_type=document.file_type or 'application/octet-stream'
+                    )
+                    response['Content-Disposition'] = f'attachment; filename="{document.file_name}"'
+                    return response
+            except Exception as e:
+                return Response(
+                    {'error': f'Failed to download file: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        return Response(
+            {'error': 'File not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    
     @action(detail=True, methods=['get'], url_path='lines/(?P<line_id>[^/.]+)/approval-history')
     def get_line_approval_history(self, request, pk=None, line_id=None):
         """
