@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FileIcon, Download, Trash2, Eye, Image as ImageIcon, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils';
@@ -56,6 +66,8 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     fileType: string; 
     signedUrl: string;
   } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<{ id: string; fileName: string } | null>(null);
 
   const sortedDocuments = [...documents].sort((a, b) => {
     const aTime = new Date(a.createdAt).getTime();
@@ -123,17 +135,17 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
     }
   };
 
-  const handleDownload = async (documentId: string, fileName: string, fileUrl: string) => {
+  const handleDownload = (documentId: string, fileName: string, fileUrl: string) => {
     try {
-      const fileResponse = await fetch(fileUrl);
-      const blob = await fileResponse.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Create a temporary anchor element and trigger download directly
+      // This approach avoids CORS issues by letting the browser handle the download
       const a = document.createElement('a');
-      a.href = url;
+      a.href = fileUrl;
       a.download = fileName;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
       toast({
@@ -142,20 +154,27 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
       });
     } catch (error) {
       console.error('Download error:', error);
+      // Fallback: open in new tab
+      window.open(fileUrl, '_blank');
       toast({
-        title: 'Download failed',
-        description: 'Failed to download file',
-        variant: 'destructive',
+        title: 'Opening file',
+        description: 'File opened in new tab - right-click to save',
       });
     }
   };
 
-  const handleDelete = async (documentId: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
-      return;
-    }
+  const openDeleteDialog = (documentId: string, fileName: string) => {
+    setDocumentToDelete({ id: documentId, fileName });
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDelete = async () => {
+    if (!documentToDelete) return;
+
+    const documentId = documentToDelete.id;
+    setDeleteDialogOpen(false);
     setDeletingId(documentId);
+    
     try {
       await onDelete(documentId);
       toast({
@@ -171,6 +190,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
       });
     } finally {
       setDeletingId('');
+      setDocumentToDelete(null);
     }
   };
 
@@ -292,7 +312,7 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(doc.id)}
+                        onClick={() => openDeleteDialog(doc.id, doc.fileName)}
                         disabled={deletingId === doc.id}
                         title="Delete"
                       >
@@ -354,6 +374,27 @@ export function DocumentList({ documents, onDelete }: DocumentListProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{documentToDelete?.fileName}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDocumentToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
