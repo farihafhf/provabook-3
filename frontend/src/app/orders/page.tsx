@@ -982,7 +982,7 @@ function OrdersPageContent() {
                                         data-highlighted={isHighlighted}
                                         className={`rounded-lg border p-3 cursor-pointer transition-all ${
                                           isHighlighted 
-                                            ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400 animate-pulse' 
+                                            ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400 animate-[pulse_1s_ease-in-out_2]' 
                                             : 'bg-white border-slate-200 hover:bg-slate-50'
                                         }`}
                                         onClick={(e) => {
@@ -1133,55 +1133,34 @@ function OrdersPageContent() {
                                     </div>
                                   )}
                                   
-                                  {/* Desktop Table View */}
-                                  <div 
-                                    className="hidden md:block scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded overflow-x-auto"
-                                    tabIndex={0}
-                                  >
-                                  {/* Scroll hint */}
-                                  <div className="text-[10px] text-slate-400 px-3 py-1 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-                                    <span>Scroll: Shift+MouseWheel or Arrow Keys (click table first) or Touchpad swipe</span>
-                                  </div>
-                                  <table className="w-full min-w-[1600px]">
-                                    <thead>
-                                      <tr className="text-xs text-slate-600 bg-slate-100/50">
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[180px]">Style / Color / CAD</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[200px]">Description</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Recv</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-blue-50">Swatch Sent</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Quantity</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Delivered</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px]">Sample Photo</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[140px]">Mill Price</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">Prova Price</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[100px]">ETD</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-violet-50">PI Sent</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold min-w-[90px] bg-emerald-50">LC Issue</th>
-                                        <th className="py-2.5 px-3 text-left font-semibold">Approval Stages</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
+                                  {/* Desktop Card View - Clean organized layout */}
+                                  <div className="hidden md:block p-3">
+                                    <div className="space-y-2">
                                       {lines.map((line) => {
                                         const isHighlighted = highlightedLines.has(line.id);
+                                        const delivered = line.deliveredQty || 0;
+                                        const total = line.quantity || 0;
+                                        const deliveryPct = total > 0 ? Math.round((delivered / total) * 100) : 0;
+                                        
                                         return (
-                                        <tr 
-                                          key={line.id}
-                                          data-highlighted={isHighlighted}
-                                          className={`text-sm border-t border-slate-200 cursor-pointer transition-all duration-300 ${
-                                            isHighlighted 
-                                              ? 'bg-yellow-100 hover:bg-yellow-50 ring-2 ring-yellow-400 ring-inset animate-pulse' 
-                                              : 'hover:bg-slate-50/80'
-                                          }`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            router.push(`/orders/${order.id}`);
-                                          }}
-                                        >
-                                          {/* Style / Color / CAD - Stacked badges with status */}
-                                          <td className="py-3 px-3 min-w-[180px]">
-                                            <div className="flex flex-col gap-1">
-                                              <div className="flex flex-wrap items-center gap-1.5">
-                                                <Badge className="bg-indigo-100 text-indigo-700 text-xs font-medium">
+                                          <div
+                                            key={line.id}
+                                            data-highlighted={isHighlighted}
+                                            className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                                              isHighlighted 
+                                                ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-400 animate-[pulse_1s_ease-in-out_2]' 
+                                                : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                            }`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              router.push(`/orders/${order.id}`);
+                                            }}
+                                          >
+                                            {/* Row 1: Style info + Status + Key numbers */}
+                                            <div className="flex flex-wrap items-center gap-3 mb-2">
+                                              {/* Style badges */}
+                                              <div className="flex items-center gap-1.5">
+                                                <Badge className="bg-indigo-100 text-indigo-700 text-xs font-semibold">
                                                   {line.styleNumber || '-'}
                                                 </Badge>
                                                 {line.colorCode && (
@@ -1190,14 +1169,15 @@ function OrdersPageContent() {
                                                   </Badge>
                                                 )}
                                                 {line.cadCode && (
-                                                  <Badge className="bg-amber-100 text-amber-700 text-xs font-mono">
+                                                  <Badge className="bg-amber-100 text-amber-700 text-xs">
                                                     CAD: {line.cadCode}
                                                   </Badge>
                                                 )}
                                               </div>
-                                              {/* Line Status Badge - colors match collapsed order view */}
+                                              
+                                              {/* Status badge */}
                                               {line.status && (
-                                                <Badge className={`text-[10px] w-fit ${
+                                                <Badge className={`text-[10px] ${
                                                   line.status === 'running' ? 'bg-green-100 text-green-700' :
                                                   line.status === 'in_development' ? 'bg-blue-100 text-blue-700' :
                                                   line.status === 'upcoming' ? 'bg-amber-100 text-amber-700' :
@@ -1206,243 +1186,171 @@ function OrdersPageContent() {
                                                   'bg-gray-100 text-gray-600'
                                                 }`}>
                                                   {line.status === 'running' ? 'Running' :
-                                                   line.status === 'in_development' ? 'In Development' :
+                                                   line.status === 'in_development' ? 'In Dev' :
                                                    line.status === 'upcoming' ? 'Upcoming' :
                                                    line.status === 'bulk' ? 'Bulk' :
-                                                   line.status === 'completed' ? 'Completed' :
+                                                   line.status === 'completed' ? 'Done' :
                                                    line.status}
                                                 </Badge>
                                               )}
+                                              
+                                              {/* Description - inline */}
+                                              {line.description && (
+                                                <span className="text-sm text-slate-600 flex-1 truncate max-w-xs" title={line.description}>
+                                                  {line.description}
+                                                </span>
+                                              )}
+                                              
+                                              {/* Sample photo button */}
+                                              {line.samplePhoto?.fileUrl && (
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-6 px-2 text-xs"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const photo = line.samplePhoto;
+                                                    if (!photo?.fileUrl) return;
+                                                    if (photo.fileType && !photo.fileType.startsWith('image/')) {
+                                                      window.open(photo.fileUrl, '_blank');
+                                                      return;
+                                                    }
+                                                    setSamplePhotoViewer({ fileName: photo.fileName, fileUrl: photo.fileUrl });
+                                                  }}
+                                                >
+                                                  <ImageIcon className="h-3 w-3 mr-1 text-indigo-600" />
+                                                  Photo
+                                                </Button>
+                                              )}
                                             </div>
-                                          </td>
-                                          
-                                          {/* Description - Full text, no truncation */}
-                                          <td className="py-3 px-3 text-slate-600 min-w-[200px]">
-                                            <span className="text-sm">
-                                              {line.description || <span className="text-slate-400">-</span>}
-                                            </span>
-                                          </td>
-                                          {/* Swatch Received - only meaningful for in_development status */}
-                                          <td className="py-3 px-3 min-w-[90px] bg-blue-50/30">
-                                            {line.status === 'in_development' && line.swatchReceivedDate ? (
-                                              <span className="text-blue-700 font-medium text-xs">{formatDate(line.swatchReceivedDate)}</span>
-                                            ) : (
-                                              <span className="text-slate-300 text-xs">-</span>
-                                            )}
-                                          </td>
-                                          {/* Swatch Sent - only meaningful for in_development status */}
-                                          <td className="py-3 px-3 min-w-[90px] bg-blue-50/30">
-                                            {line.status === 'in_development' && line.swatchSentDate ? (
-                                              <span className="text-blue-700 font-medium text-xs">{formatDate(line.swatchSentDate)}</span>
-                                            ) : (
-                                              <span className="text-slate-300 text-xs">-</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* Quantity with unit */}
-                                          <td className="py-3 px-3 min-w-[100px]">
-                                            <span className="font-semibold text-slate-800">
-                                              {line.quantity.toLocaleString()}
-                                            </span>
-                                            <span className="text-slate-500 ml-1 text-xs">{line.unit}</span>
-                                          </td>
-                                          
-                                          {/* Delivered - compact delivery progress */}
-                                          <td className="py-3 px-3 min-w-[90px]">
-                                            {(() => {
-                                              const delivered = line.deliveredQty || 0;
-                                              const total = line.quantity || 0;
-                                              const pct = total > 0 ? Math.round((delivered / total) * 100) : 0;
-                                              const isComplete = pct >= 100;
-                                              const hasDeliveries = delivered > 0;
-                                              
-                                              if (!hasDeliveries) {
-                                                return <span className="text-slate-400 text-xs">-</span>;
-                                              }
-                                              
-                                              return (
-                                                <div className="flex flex-col gap-0.5">
-                                                  <div className="flex items-baseline gap-1">
-                                                    <span className={`font-semibold text-xs ${isComplete ? 'text-emerald-600' : 'text-slate-700'}`}>
-                                                      {delivered.toLocaleString()}
-                                                    </span>
-                                                    <span className="text-slate-400 text-[10px]">/ {total.toLocaleString()}</span>
-                                                  </div>
-                                                  <div className="w-full bg-slate-200 rounded-full h-1.5">
-                                                    <div 
-                                                      className={`h-1.5 rounded-full ${isComplete ? 'bg-emerald-500' : pct > 50 ? 'bg-sky-500' : 'bg-amber-500'}`}
-                                                      style={{ width: `${Math.min(pct, 100)}%` }}
-                                                    />
-                                                  </div>
-                                                </div>
-                                              );
-                                            })()}
-                                          </td>
-                                          
-                                          {/* Sample Photo - right before Mill Price */}
-                                          <td className="py-3 px-3 min-w-[90px]">
-                                            {line.samplePhoto && line.samplePhoto.fileUrl ? (
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  const photo = line.samplePhoto;
-                                                  if (!photo || !photo.fileUrl) return;
-                                                  if (photo.fileType && !photo.fileType.startsWith('image/')) {
-                                                    window.open(photo.fileUrl, '_blank');
-                                                    return;
-                                                  }
-                                                  setSamplePhotoViewer({
-                                                    fileName: photo.fileName,
-                                                    fileUrl: photo.fileUrl,
-                                                  });
-                                                }}
-                                                title="View Sample Photo"
-                                              >
-                                                <ImageIcon className="h-4 w-4 text-indigo-600" />
-                                              </Button>
-                                            ) : (
-                                              <span className="text-slate-400 text-xs">-</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* Mill Price - Show final price if set, else show mill offers, else Pending */}
-                                          <td className="py-3 px-3 min-w-[140px]">
-                                            {line.millPrice ? (
-                                              <div className="flex flex-col">
-                                                <div className="flex items-baseline gap-1">
-                                                  <span className="text-xs text-slate-500">{line.currency || 'USD'}</span>
-                                                  <span className="font-medium text-slate-700">{line.millPrice.toFixed(2)}</span>
-                                                  <span className="text-xs text-slate-400">/unit</span>
-                                                </div>
-                                                {line.millPriceTotal && (
-                                                  <div className="text-xs text-emerald-600 font-medium mt-0.5">
-                                                    Total: {line.currency || 'USD'} {line.millPriceTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            
+                                            {/* Row 2: Key metrics in a clean grid */}
+                                            <div className="grid grid-cols-6 gap-4 text-xs">
+                                              {/* Quantity & Delivery */}
+                                              <div className="col-span-1">
+                                                <span className="text-slate-500 block">Quantity</span>
+                                                <span className="font-semibold text-slate-800">{line.quantity.toLocaleString()} {line.unit}</span>
+                                                {delivered > 0 && (
+                                                  <div className="mt-1">
+                                                    <div className="flex items-center gap-1">
+                                                      <span className={`text-[10px] ${deliveryPct >= 100 ? 'text-emerald-600' : 'text-slate-600'}`}>
+                                                        {delivered.toLocaleString()} delivered ({deliveryPct}%)
+                                                      </span>
+                                                    </div>
+                                                    <div className="w-full bg-slate-200 rounded-full h-1 mt-0.5">
+                                                      <div 
+                                                        className={`h-1 rounded-full ${deliveryPct >= 100 ? 'bg-emerald-500' : 'bg-sky-500'}`}
+                                                        style={{ width: `${Math.min(deliveryPct, 100)}%` }}
+                                                      />
+                                                    </div>
                                                   </div>
                                                 )}
                                               </div>
-                                            ) : line.millOffers && line.millOffers.length > 0 ? (
-                                              <div className="flex flex-col gap-1.5">
-                                                {line.millOffers.map((offer) => (
-                                                  <div key={offer.id} className="flex items-center gap-2 text-sm bg-slate-50 px-2 py-1 rounded">
-                                                    <span className="font-semibold text-slate-800">{offer.millName}</span>
-                                                    <span className="font-bold text-blue-600">${offer.price?.toFixed(2) ?? '0.00'}</span>
-                                                  </div>
-                                                ))}
+                                              
+                                              {/* Pricing */}
+                                              <div className="col-span-1">
+                                                <span className="text-slate-500 block">Mill Price</span>
+                                                {line.millPrice ? (
+                                                  <span className="font-medium text-slate-700">{line.currency || 'USD'} {line.millPrice.toFixed(2)}</span>
+                                                ) : line.millOffers?.length ? (
+                                                  <span className="text-blue-600 text-[10px]">{line.millOffers.length} offer(s)</span>
+                                                ) : (
+                                                  <span className="text-orange-500 italic">Pending</span>
+                                                )}
                                               </div>
-                                            ) : (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* Prova Price */}
-                                          <td className="py-3 px-3 min-w-[100px]">
-                                            {line.provaPrice ? (
-                                              <span className="font-medium text-green-700">${line.provaPrice.toFixed(2)}</span>
-                                            ) : (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* ETD */}
-                                          <td className="py-3 px-3 min-w-[100px]">
-                                            {line.etd ? (
-                                              <span className="text-slate-700 font-medium">{formatDate(line.etd)}</span>
-                                            ) : (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* PI Sent - Order level, same for all lines */}
-                                          <td className="py-3 px-3 min-w-[90px] bg-violet-50/30">
-                                            {order.piSentDate ? (
-                                              <span className="text-violet-600 font-medium text-xs">{formatDate(order.piSentDate)}</span>
-                                            ) : (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* LC Issue - Order level, same for all lines */}
-                                          <td className="py-3 px-3 min-w-[90px] bg-emerald-50/30">
-                                            {order.lcIssueDate ? (
-                                              <span className="text-emerald-600 font-medium text-xs">{formatDate(order.lcIssueDate)}</span>
-                                            ) : (
-                                              <span className="text-orange-600 italic text-xs">Pending</span>
-                                            )}
-                                          </td>
-                                          
-                                          {/* Approval Stages - Show ALL stages that have ANY history */}
-                                          <td className="py-3 px-3">
-                                            <div className="flex flex-wrap gap-2">
-                                              {(() => {
-                                                // Combine approval types from BOTH approvalStatus AND approvalDates
-                                                // This ensures we show ALL stages that have any recorded activity
-                                                const allTypes = new Set<string>();
-                                                
-                                                // Add types from approvalStatus (excluding only 'default')
-                                                Object.entries(line.approvalStatus || {}).forEach(([key, value]) => {
-                                                  if (value && value !== 'default') {
-                                                    allTypes.add(key);
-                                                  }
-                                                });
-                                                
-                                                // Add types from approvalDates (these have history records)
-                                                Object.keys(line.approvalDates || {}).forEach(key => {
-                                                  allTypes.add(key);
-                                                });
-                                                
-                                                if (allTypes.size === 0) {
-                                                  return <span className="text-slate-400 text-xs italic">No approvals yet</span>;
-                                                }
-                                                
-                                                // Sort by priority order
-                                                const priorityOrder: Record<string, number> = {
-                                                  price: 1, labDip: 2, lab_dip: 2,
-                                                  strikeOff: 3, strike_off: 3,
-                                                  handloom: 4, quality: 5,
-                                                  ppSample: 6, pp_sample: 6,
-                                                  aop: 7, qualityTest: 8, quality_test: 8,
-                                                  bulkSwatch: 9, bulk_swatch: 9
-                                                };
-                                                
-                                                const sortedTypes = Array.from(allTypes).sort((a, b) => {
-                                                  return (priorityOrder[a] || 99) - (priorityOrder[b] || 99);
-                                                });
-                                                
-                                                return sortedTypes.map(type => {
-                                                  // Get current status (could be submission, resubmission, approved, rejected, pending, etc.)
-                                                  const status = line.approvalStatus?.[type] || 'pending';
-                                                  const approvalDate = line.approvalDates?.[type];
-                                                  const badge = getApprovalBadge(status);
-                                                  
-                                                  return (
-                                                    <div 
-                                                      key={type} 
-                                                      className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200 whitespace-nowrap"
-                                                      title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
-                                                    >
-                                                      <span className="text-[10px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
-                                                      <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
-                                                        {badge.label.substring(0, 3)}
-                                                      </Badge>
-                                                      {approvalDate && (
-                                                        <span className="text-[10px] text-slate-500 font-medium">
-                                                          {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                });
-                                              })()}
+                                              
+                                              <div className="col-span-1">
+                                                <span className="text-slate-500 block">Prova Price</span>
+                                                {line.provaPrice ? (
+                                                  <span className="font-medium text-green-700">${line.provaPrice.toFixed(2)}</span>
+                                                ) : (
+                                                  <span className="text-orange-500 italic">Pending</span>
+                                                )}
+                                              </div>
+                                              
+                                              {/* Key Dates */}
+                                              <div className="col-span-1">
+                                                <span className="text-slate-500 block">ETD</span>
+                                                {line.etd ? (
+                                                  <span className="font-medium text-slate-700">{formatDate(line.etd)}</span>
+                                                ) : (
+                                                  <span className="text-orange-500 italic">Pending</span>
+                                                )}
+                                              </div>
+                                              
+                                              <div className="col-span-1">
+                                                <span className="text-slate-500 block">PI / LC</span>
+                                                <div className="flex gap-2">
+                                                  {order.piSentDate ? (
+                                                    <span className="text-violet-600 font-medium">{formatDate(order.piSentDate)}</span>
+                                                  ) : (
+                                                    <span className="text-orange-500 italic">PI -</span>
+                                                  )}
+                                                  <span className="text-slate-300">/</span>
+                                                  {order.lcIssueDate ? (
+                                                    <span className="text-emerald-600 font-medium">{formatDate(order.lcIssueDate)}</span>
+                                                  ) : (
+                                                    <span className="text-orange-500 italic">LC -</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Swatch dates (for in_development) */}
+                                              {line.status === 'in_development' && (
+                                                <div className="col-span-1">
+                                                  <span className="text-slate-500 block">Swatch</span>
+                                                  <div className="text-[10px]">
+                                                    {line.swatchReceivedDate && <span className="text-blue-600">Recv: {formatDate(line.swatchReceivedDate)}</span>}
+                                                    {line.swatchSentDate && <span className="text-blue-600 ml-1">Sent: {formatDate(line.swatchSentDate)}</span>}
+                                                    {!line.swatchReceivedDate && !line.swatchSentDate && <span className="text-slate-400">-</span>}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
-                                          </td>
-                                        </tr>
+                                            
+                                            {/* Row 3: Approval Stages - compact inline */}
+                                            {(() => {
+                                              const allTypes = new Set<string>();
+                                              Object.entries(line.approvalStatus || {}).forEach(([key, value]) => {
+                                                if (value && value !== 'default') allTypes.add(key);
+                                              });
+                                              Object.keys(line.approvalDates || {}).forEach(key => allTypes.add(key));
+                                              
+                                              if (allTypes.size === 0) return null;
+                                              
+                                              const priorityOrder: Record<string, number> = {
+                                                price: 1, labDip: 2, lab_dip: 2, strikeOff: 3, strike_off: 3,
+                                                handloom: 4, quality: 5, ppSample: 6, pp_sample: 6,
+                                                aop: 7, qualityTest: 8, quality_test: 8, bulkSwatch: 9, bulk_swatch: 9
+                                              };
+                                              const sortedTypes = Array.from(allTypes).sort((a, b) => (priorityOrder[a] || 99) - (priorityOrder[b] || 99));
+                                              
+                                              return (
+                                                <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                                                  <span className="text-[10px] text-slate-500 mr-1">Approvals:</span>
+                                                  {sortedTypes.map(type => {
+                                                    const status = line.approvalStatus?.[type] || 'pending';
+                                                    const badge = getApprovalBadge(status);
+                                                    return (
+                                                      <div 
+                                                        key={type}
+                                                        className="flex items-center gap-0.5 bg-slate-50 rounded px-1.5 py-0.5 border border-slate-200"
+                                                        title={formatApprovalName(type)}
+                                                      >
+                                                        <span className="text-[9px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
+                                                        <Badge className={`${badge.bg} ${badge.text} text-[9px] px-1 py-0`}>
+                                                          {badge.label.substring(0, 3)}
+                                                        </Badge>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              );
+                                            })()}
+                                          </div>
                                         );
                                       })}
-                                    </tbody>
-                                  </table>
+                                    </div>
                                   </div>
                                 </div>
                               </td>
