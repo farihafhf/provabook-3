@@ -187,6 +187,7 @@ export function OrderFilters({
   }, [searchParams, emitFilterChange]);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDesktopExpanded, setIsDesktopExpanded] = useState(false);
   const hasActiveFilters = search || (status && status !== 'all') || orderDateFrom || orderDateTo;
 
   return (
@@ -267,71 +268,89 @@ export function OrderFilters({
           )}
         </div>
 
-        {/* Desktop: Full layout */}
-        <div className="hidden md:block p-4 md:p-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:items-end">
-            {/* Search */}
-            <div className="md:col-span-2 flex flex-col gap-1">
-              <Label htmlFor="order-search">Search</Label>
+        {/* Desktop: Collapsible layout */}
+        <div className="hidden md:block">
+          {/* Collapsed bar - always visible */}
+          <div className="p-3 flex items-center gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 id="order-search"
                 type="text"
-                placeholder="Search customer, order #, style, or merchandiser"
+                placeholder="Search customer, order #, style, or merchandiser..."
                 value={search}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSearch(value);
-                }}
+                className="pl-9"
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
               />
             </div>
-
-            {/* Status */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="order-status">Status</Label>
-              <Select value={status} onValueChange={handleStatusChange}>
-                <SelectTrigger id="order-status">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-start md:justify-end gap-2">
-              <Button type="submit">Search</Button>
-              <Button type="button" variant="outline" onClick={handleReset}>Reset</Button>
-            </div>
+            <Button type="submit" size="sm">
+              <Search className="h-4 w-4 mr-1" />
+              Search
+            </Button>
+            <Button 
+              type="button" 
+              variant={hasActiveFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsDesktopExpanded(!isDesktopExpanded)}
+              className="gap-1"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {isDesktopExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </Button>
+            {hasActiveFilters && (
+              <Button type="button" variant="ghost" size="sm" onClick={handleReset}>
+                Reset
+              </Button>
+            )}
           </div>
+          
+          {/* Expandable filters */}
+          {isDesktopExpanded && (
+            <div className="px-3 pb-3 pt-0 border-t border-gray-100">
+              <div className="pt-3 grid grid-cols-1 gap-4 md:grid-cols-3 md:items-end">
+                {/* Status */}
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="order-status">Status</Label>
+                  <Select value={status} onValueChange={handleStatusChange}>
+                    <SelectTrigger id="order-status">
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Order Date From */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="order-date-from">Order Date (From)</Label>
-              <Input
-                id="order-date-from"
-                type="date"
-                value={orderDateFrom}
-                onChange={(event) => handleOrderDateFromChange(event.target.value)}
-              />
-            </div>
+                {/* Order Date From */}
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="order-date-from">Order Date (From)</Label>
+                  <Input
+                    id="order-date-from"
+                    type="date"
+                    value={orderDateFrom}
+                    onChange={(event) => handleOrderDateFromChange(event.target.value)}
+                  />
+                </div>
 
-            {/* Order Date To */}
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="order-date-to">Order Date (To)</Label>
-              <Input
-                id="order-date-to"
-                type="date"
-                value={orderDateTo}
-                onChange={(event) => handleOrderDateToChange(event.target.value)}
-              />
+                {/* Order Date To */}
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="order-date-to">Order Date (To)</Label>
+                  <Input
+                    id="order-date-to"
+                    type="date"
+                    value={orderDateTo}
+                    onChange={(event) => handleOrderDateToChange(event.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </form>

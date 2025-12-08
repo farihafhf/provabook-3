@@ -812,23 +812,23 @@ function OrdersPageContent() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="border-b sticky top-0 z-20 bg-white">
-                    <tr className="text-left text-sm text-gray-600">
-                      <th className="pb-3 font-medium w-12">S/N</th>
-                      <th className="pb-3 font-medium w-8"></th>
-                      {filters.orderType === 'all' && <th className="pb-3 font-medium">Type</th>}
-                      <th className="pb-3 font-medium">Merchandiser</th>
-                      <th className="pb-3 font-medium">Vendor</th>
-                      <th className="pb-3 font-medium">Buyer</th>
-                      <th className="pb-3 font-medium">PO #</th>
-                      <th className="pb-3 font-medium">Fabric Type</th>
-                      <th className="pb-3 font-medium">Quantity</th>
-                      <th className="pb-3 font-medium">ETD</th>
-                      <th className="pb-3 font-medium">PI Sent</th>
-                      <th className="pb-3 font-medium">LC Issue</th>
-                      <th className="pb-3 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Order Date</th>
-                      <th className="pb-3 font-medium">Actions</th>
+                  <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
+                    <tr className="text-left text-xs uppercase tracking-wide text-slate-700 border-b-2 border-slate-300">
+                      <th className="py-3 px-2 font-semibold w-12">S/N</th>
+                      <th className="py-3 px-1 font-semibold w-8"></th>
+                      {filters.orderType === 'all' && <th className="py-3 px-3 font-semibold whitespace-nowrap">Type</th>}
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[120px]">Merchandiser</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px] border-l border-slate-200">Vendor</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px]">Buyer</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px] border-l border-slate-200">PO #</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[110px] border-l border-slate-200">Fabric Type</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Quantity</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">ETD</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">PI Sent</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">LC Issue</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Status</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Order Date</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
