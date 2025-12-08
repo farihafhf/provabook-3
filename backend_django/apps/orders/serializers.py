@@ -1014,6 +1014,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
                 'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
                 'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                # Line notes
+                'notes': line.notes,
             }
             result.append(line_data)
         
