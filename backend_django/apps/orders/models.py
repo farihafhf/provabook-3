@@ -153,6 +153,15 @@ class Order(TimestampedModel):
         related_name='orders',
         db_column='merchandiser_id'
     )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_orders',
+        db_column='created_by_id',
+        help_text='User who created this order'
+    )
     
     class Meta:
         db_table = 'orders'

@@ -138,12 +138,16 @@ function OrdersPageContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const currentUser = useAuthStore((state) => state.user);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [requestApprovalDialogOpen, setRequestApprovalDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [orderCreatorInfo, setOrderCreatorInfo] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [requestingApproval, setRequestingApproval] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
   // Initialize filters from URL params to preserve filter state when navigating back
@@ -570,18 +574,55 @@ function OrdersPageContent() {
       
       // Refresh orders list with current filters
       await fetchOrders(filters);
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Error deleting order:', error);
       
-      const errorMessage = getErrorMessage(error, 'Failed to delete order');
-      
+      // Check if this is an ownership issue (403 with requiresApproval)
+      if (error.response?.status === 403 && error.response?.data?.requiresApproval) {
+        setOrderCreatorInfo({
+          id: error.response.data.creatorId,
+          name: error.response.data.creatorName,
+        });
+        setDeleteDialogOpen(false);
+        setRequestApprovalDialogOpen(true);
+      } else {
+        const errorMessage = getErrorMessage(error, 'Failed to delete order');
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleRequestApproval = async () => {
+    if (!orderToDelete) return;
+
+    setRequestingApproval(true);
+    try {
+      await api.post(`/orders/${orderToDelete.id}/request-deletion/`);
+
+      toast({
+        title: 'Request Sent',
+        description: `Deletion request sent to ${orderCreatorInfo?.name}. They will be notified.`,
+      });
+
+      setRequestApprovalDialogOpen(false);
+      setOrderToDelete(null);
+      setOrderCreatorInfo(null);
+    } catch (error: any) {
+      console.error('Error requesting deletion approval:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to send deletion request';
       toast({
         title: 'Error',
         description: errorMessage,
         variant: 'destructive',
       });
     } finally {
-      setDeleting(false);
+      setRequestingApproval(false);
     }
   };
 
@@ -1363,6 +1404,56 @@ function OrdersPageContent() {
                 disabled={deleting}
               >
                 {deleting ? 'Deleting...' : 'Delete Order'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Request Approval Dialog - shown when non-creator tries to delete */}
+        <Dialog open={requestApprovalDialogOpen} onOpenChange={(open) => {
+          setRequestApprovalDialogOpen(open);
+          if (!open) {
+            setOrderToDelete(null);
+            setOrderCreatorInfo(null);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Request Deletion Approval</DialogTitle>
+              <DialogDescription>
+                This order was created by <strong>{orderCreatorInfo?.name}</strong>. They must approve this deletion.
+              </DialogDescription>
+            </DialogHeader>
+            {orderToDelete && (
+              <div className="py-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>PO #:</strong> {orderToDelete.poNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {orderToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Fabric:</strong> {orderToDelete.fabricType}</p>
+                </div>
+                <p className="text-sm text-gray-600 mt-3">
+                  Click &quot;Request Approval&quot; to send a notification to {orderCreatorInfo?.name}. 
+                  They will be able to approve or decline your request.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRequestApprovalDialogOpen(false);
+                  setOrderToDelete(null);
+                  setOrderCreatorInfo(null);
+                }}
+                disabled={requestingApproval}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRequestApproval}
+                disabled={requestingApproval}
+              >
+                {requestingApproval ? 'Sending...' : 'Request Approval'}
               </Button>
             </DialogFooter>
           </DialogContent>

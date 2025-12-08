@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { api } from '@/lib/api';
-import { Bell, CheckCircle, Clock, AlertCircle, CheckCheck } from 'lucide-react';
+import { Bell, CheckCircle, Clock, AlertCircle, CheckCheck, Trash2, XCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
@@ -19,14 +20,17 @@ interface Notification {
   relatedId?: string;
   relatedType?: string;
   isRead: boolean;
+  severity?: string;
   createdAt: string;
 }
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -88,8 +92,66 @@ export default function NotificationsPage() {
         return <Clock className="h-5 w-5 text-red-600" />;
       case 'eta_alert_medium':
         return <Clock className="h-5 w-5 text-amber-500" />;
+      case 'deletion_request':
+        return <Trash2 className="h-5 w-5 text-amber-600" />;
+      case 'deletion_approved':
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case 'deletion_declined':
+        return <XCircle className="h-5 w-5 text-red-600" />;
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;
+    }
+  };
+
+  const handleApproveDeletion = async (e: React.MouseEvent, notification: Notification) => {
+    e.stopPropagation();
+    if (!notification.relatedId) return;
+    
+    setProcessingId(notification.id);
+    try {
+      await api.post(`/orders/deletion-requests/${notification.relatedId}/approve/`);
+      toast({
+        title: 'Deletion Approved',
+        description: 'The order has been deleted.',
+      });
+      // Mark as read and refresh
+      await markAsRead(notification.id);
+      await fetchNotifications();
+    } catch (error: any) {
+      console.error('Failed to approve deletion:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to approve deletion',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeclineDeletion = async (e: React.MouseEvent, notification: Notification) => {
+    e.stopPropagation();
+    if (!notification.relatedId) return;
+    
+    setProcessingId(notification.id);
+    try {
+      await api.post(`/orders/deletion-requests/${notification.relatedId}/decline/`);
+      toast({
+        title: 'Deletion Declined',
+        description: 'The deletion request has been declined.',
+      });
+      // Mark as read and refresh
+      await markAsRead(notification.id);
+      await fetchNotifications();
+    } catch (error: any) {
+      console.error('Failed to decline deletion:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to decline deletion',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -178,6 +240,29 @@ export default function NotificationsPage() {
                         <p className="text-xs text-gray-500 mt-2">
                           {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                         </p>
+                        
+                        {/* Approve/Decline buttons for deletion requests */}
+                        {notification.notificationType === 'deletion_request' && 
+                         notification.relatedType === 'deletion_request' && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={(e) => handleApproveDeletion(e, notification)}
+                              disabled={processingId === notification.id}
+                            >
+                              {processingId === notification.id ? 'Processing...' : 'Approve Deletion'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handleDeclineDeletion(e, notification)}
+                              disabled={processingId === notification.id}
+                            >
+                              Decline
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

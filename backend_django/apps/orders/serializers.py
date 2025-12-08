@@ -15,6 +15,7 @@ class OrderSerializer(serializers.ModelSerializer):
     Returns camelCase for frontend
     """
     merchandiser_details = UserSerializer(source='merchandiser', read_only=True)
+    created_by_details = UserSerializer(source='created_by', read_only=True)
     total_value = serializers.ReadOnlyField()
     total_delivered_quantity = serializers.ReadOnlyField()
     shortage_excess_quantity = serializers.ReadOnlyField()
@@ -47,7 +48,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
-            'notes', 'metadata', 'merchandiser', 'merchandiser_details',
+            'notes', 'metadata', 'merchandiser', 'merchandiser_details', 'created_by', 'created_by_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
             'created_at', 'updated_at', 'timeline_events', 'styles', 'approval_history_data',
@@ -56,6 +57,20 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'uid', 'order_number', 'created_at', 'updated_at', 'total_value', 
                            'total_delivered_quantity', 'shortage_excess_quantity', 
                            'potential_profit', 'realized_profit', 'realized_value']
+    
+    def _format_user_details(self, user_data):
+        """Format user details to camelCase"""
+        if not user_data:
+            return None
+        return {
+            'id': str(user_data['id']),
+            'email': user_data['email'],
+            'fullName': user_data['full_name'],
+            'role': user_data['role'],
+            'phone': user_data.get('phone'),
+            'department': user_data.get('department'),
+            'isActive': user_data['is_active'],
+        }
     
     def to_representation(self, instance):
         """Convert to camelCase for frontend"""
@@ -109,6 +124,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'metadata': data.get('metadata'),
             'merchandiser': str(data['merchandiser']) if data.get('merchandiser') else None,
             'merchandiserDetails': merchandiser_details,
+            'createdById': str(data['created_by']) if data.get('created_by') else None,
+            'createdByDetails': self._format_user_details(data.get('created_by_details')),
             'totalValue': data.get('total_value'),
             'totalDeliveredQuantity': data.get('total_delivered_quantity'),
             'shortageExcessQuantity': data.get('shortage_excess_quantity'),

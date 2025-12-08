@@ -127,14 +127,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
-        """Set merchandiser to current user when creating order"""
-        serializer.save(merchandiser=self.request.user)
+        """Set merchandiser and created_by to current user when creating order"""
+        serializer.save(merchandiser=self.request.user, created_by=self.request.user)
     
     def create(self, request, *args, **kwargs):
         """Create order with custom response"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        order = serializer.save(merchandiser=request.user)
+        order = serializer.save(merchandiser=request.user, created_by=request.user)
         
         # Return full order data
         response_serializer = OrderSerializer(order)
@@ -151,6 +151,95 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Return full order data
         response_serializer = OrderSerializer(instance)
         return Response(response_serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        """
+        Delete order - only allowed if user is the creator.
+        Non-creators must use request_deletion endpoint.
+        """
+        instance = self.get_object()
+        user = request.user
+        
+        # Check if user is the creator or if created_by is not set (legacy orders)
+        if instance.created_by and instance.created_by != user:
+            # Admin can still delete any order
+            if user.role != 'admin':
+                return Response(
+                    {
+                        'error': 'Only the order creator can delete this order.',
+                        'creatorId': str(instance.created_by.id) if instance.created_by else None,
+                        'creatorName': instance.created_by.full_name if instance.created_by else None,
+                        'requiresApproval': True
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # Proceed with deletion
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'], url_path='request-deletion')
+    def request_deletion(self, request, pk=None):
+        """
+        POST /orders/{id}/request-deletion/
+        Request deletion approval from the order creator.
+        Creates a DeletionRequest and notifies the creator.
+        """
+        from .models_deletion_request import DeletionRequest, DeletionRequestStatus
+        from .serializers_deletion_request import DeletionRequestSerializer, DeletionRequestCreateSerializer
+        from apps.core.models import Notification
+        
+        order = self.get_object()
+        user = request.user
+        
+        # Check if order has a creator
+        if not order.created_by:
+            return Response(
+                {'error': 'This order has no creator assigned. You can delete it directly.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user is the creator (shouldn't request from themselves)
+        if order.created_by == user:
+            return Response(
+                {'error': 'You are the creator of this order. You can delete it directly.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check for existing pending request
+        existing = DeletionRequest.objects.filter(
+            order=order,
+            status=DeletionRequestStatus.PENDING
+        ).first()
+        
+        if existing:
+            return Response(
+                {'error': 'A deletion request is already pending for this order.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the deletion request
+        serializer = DeletionRequestCreateSerializer(
+            data=request.data,
+            context={'order': order, 'requester': user}
+        )
+        serializer.is_valid(raise_exception=True)
+        deletion_request = serializer.save()
+        
+        # Create notification for the order creator
+        style_display = order.style_number or order.base_style_number or 'N/A'
+        Notification.objects.create(
+            user=order.created_by,
+            title='Deletion Request',
+            message=f'{user.full_name} wants to delete Order #{order.order_number} - {style_display}. Click to review.',
+            notification_type='deletion_request',
+            related_id=str(deletion_request.id),
+            related_type='deletion_request',
+            severity='warning'
+        )
+        
+        response_serializer = DeletionRequestSerializer(deletion_request)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'], url_path='stats')
     def stats(self, request):
