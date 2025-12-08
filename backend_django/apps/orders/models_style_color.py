@@ -41,11 +41,17 @@ class OrderStyle(TimestampedModel):
     # Notes
     notes = models.TextField(blank=True, null=True)
     
+    # Sequence number for maintaining insertion order
+    sequence_number = models.PositiveIntegerField(
+        default=0,
+        help_text='Order of this style within the order (for maintaining insertion order)'
+    )
+    
     class Meta:
         db_table = 'order_styles'
         verbose_name = 'Order Style'
         verbose_name_plural = 'Order Styles'
-        ordering = ['style_number']
+        ordering = ['sequence_number', 'created_at']
         constraints = [
             # Ensure style_number is unique within an order
             models.UniqueConstraint(
@@ -61,7 +67,15 @@ class OrderStyle(TimestampedModel):
         return f"{self.order.order_number} - {self.style_number}"
     
     def save(self, *args, **kwargs):
-        """Auto-generate style_number if not provided"""
+        """Auto-generate style_number and sequence_number if not provided"""
+        # Auto-assign sequence_number for new styles
+        if not self.pk and self.order_id:
+            from django.db.models import Max
+            max_seq = OrderStyle.objects.filter(order=self.order).aggregate(
+                Max('sequence_number')
+            )['sequence_number__max']
+            self.sequence_number = (max_seq or 0) + 1
+        
         if not self.style_number and self.order_id:
             # Get base style number from order (fallback to order.style_number or 'STYLE')
             base_style = self.order.base_style_number or self.order.style_number or 'STYLE'

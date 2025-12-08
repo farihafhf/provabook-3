@@ -61,7 +61,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderLine
         fields = [
-            'id', 'style', 'style_number', 'order_id',
+            'id', 'style', 'style_number', 'order_id', 'sequence_number',
             'color_code', 'color_name', 'cad_code', 'cad_name',
             'quantity', 'unit',
             'mill_name', 'mill_price', 'prova_price', 'commission', 'currency',
@@ -126,6 +126,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'styleId': str(data['style']),
             'styleNumber': data.get('style_number'),
             'orderId': str(data.get('order_id')) if data.get('order_id') else None,
+            'sequenceNumber': data.get('sequence_number', 0),
             'colorCode': data.get('color_code'),
             'colorName': data.get('color_name'),
             'cadCode': data.get('cad_code'),

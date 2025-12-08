@@ -80,7 +80,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderStyle
         fields = [
-            'id', 'style_number', 'description',
+            'id', 'style_number', 'sequence_number', 'description',
             'fabric_type', 'fabric_specifications', 'fabric_composition',
             'gsm', 'finish_type', 'construction', 'cuttable_width', 'finishing_width',
             'etd', 'eta', 'submission_date', 'notes',
@@ -94,6 +94,7 @@ class OrderStyleSerializer(serializers.ModelSerializer):
         return {
             'id': str(data['id']),
             'styleNumber': data['style_number'],
+            'sequenceNumber': data.get('sequence_number', 0),
             'description': data.get('description'),
             'fabricType': data.get('fabric_type'),
             'fabricSpecifications': data.get('fabric_specifications'),

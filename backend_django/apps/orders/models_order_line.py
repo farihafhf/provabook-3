@@ -281,7 +281,8 @@ class OrderLine(TimestampedModel):
         db_table = 'order_lines'
         verbose_name = 'Order Line'
         verbose_name_plural = 'Order Lines'
-        ordering = ['style', 'sequence_number', 'created_at']
+        # Order by sequence_number only - this is order-wide to maintain insertion order
+        ordering = ['sequence_number', 'created_at']
         constraints = [
             # Ensure unique combination of style+color+cad
             models.UniqueConstraint(
