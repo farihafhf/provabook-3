@@ -825,7 +825,7 @@ class OrderListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'order_number', 'customer_name', 'buyer_name', 'fabric_type',
             'quantity', 'unit', 'currency', 'status', 'category',
-            'order_date', 'expected_delivery_date', 'order_type',
+            'order_date', 'expected_delivery_date', 'order_type', 'notes',
             'merchandiser', 'merchandiser_name', 'created_by', 'created_at', 'earliest_etd',
             'line_status_counts', 'lines', 'lc_issue_date', 'pi_sent_date',
             'production_summary'
@@ -1152,6 +1152,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             'productionSummary': data.get('production_summary'),
             'createdById': str(data['created_by']) if data.get('created_by') else None,
             'createdByDetails': self._get_created_by_details(instance),
+            'notes': data.get('notes'),
         }
     
     def _get_created_by_details(self, obj):

@@ -70,6 +70,7 @@ interface Order {
   lcIssueDate?: string;
   piSentDate?: string;
   orderType?: 'local' | 'foreign';
+  notes?: string;
   createdById?: string;
   createdByDetails?: {
     id: string;
@@ -155,6 +156,8 @@ function OrdersPageContent() {
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
+  // State for search highlighting - tracks which lines match the current search
+  const [highlightedLines, setHighlightedLines] = useState<Set<string>>(new Set());
   // Initialize filters from URL params to preserve filter state when navigating back
   const [filters, setFilters] = useState<OrdersFilterParams>(() => {
     const urlSearch = searchParams.get('search');
@@ -340,6 +343,53 @@ function OrdersPageContent() {
       setLoading(false);
     }
   };
+
+  // Effect to auto-expand orders and highlight lines when searching by style
+  useEffect(() => {
+    if (!filters.search || orders.length === 0) {
+      setHighlightedLines(new Set());
+      return;
+    }
+
+    const searchTerm = filters.search.toLowerCase();
+    const newHighlighted = new Set<string>();
+    const ordersToExpand = new Set<string>();
+
+    // Find matching lines and their orders
+    orders.forEach((order) => {
+      const lines = order.lines || [];
+      lines.forEach((line) => {
+        const styleMatch = line.styleNumber?.toLowerCase().includes(searchTerm);
+        const colorMatch = line.colorCode?.toLowerCase().includes(searchTerm);
+        const cadMatch = line.cadCode?.toLowerCase().includes(searchTerm);
+        
+        if (styleMatch || colorMatch || cadMatch) {
+          newHighlighted.add(line.id);
+          ordersToExpand.add(order.id);
+        }
+      });
+    });
+
+    // Update highlighted lines
+    setHighlightedLines(newHighlighted);
+
+    // Auto-expand orders with matching lines
+    if (ordersToExpand.size > 0) {
+      setExpandedOrders((prev) => {
+        const newExpanded = new Set(prev);
+        ordersToExpand.forEach((id) => newExpanded.add(id));
+        return newExpanded;
+      });
+
+      // Scroll to first highlighted line after a short delay
+      setTimeout(() => {
+        const firstHighlighted = document.querySelector('[data-highlighted="true"]');
+        if (firstHighlighted) {
+          firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [filters.search, orders]);
 
   const handleExportExcel = async () => {
     try {
@@ -912,12 +962,29 @@ function OrdersPageContent() {
                             <tr>
                               <td colSpan={filters.orderType === 'all' ? 16 : 15} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
+                                  {/* Order Notes - Mobile */}
+                                  {order.notes && (
+                                    <div className="md:hidden px-3 py-2 bg-amber-50 border-b border-amber-200">
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-xs font-semibold text-amber-700">📝 Notes:</span>
+                                        <p className="text-sm text-amber-900">{order.notes}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {/* Mobile Card View */}
                                   <div className="md:hidden p-3 space-y-3">
-                                    {lines.map((line) => (
+                                    {lines.map((line) => {
+                                      const isHighlighted = highlightedLines.has(line.id);
+                                      return (
                                       <div 
                                         key={line.id}
-                                        className="bg-white rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                                        data-highlighted={isHighlighted}
+                                        className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                                          isHighlighted 
+                                            ? 'bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400 animate-pulse' 
+                                            : 'bg-white border-slate-200 hover:bg-slate-50'
+                                        }`}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           router.push(`/orders/${order.id}`);
@@ -1052,9 +1119,20 @@ function OrdersPageContent() {
                                           </div>
                                         )}
                                       </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
 
+                                  {/* Order Notes - shown if notes exist */}
+                                  {order.notes && (
+                                    <div className="hidden md:block px-4 py-2 bg-amber-50 border-b border-amber-200">
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">📝 Notes:</span>
+                                        <p className="text-sm text-amber-900">{order.notes}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {/* Desktop Table View */}
                                   <div 
                                     className="hidden md:block scroll-smooth focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:ring-inset rounded overflow-x-auto"
@@ -1083,10 +1161,17 @@ function OrdersPageContent() {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {lines.map((line) => (
+                                      {lines.map((line) => {
+                                        const isHighlighted = highlightedLines.has(line.id);
+                                        return (
                                         <tr 
-                                          key={line.id} 
-                                          className="text-sm border-t border-slate-200 hover:bg-slate-50/80 cursor-pointer transition-colors"
+                                          key={line.id}
+                                          data-highlighted={isHighlighted}
+                                          className={`text-sm border-t border-slate-200 cursor-pointer transition-all duration-300 ${
+                                            isHighlighted 
+                                              ? 'bg-yellow-100 hover:bg-yellow-50 ring-2 ring-yellow-400 ring-inset animate-pulse' 
+                                              : 'hover:bg-slate-50/80'
+                                          }`}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             router.push(`/orders/${order.id}`);
@@ -1354,7 +1439,8 @@ function OrdersPageContent() {
                                             </div>
                                           </td>
                                         </tr>
-                                      ))}
+                                        );
+                                      })}
                                     </tbody>
                                   </table>
                                   </div>
