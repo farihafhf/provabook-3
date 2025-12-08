@@ -199,9 +199,12 @@ REST_FRAMEWORK = {
 }
 
 # JWT Configuration
+# Token lifetimes are set very long to keep users logged in
+# Access token: 7 days (users stay authenticated for a week before needing refresh)
+# Refresh token: 365 days (users stay logged in for 1 year unless they logout)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env.int('ACCESS_TOKEN_LIFETIME_MINUTES', default=60)),
-    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=env.int('REFRESH_TOKEN_LIFETIME_MINUTES', default=1440)),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=env.int('ACCESS_TOKEN_LIFETIME_DAYS', default=7)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('REFRESH_TOKEN_LIFETIME_DAYS', default=365)),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
