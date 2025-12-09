@@ -6,6 +6,9 @@ from django.db import models
 from apps.core.models import TimestampedModel
 from apps.authentication.models import User
 from .models_document import Document
+# Import related models to register their reverse relationships with Order
+from .models_production_entry import ProductionEntry, ProductionEntryType  # noqa: F401
+from .models_supplier_delivery import SupplierDelivery  # noqa: F401
 
 class OrderStatus(models.TextChoices):
     """Order status choices"""

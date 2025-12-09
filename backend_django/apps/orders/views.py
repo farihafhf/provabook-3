@@ -45,7 +45,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             queryset=ApprovalHistory.objects.order_by('created_at')
         ),
         'styles__colors',
-        'styles__lines__production_entries',  # Prefetch production entries per line
         'styles__lines__mill_offers',  # Prefetch mill offers per line for development stage
         'styles__lines__documents',
         'documents',  # Prefetch documents for LC/PI dates
