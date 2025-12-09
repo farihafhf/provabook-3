@@ -10,20 +10,35 @@ class UserSerializer(serializers.ModelSerializer):
     """
     Serializer for User model
     """
+    profile_picture_url = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
         fields = ['id', 'email', 'full_name', 'role', 'phone', 'department', 
-                  'is_active', 'metadata', 'created_at', 'updated_at']
+                  'is_active', 'metadata', 'profile_picture_url', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_profile_picture_url(self, obj):
+        """Return the URL of the profile picture if it exists"""
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return None
 
 
 class UserListSerializer(serializers.ModelSerializer):
     """Lightweight user serializer that returns camelCase for frontend lists"""
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'full_name', 'role', 'phone', 'department', 'is_active', 'metadata', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'full_name', 'role', 'phone', 'department', 'is_active', 'metadata', 'profile_picture_url', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_profile_picture_url(self, obj):
+        """Return the URL of the profile picture if it exists"""
+        if obj.profile_picture:
+            return obj.profile_picture.url
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -36,6 +51,7 @@ class UserListSerializer(serializers.ModelSerializer):
             'department': data.get('department'),
             'isActive': data['is_active'],
             'metadata': data.get('metadata'),
+            'profilePictureUrl': data.get('profile_picture_url'),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }
@@ -205,4 +221,50 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context['request'].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect.")
+        return value
+
+
+class ProfilePictureSerializer(serializers.Serializer):
+    """
+    Serializer for uploading profile picture
+    """
+    profile_picture = serializers.ImageField(required=True)
+
+    def validate_profile_picture(self, value):
+        """Validate image file"""
+        # Check file size (max 5MB)
+        max_size = 5 * 1024 * 1024  # 5MB
+        if value.size > max_size:
+            raise serializers.ValidationError("Image file too large. Maximum size is 5MB.")
+        
+        # Check file extension
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        import os
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"Unsupported file type. Allowed types: {', '.join(allowed_extensions)}"
+            )
+        
+        return value
+
+
+class DeleteAccountSerializer(serializers.Serializer):
+    """
+    Serializer for account deletion confirmation
+    """
+    password = serializers.CharField(required=True, write_only=True)
+    confirmation = serializers.CharField(required=True)
+
+    def validate_password(self, value):
+        """Validate user password"""
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Incorrect password.")
+        return value
+
+    def validate_confirmation(self, value):
+        """Validate confirmation text"""
+        if value.lower() != 'delete my account':
+            raise serializers.ValidationError("Please type 'delete my account' to confirm.")
         return value

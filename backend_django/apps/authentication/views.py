@@ -4,6 +4,7 @@ Authentication views
 from rest_framework import status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth import get_user_model
@@ -14,6 +15,8 @@ from .serializers import (
     LoginSerializer,
     ProfileUpdateSerializer,
     ChangePasswordSerializer,
+    ProfilePictureSerializer,
+    DeleteAccountSerializer,
 )
 
 User = get_user_model()
@@ -103,8 +106,23 @@ class ProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        user = request.user
+        serializer = UserSerializer(user)
+        data = serializer.data
+        # Return camelCase for frontend
+        return Response({
+            'id': str(data['id']),
+            'email': data['email'],
+            'fullName': data['full_name'],
+            'role': data['role'],
+            'phone': data.get('phone'),
+            'department': data.get('department'),
+            'isActive': data['is_active'],
+            'metadata': data.get('metadata'),
+            'profilePictureUrl': data.get('profile_picture_url'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }, status=status.HTTP_200_OK)
 
 
 class ProfileUpdateView(generics.UpdateAPIView):
@@ -192,3 +210,70 @@ class UserListView(generics.ListAPIView):
         # All authenticated users can see all users
         # This is needed for task assignment functionality
         return User.objects.filter(is_active=True).order_by('full_name')
+
+
+class ProfilePictureUploadView(APIView):
+    """
+    POST /api/v1/auth/profile/picture
+    Upload profile picture
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        serializer = ProfilePictureSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        # Delete old profile picture if exists
+        if user.profile_picture:
+            user.profile_picture.delete(save=False)
+        
+        # Save new profile picture
+        user.profile_picture = serializer.validated_data['profile_picture']
+        user.save()
+        
+        user_serializer = UserSerializer(user)
+        data = user_serializer.data
+        
+        return Response({
+            'message': 'Profile picture updated successfully',
+            'profilePictureUrl': data.get('profile_picture_url'),
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request):
+        """Remove profile picture"""
+        user = request.user
+        if user.profile_picture:
+            user.profile_picture.delete(save=False)
+            user.profile_picture = None
+            user.save()
+        
+        return Response({
+            'message': 'Profile picture removed successfully',
+        }, status=status.HTTP_200_OK)
+
+
+class DeleteAccountView(APIView):
+    """
+    POST /api/v1/auth/delete-account
+    Delete user account permanently
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = DeleteAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        
+        user = request.user
+        
+        # Delete profile picture if exists
+        if user.profile_picture:
+            user.profile_picture.delete(save=False)
+        
+        # Delete the user account
+        user.delete()
+        
+        return Response({
+            'message': 'Account deleted successfully',
+        }, status=status.HTTP_200_OK)

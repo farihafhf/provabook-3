@@ -2,8 +2,16 @@
 User authentication models
 """
 import uuid
+import os
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
+
+def profile_picture_upload_path(instance, filename):
+    """Generate upload path for profile pictures: profile_pictures/<user_id>/<filename>"""
+    ext = os.path.splitext(filename)[1]
+    new_filename = f"{uuid.uuid4()}{ext}"
+    return f"profile_pictures/{instance.id}/{new_filename}"
 
 
 class UserManager(BaseUserManager):
@@ -57,6 +65,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='merchandiser')
     phone = models.CharField(max_length=20, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
+    profile_picture = models.ImageField(
+        upload_to=profile_picture_upload_path,
+        blank=True,
+        null=True,
+        help_text="User profile picture"
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict, blank=True)

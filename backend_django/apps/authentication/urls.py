@@ -11,6 +11,8 @@ from .views import (
     ChangePasswordView,
     LogoutView,
     UserListView,
+    ProfilePictureUploadView,
+    DeleteAccountView,
 )
 
 app_name = 'authentication'
@@ -25,7 +27,9 @@ urlpatterns = [
     # Profile
     path('profile/', ProfileView.as_view(), name='profile'),
     path('profile/update/', ProfileUpdateView.as_view(), name='profile-update'),
+    path('profile/picture/', ProfilePictureUploadView.as_view(), name='profile-picture'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
     
     # Users
     path('users/', UserListView.as_view(), name='user-list'),

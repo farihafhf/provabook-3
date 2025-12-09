@@ -146,14 +146,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </div>
               </div>
             )}
-            <Button 
-              variant="outline" 
-              className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="space-y-2">
+              <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  My Profile
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -270,9 +281,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="flex items-center gap-2">
+                    <DropdownMenuItem className="flex items-center gap-2 text-gray-500">
+                      <span className="text-xs">{user.email}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => router.push('/profile')}
+                    >
                       <User className="h-4 w-4" />
-                      <span>{user.email}</span>
+                      <span>My Profile</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem 
