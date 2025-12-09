@@ -28,7 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
@@ -136,6 +136,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {user && (
               <div className="flex items-center gap-3 mb-3">
                 <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.profilePictureUrl || undefined} alt={user.fullName} />
                   <AvatarFallback className="bg-primary text-white text-sm">
                     {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                   </AvatarFallback>
@@ -268,6 +269,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-2 px-2">
                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.profilePictureUrl || undefined} alt={user.fullName} />
                         <AvatarFallback className="bg-primary text-white text-sm">
                           {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                         </AvatarFallback>
