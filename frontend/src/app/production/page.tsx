@@ -417,6 +417,10 @@ function LocalOrdersPageContent() {
   const [sortByEtd, setSortByEtd] = useState(false);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const mainScrollRef = useRef<HTMLDivElement>(null);
+  // State for search highlighting - tracks which lines match the current search
+  const [highlightedLines, setHighlightedLines] = useState<Set<string>>(new Set());
+  // State for lines that should animate (pulse effect) - cleared after animation completes
+  const [animatingLines, setAnimatingLines] = useState<Set<string>>(new Set());
 
   // Memoize the filter change handler to prevent unnecessary re-renders
   // and ensure stable reference for OrderFilters component
@@ -465,6 +469,60 @@ function LocalOrdersPageContent() {
       setLoading(false);
     }
   };
+
+  // Effect to auto-expand orders and highlight lines when searching by style
+  useEffect(() => {
+    if (!filters.search || orders.length === 0) {
+      setHighlightedLines(new Set());
+      setAnimatingLines(new Set());
+      return;
+    }
+
+    const searchTerm = filters.search.toLowerCase();
+    const newHighlighted = new Set<string>();
+    const ordersToExpand = new Set<string>();
+
+    // Find matching lines and their orders
+    orders.forEach((order) => {
+      const lines = order.lines || [];
+      lines.forEach((line) => {
+        const styleMatch = line.styleNumber?.toLowerCase().includes(searchTerm);
+        const colorMatch = line.colorCode?.toLowerCase().includes(searchTerm);
+        const cadMatch = line.cadCode?.toLowerCase().includes(searchTerm);
+        
+        if (styleMatch || colorMatch || cadMatch) {
+          newHighlighted.add(line.id);
+          ordersToExpand.add(order.id);
+        }
+      });
+    });
+
+    // Update highlighted lines and start animation
+    setHighlightedLines(newHighlighted);
+    setAnimatingLines(new Set(newHighlighted)); // Start animation for all highlighted lines
+
+    // Auto-expand orders with matching lines
+    if (ordersToExpand.size > 0) {
+      setExpandedOrders((prev) => {
+        const newExpanded = new Set(prev);
+        ordersToExpand.forEach((id) => newExpanded.add(id));
+        return newExpanded;
+      });
+
+      // Scroll to first highlighted line after a short delay
+      setTimeout(() => {
+        const firstHighlighted = document.querySelector('[data-highlighted="true"]');
+        if (firstHighlighted) {
+          firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      // Stop animation after 1 second (but keep highlighted)
+      setTimeout(() => {
+        setAnimatingLines(new Set());
+      }, 1000);
+    }
+  }, [filters.search, orders]);
 
   const handleExportTnA = async () => {
     try {
@@ -1042,11 +1100,18 @@ function LocalOrdersPageContent() {
                                       const finishing = line.productionFinishing || (ps && lineRatio > 0 ? Math.round(ps.totalFinishing * lineRatio) : 0);
                                       const finishingPct = line.productionFinishingPercent || (ps?.finishingPercent || 0);
                                       const delivered = line.deliveredQty || 0;
+                                      const isHighlighted = highlightedLines.has(line.id);
+                                      const isAnimating = animatingLines.has(line.id);
                                       
                                       return (
                                         <div 
                                           key={line.id}
-                                          className="bg-white rounded-lg border border-slate-200 p-3 cursor-pointer hover:bg-slate-50"
+                                          data-highlighted={isHighlighted}
+                                          className={`rounded-lg border p-3 cursor-pointer transition-all ${
+                                            isHighlighted 
+                                              ? `bg-yellow-100 border-yellow-400 ring-2 ring-yellow-400 ${isAnimating ? 'animate-pulse' : ''}` 
+                                              : 'bg-white border-slate-200 hover:bg-slate-50'
+                                          }`}
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             router.push(`/orders/${order.id}`);
@@ -1228,10 +1293,19 @@ function LocalOrdersPageContent() {
                                           const isProportionalDyeing = !line.productionDyeing && dyeing > 0;
                                           const isProportionalFinishing = !line.productionFinishing && finishing > 0;
                                           
+                                          // Highlighting for search
+                                          const isHighlighted = highlightedLines.has(line.id);
+                                          const isAnimating = animatingLines.has(line.id);
+                                          
                                           return (
                                             <tr 
-                                              key={line.id} 
-                                              className="border-t border-slate-200 hover:bg-slate-50/80 cursor-pointer"
+                                              key={line.id}
+                                              data-highlighted={isHighlighted}
+                                              className={`border-t border-slate-200 cursor-pointer ${
+                                                isHighlighted 
+                                                  ? `bg-yellow-100 hover:bg-yellow-50 ring-2 ring-yellow-400 ring-inset ${isAnimating ? 'animate-pulse' : ''}` 
+                                                  : 'hover:bg-slate-50/80'
+                                              }`}
                                               onClick={(e) => {
                                                 e.stopPropagation();
                                                 router.push(`/orders/${order.id}`);

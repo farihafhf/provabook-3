@@ -190,10 +190,9 @@ class OrderSerializer(serializers.ModelSerializer):
         
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Calculate total greige, yarn, and delivered quantities from all lines
+        # Calculate total greige and yarn quantities from all lines
         total_greige = 0.0
         total_yarn = 0.0
-        total_delivered = 0.0
         
         for style in obj.styles.all():
             for line in style.lines.all():
@@ -210,11 +209,12 @@ class OrderSerializer(serializers.ModelSerializer):
                     total_yarn += float(line.greige_quantity)
                 elif line.quantity:
                     total_yarn += float(line.quantity)
-                
-                # Sum delivered quantity
-                for delivery in line.deliveries.all():
-                    if delivery.delivered_quantity:
-                        total_delivered += float(delivery.delivered_quantity)
+        
+        # Get total delivered quantity from order-level supplier_deliveries
+        total_delivered = 0.0
+        for delivery in obj.supplier_deliveries.all():
+            if delivery.delivered_quantity:
+                total_delivered += float(delivery.delivered_quantity)
         
         # Calculate denominators
         greige_denominator = total_greige if total_greige > 0 else ordered_qty
@@ -1134,13 +1134,12 @@ class OrderListSerializer(serializers.ModelSerializer):
                 total_finishing += qty
                 finishing_count += 1
         
-        # Calculate total greige, yarn quantities, and delivered quantity from all lines
+        # Calculate total greige, yarn quantities from all lines
         total_greige = 0.0
         total_yarn = 0.0
-        total_delivered = 0.0  # Track delivered quantity
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Iterate through styles and their lines to sum greige, yarn, and delivered quantities
+        # Iterate through styles and their lines to sum greige and yarn quantities
         for style in obj.styles.all():
             for line in style.lines.all():
                 # Greige quantity (for knitting/dyeing/finishing denominator)
@@ -1159,11 +1158,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                 elif line.quantity:
                     # Final fallback: use finished quantity
                     total_yarn += float(line.quantity)
-                
-                # Sum delivered quantity from all deliveries for this line
-                for delivery in line.deliveries.all():
-                    if delivery.delivered_quantity:
-                        total_delivered += float(delivery.delivered_quantity)
+        
+        # Get total delivered quantity from order-level supplier_deliveries
+        # (Deliveries are at Order level, not Line level)
+        total_delivered = 0.0
+        for delivery in obj.supplier_deliveries.all():
+            if delivery.delivered_quantity:
+                total_delivered += float(delivery.delivered_quantity)
         
         # Different denominators for different progress types:
         # - Greige is used for knitting/dyeing/finishing (production stages)
