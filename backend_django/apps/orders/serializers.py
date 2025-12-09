@@ -165,7 +165,12 @@ class OrderSerializer(serializers.ModelSerializer):
         }
     
     def get_production_summary(self, obj):
-        """Get aggregated production entry summary for local orders"""
+        """Get aggregated production entry summary for local orders
+        
+        Key logic: If an order is delivered (even without filling production entries),
+        the delivered quantity counts towards all progress bars (knitting, dyeing, finishing, yarn).
+        Progress = max(production_entry_total, total_delivered_qty)
+        """
         from django.db.models import Sum, Count, Q
         from .models_production_entry import ProductionEntryType
         
@@ -185,17 +190,61 @@ class OrderSerializer(serializers.ModelSerializer):
         
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
+        # Calculate total greige, yarn, and delivered quantities from all lines
+        total_greige = 0.0
+        total_yarn = 0.0
+        total_delivered = 0.0
+        
+        for style in obj.styles.all():
+            for line in style.lines.all():
+                # Greige quantity
+                if line.greige_quantity:
+                    total_greige += float(line.greige_quantity)
+                elif line.quantity:
+                    total_greige += float(line.quantity)
+                
+                # Yarn required
+                if line.yarn_required:
+                    total_yarn += float(line.yarn_required)
+                elif line.greige_quantity:
+                    total_yarn += float(line.greige_quantity)
+                elif line.quantity:
+                    total_yarn += float(line.quantity)
+                
+                # Sum delivered quantity
+                for delivery in line.deliveries.all():
+                    if delivery.delivered_quantity:
+                        total_delivered += float(delivery.delivered_quantity)
+        
+        # Calculate denominators
+        greige_denominator = total_greige if total_greige > 0 else ordered_qty
+        yarn_denominator = total_yarn if total_yarn > 0 else total_greige if total_greige > 0 else ordered_qty
+        
+        total_knitting = float(summary['total_knitting'] or 0)
+        total_dyeing = float(summary['total_dyeing'] or 0)
+        total_finishing = float(summary['total_finishing'] or 0)
+        
+        # KEY LOGIC: Use max(production_entry_value, delivered_qty) for progress
+        effective_knitting = max(total_knitting, total_delivered)
+        effective_dyeing = max(total_dyeing, total_delivered)
+        effective_finishing = max(total_finishing, total_delivered)
+        effective_yarn_progress = total_delivered
+        
         return {
-            'totalKnitting': float(summary['total_knitting'] or 0),
-            'totalDyeing': float(summary['total_dyeing'] or 0),
-            'totalFinishing': float(summary['total_finishing'] or 0),
+            'totalKnitting': total_knitting,
+            'totalDyeing': total_dyeing,
+            'totalFinishing': total_finishing,
+            'totalGreige': total_greige,
+            'totalYarn': total_yarn,
+            'totalDelivered': total_delivered,
             'knittingEntriesCount': summary['knitting_entries_count'] or 0,
             'dyeingEntriesCount': summary['dyeing_entries_count'] or 0,
             'finishingEntriesCount': summary['finishing_entries_count'] or 0,
-            # Calculate percentages
-            'knittingPercent': round((float(summary['total_knitting'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
-            'dyeingPercent': round((float(summary['total_dyeing'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
-            'finishingPercent': round((float(summary['total_finishing'] or 0) / ordered_qty) * 100, 1) if ordered_qty > 0 else 0,
+            # Calculate percentages with effective values (max of entry vs delivered)
+            'knittingPercent': round((effective_knitting / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'dyeingPercent': round((effective_dyeing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'finishingPercent': round((effective_finishing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'yarnPercent': round((effective_yarn_progress / yarn_denominator) * 100, 1) if yarn_denominator > 0 else 0,
         }
     
     def get_approval_history_data(self, obj):
@@ -1050,7 +1099,12 @@ class OrderListSerializer(serializers.ModelSerializer):
         return None
     
     def get_production_summary(self, obj):
-        """Get aggregated production entry summary for local orders - uses prefetched data"""
+        """Get aggregated production entry summary for local orders - uses prefetched data
+        
+        Key logic: If an order is delivered (even without filling production entries),
+        the delivered quantity counts towards all progress bars (knitting, dyeing, finishing, yarn).
+        Progress = max(production_entry_total, total_delivered_qty)
+        """
         # Only calculate for local orders
         if obj.order_type != 'local':
             return None
@@ -1080,12 +1134,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                 total_finishing += qty
                 finishing_count += 1
         
-        # Calculate total greige and yarn quantities from all lines
+        # Calculate total greige, yarn quantities, and delivered quantity from all lines
         total_greige = 0.0
         total_yarn = 0.0
+        total_delivered = 0.0  # Track delivered quantity
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Iterate through styles and their lines to sum greige and yarn quantities
+        # Iterate through styles and their lines to sum greige, yarn, and delivered quantities
         for style in obj.styles.all():
             for line in style.lines.all():
                 # Greige quantity (for knitting/dyeing/finishing denominator)
@@ -1104,6 +1159,11 @@ class OrderListSerializer(serializers.ModelSerializer):
                 elif line.quantity:
                     # Final fallback: use finished quantity
                     total_yarn += float(line.quantity)
+                
+                # Sum delivered quantity from all deliveries for this line
+                for delivery in line.deliveries.all():
+                    if delivery.delivered_quantity:
+                        total_delivered += float(delivery.delivered_quantity)
         
         # Different denominators for different progress types:
         # - Greige is used for knitting/dyeing/finishing (production stages)
@@ -1111,19 +1171,32 @@ class OrderListSerializer(serializers.ModelSerializer):
         greige_denominator = total_greige if total_greige > 0 else ordered_qty
         yarn_denominator = total_yarn if total_yarn > 0 else total_greige if total_greige > 0 else ordered_qty
         
+        # KEY LOGIC: Use max(production_entry_value, delivered_qty) for progress
+        # If delivery is made without production entries, delivered qty counts as progress
+        effective_knitting = max(total_knitting, total_delivered)
+        effective_dyeing = max(total_dyeing, total_delivered)
+        effective_finishing = max(total_finishing, total_delivered)
+        
+        # For yarn: delivered qty also counts towards yarn progress
+        # Calculate effective yarn based on delivered quantity if yarn entries are not tracked separately
+        effective_yarn_progress = total_delivered  # Delivered means yarn was used
+        
         return {
             'totalKnitting': total_knitting,
             'totalDyeing': total_dyeing,
             'totalFinishing': total_finishing,
             'totalGreige': total_greige,
             'totalYarn': total_yarn,
+            'totalDelivered': total_delivered,  # Include delivered qty in response
             'knittingEntriesCount': knitting_count,
             'dyeingEntriesCount': dyeing_count,
             'finishingEntriesCount': finishing_count,
-            # Knitting/Dyeing/Finishing use greige as denominator
-            'knittingPercent': round((total_knitting / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
-            'dyeingPercent': round((total_dyeing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
-            'finishingPercent': round((total_finishing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            # Knitting/Dyeing/Finishing use greige as denominator, but consider delivered qty
+            'knittingPercent': round((effective_knitting / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'dyeingPercent': round((effective_dyeing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            'finishingPercent': round((effective_finishing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
+            # Yarn progress: max of yarn entries (if any) or delivered qty
+            'yarnPercent': round((effective_yarn_progress / yarn_denominator) * 100, 1) if yarn_denominator > 0 else 0,
         }
     
     def to_representation(self, instance):

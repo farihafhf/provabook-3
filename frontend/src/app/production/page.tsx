@@ -96,12 +96,14 @@ interface ProductionSummary {
   totalFinishing: number;
   totalGreige: number;
   totalYarn: number;
+  totalDelivered: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
   knittingPercent: number;
   dyeingPercent: number;
   finishingPercent: number;
+  yarnPercent: number;
 }
 
 interface Order {
@@ -249,11 +251,13 @@ function getApprovalBadge(status: string) {
 // Calculate aggregated production metrics from all lines across all orders
 // Includes data from both line dates AND productionEntry records
 // Uses different denominators: greige for knitting/dyeing/finishing, yarn for yarn tracking
+// KEY LOGIC: Delivered quantity counts towards all progress bars if production entries aren't filled
 function calculateProductionMetrics(orders: Order[]) {
   let totalLines = 0;
   let totalQuantity = 0;
   let totalGreige = 0; // For knitting/dyeing/finishing denominator
   let totalYarn = 0;   // For yarn progress denominator
+  let totalDelivered = 0; // Track total delivered quantity
   let yarnReceivedLines = 0;
   let knittingStartedLines = 0;
   let knittingCompleteLines = 0;
@@ -269,9 +273,17 @@ function calculateProductionMetrics(orders: Order[]) {
   let totalKnittingEntries = 0;
   let totalDyeingEntries = 0;
   let totalFinishingEntries = 0;
+  
+  // Weighted average percentages from backend (which account for delivered qty)
+  let weightedKnittingPercent = 0;
+  let weightedDyeingPercent = 0;
+  let weightedFinishingPercent = 0;
+  let weightedYarnPercent = 0;
+  let totalWeight = 0;
 
   orders.forEach(order => {
-    totalQuantity += order.quantity || 0;
+    const orderQty = order.quantity || 0;
+    totalQuantity += orderQty;
     
     // Line-level date-based metrics
     (order.lines || []).forEach(line => {
@@ -280,6 +292,8 @@ function calculateProductionMetrics(orders: Order[]) {
       totalGreige += line.greigeQuantity || line.quantity || 0;
       // Yarn required (for yarn progress)
       totalYarn += line.yarnRequired || line.greigeQuantity || line.quantity || 0;
+      // Track delivered qty
+      totalDelivered += line.deliveredQty || 0;
       
       if (line.yarnReceivedDate) yarnReceivedLines++;
       if (line.knittingStartDate) knittingStartedLines++;
@@ -291,6 +305,7 @@ function calculateProductionMetrics(orders: Order[]) {
     });
 
     // Add productionSummary data from ProductionEntry records
+    // Backend now calculates effective percentages that account for delivered qty
     if (order.productionSummary) {
       totalKnittingQty += order.productionSummary.totalKnitting || 0;
       totalDyeingQty += order.productionSummary.totalDyeing || 0;
@@ -298,53 +313,76 @@ function calculateProductionMetrics(orders: Order[]) {
       totalKnittingEntries += order.productionSummary.knittingEntriesCount || 0;
       totalDyeingEntries += order.productionSummary.dyeingEntriesCount || 0;
       totalFinishingEntries += order.productionSummary.finishingEntriesCount || 0;
+      totalDelivered += order.productionSummary.totalDelivered || 0;
+      
+      // Use weighted average of backend-calculated percentages (which account for delivered qty)
+      if (orderQty > 0) {
+        weightedKnittingPercent += (order.productionSummary.knittingPercent || 0) * orderQty;
+        weightedDyeingPercent += (order.productionSummary.dyeingPercent || 0) * orderQty;
+        weightedFinishingPercent += (order.productionSummary.finishingPercent || 0) * orderQty;
+        weightedYarnPercent += (order.productionSummary.yarnPercent || 0) * orderQty;
+        totalWeight += orderQty;
+      }
     }
   });
 
   // Different denominators for different progress types:
   // - Greige for knitting/dyeing/finishing (production stages)
-  // - Yarn for yarn procurement tracking (currently tracks lines, not quantities)
+  // - Yarn for yarn procurement tracking
   const greigeDenominator = totalGreige > 0 ? totalGreige : totalQuantity;
+  const yarnDenominator = totalYarn > 0 ? totalYarn : greigeDenominator;
+  
+  // Calculate effective values: max(production_entry_qty, delivered_qty)
+  const effectiveKnitting = Math.max(totalKnittingQty, totalDelivered);
+  const effectiveDyeing = Math.max(totalDyeingQty, totalDelivered);
+  const effectiveFinishing = Math.max(totalFinishingQty, totalDelivered);
+  const effectiveYarnProgress = totalDelivered; // Delivered means yarn was used
 
   return {
     totalLines,
     totalQuantity,
     totalGreige,
     totalYarn,
+    totalDelivered,
     yarn: {
       received: yarnReceivedLines,
-      percent: totalLines > 0 ? (yarnReceivedLines / totalLines) * 100 : 0,
+      // Use weighted average from backend or calculate from delivered
+      percent: totalWeight > 0 ? weightedYarnPercent / totalWeight : (yarnDenominator > 0 ? (effectiveYarnProgress / yarnDenominator) * 100 : 0),
       totalRequired: totalYarn,
+      effectiveProgress: effectiveYarnProgress,
     },
     knitting: {
       started: knittingStartedLines,
       complete: knittingCompleteLines,
       percent: totalLines > 0 ? (knittingCompleteLines / totalLines) * 100 : 0,
-      // From ProductionEntry records - use greige as denominator
+      // Use weighted average from backend (accounts for delivered qty)
       totalQty: totalKnittingQty,
       entriesCount: totalKnittingEntries,
-      qtyPercent: greigeDenominator > 0 ? (totalKnittingQty / greigeDenominator) * 100 : 0,
+      qtyPercent: totalWeight > 0 ? weightedKnittingPercent / totalWeight : (greigeDenominator > 0 ? (effectiveKnitting / greigeDenominator) * 100 : 0),
       denominator: totalGreige,
+      effectiveQty: effectiveKnitting,
     },
     dyeing: {
       started: dyeingStartedLines,
       complete: dyeingCompleteLines,
       percent: totalLines > 0 ? (dyeingCompleteLines / totalLines) * 100 : 0,
-      // From ProductionEntry records - use greige as denominator
+      // Use weighted average from backend (accounts for delivered qty)
       totalQty: totalDyeingQty,
       entriesCount: totalDyeingEntries,
-      qtyPercent: greigeDenominator > 0 ? (totalDyeingQty / greigeDenominator) * 100 : 0,
+      qtyPercent: totalWeight > 0 ? weightedDyeingPercent / totalWeight : (greigeDenominator > 0 ? (effectiveDyeing / greigeDenominator) * 100 : 0),
       denominator: totalGreige,
+      effectiveQty: effectiveDyeing,
     },
     finishing: {
       sewingComplete: sewingFinishLines,
       exFactory: exFactoryLines,
       percent: totalLines > 0 ? (exFactoryLines / totalLines) * 100 : 0,
-      // From ProductionEntry records - use greige as denominator
+      // Use weighted average from backend (accounts for delivered qty)
       totalQty: totalFinishingQty,
       entriesCount: totalFinishingEntries,
-      qtyPercent: greigeDenominator > 0 ? (totalFinishingQty / greigeDenominator) * 100 : 0,
+      qtyPercent: totalWeight > 0 ? weightedFinishingPercent / totalWeight : (greigeDenominator > 0 ? (effectiveFinishing / greigeDenominator) * 100 : 0),
       denominator: totalGreige,
+      effectiveQty: effectiveFinishing,
     },
   };
 }
