@@ -811,27 +811,27 @@ function OrdersPageContent() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                   <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
-                    <tr className="text-left text-xs uppercase tracking-wide text-slate-700 border-b-2 border-slate-300">
-                      <th className="py-3 px-2 font-semibold w-12">S/N</th>
-                      <th className="py-3 px-1 font-semibold w-8"></th>
-                      {filters.orderType === 'all' && <th className="py-3 px-3 font-semibold whitespace-nowrap">Type</th>}
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[120px]">Merchandiser</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px] border-l border-slate-200">Vendor</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px]">Buyer</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[100px] border-l border-slate-200">PO #</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[110px] border-l border-slate-200">Fabric Type</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Quantity</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">ETD</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">PI Sent</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">LC Issue</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Status</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Order Date</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap">Actions</th>
+                    <tr className="text-center text-xs uppercase tracking-wide text-slate-700">
+                      <th className="py-3 px-2 font-semibold w-12 border border-slate-300 bg-slate-100">S/N</th>
+                      <th className="py-3 px-1 font-semibold w-8 border border-slate-300 bg-slate-100"></th>
+                      {filters.orderType === 'all' && <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">Type</th>}
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[110px] border border-slate-300 bg-slate-100">Merchandiser</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[110px] border border-slate-300 bg-slate-100">Vendor</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[90px] border border-slate-300 bg-slate-100">Buyer</th>
+                      <th className="py-3 px-4 font-semibold whitespace-nowrap min-w-[120px] border border-slate-300 bg-slate-100">PO #</th>
+                      <th className="py-3 px-4 font-semibold whitespace-nowrap min-w-[130px] border border-slate-300 bg-slate-100">Fabric Type</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[90px] border border-slate-300 bg-slate-100">Quantity</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">ETD</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">PI Sent</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">LC Issue</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">Status</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">Order Date</th>
+                      <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody>
                     {(sortByEtd
                       ? [...orders].sort((a, b) => {
                           if (!a.earliestEtd && !b.earliestEtd) return 0;
@@ -853,8 +853,8 @@ function OrdersPageContent() {
                               router.push(`/orders/${order.id}`);
                             }}
                           >
-                            <td className="py-4 text-gray-500 font-medium">{index + 1}</td>
-                            <td className="py-4">
+                            <td className="py-4 px-2 text-center text-gray-500 font-medium border border-slate-200">{index + 1}</td>
+                            <td className="py-4 px-1 text-center border border-slate-200">
                               {lines.length > 0 && (
                                 <Button
                                   variant="ghost"
@@ -874,7 +874,7 @@ function OrdersPageContent() {
                               )}
                             </td>
                             {filters.orderType === 'all' && (
-                              <td className="py-4">
+                              <td className="py-4 px-3 text-center border border-slate-200">
                                 <Badge 
                                   variant={order.orderType === 'local' ? 'secondary' : 'outline'}
                                   className={order.orderType === 'local' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}
@@ -883,50 +883,50 @@ function OrdersPageContent() {
                                 </Badge>
                               </td>
                             )}
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {order.merchandiserName ? (
                                 <span className="text-gray-700">{order.merchandiserName}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4">{order.customerName}</td>
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">{order.customerName}</td>
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {order.buyerName ? (
                                 <span className="text-gray-700">{order.buyerName}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4 font-medium">{order.poNumber}</td>
-                            <td className="py-4">{order.fabricType}</td>
-                            <td className="py-4">{order.quantity.toLocaleString()} {order.unit}</td>
-                            <td className="py-4">
+                            <td className="py-4 px-4 text-center font-medium border border-slate-200">{order.poNumber}</td>
+                            <td className="py-4 px-4 text-center border border-slate-200">{order.fabricType}</td>
+                            <td className="py-4 px-3 text-center border border-slate-200">{order.quantity.toLocaleString()} {order.unit}</td>
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {order.earliestEtd ? (
                                 <span className="font-medium">{formatDate(order.earliestEtd)}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {order.piSentDate ? (
                                 <span className="text-violet-600 font-medium">{formatDate(order.piSentDate)}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {order.lcIssueDate ? (
                                 <span className="text-emerald-600 font-medium">{formatDate(order.lcIssueDate)}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               {renderAggregatedStatus(order)}
                             </td>
-                            <td className="py-4">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
-                            <td className="py-4">
+                            <td className="py-4 px-3 text-center border border-slate-200">{order.orderDate ? formatDate(order.orderDate) : '-'}</td>
+                            <td className="py-4 px-3 text-center border border-slate-200">
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="ghost"
