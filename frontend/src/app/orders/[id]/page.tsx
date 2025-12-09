@@ -175,12 +175,14 @@ interface ProductionSummary {
   totalFinishing: number;
   totalGreige: number;
   totalYarn: number;
+  totalDelivered: number;
   knittingEntriesCount: number;
   dyeingEntriesCount: number;
   finishingEntriesCount: number;
   knittingPercent: number;
   dyeingPercent: number;
   finishingPercent: number;
+  yarnPercent: number;
 }
 
 interface Order {
@@ -377,23 +379,40 @@ export default function OrderDetailPage() {
     return backendGreige || calculatedGreige;
   };
 
-  // Calculate percentages based on actual greige
+  // Use backend-calculated percentages that account for delivered quantity
+  // Progress = max(production_entries, delivered_qty)
   const getKnittingPercent = (): number => {
-    const greige = getActualTotalGreige();
-    const knitting = order?.productionSummary?.totalKnitting || 0;
-    return greige > 0 ? Math.round((knitting / greige) * 1000) / 10 : 0;
+    // Use backend percentage which accounts for delivered qty
+    return order?.productionSummary?.knittingPercent || 0;
   };
 
   const getDyeingPercent = (): number => {
-    const greige = getActualTotalGreige();
-    const dyeing = order?.productionSummary?.totalDyeing || 0;
-    return greige > 0 ? Math.round((dyeing / greige) * 1000) / 10 : 0;
+    // Use backend percentage which accounts for delivered qty
+    return order?.productionSummary?.dyeingPercent || 0;
   };
 
   const getFinishingPercent = (): number => {
-    const greige = getActualTotalGreige();
-    const finishing = order?.productionSummary?.totalFinishing || 0;
-    return greige > 0 ? Math.round((finishing / greige) * 1000) / 10 : 0;
+    // Use backend percentage which accounts for delivered qty
+    return order?.productionSummary?.finishingPercent || 0;
+  };
+  
+  // Get effective quantities that account for delivery (max of production entries or delivered)
+  const getEffectiveKnitting = (): number => {
+    const ps = order?.productionSummary;
+    if (!ps) return 0;
+    return Math.max(ps.totalKnitting, ps.totalDelivered || 0);
+  };
+  
+  const getEffectiveDyeing = (): number => {
+    const ps = order?.productionSummary;
+    if (!ps) return 0;
+    return Math.max(ps.totalDyeing, ps.totalDelivered || 0);
+  };
+  
+  const getEffectiveFinishing = (): number => {
+    const ps = order?.productionSummary;
+    if (!ps) return 0;
+    return Math.max(ps.totalFinishing, ps.totalDelivered || 0);
   };
 
   const toggleOrderLineExpanded = (lineId: string) => {
@@ -2391,13 +2410,13 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {order.productionSummary.totalKnitting.toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveKnitting().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
                       </span>
                       <span className="font-semibold text-blue-700">{getKnittingPercent()}%</span>
                     </div>
                     <Progress value={Math.min(getKnittingPercent(), 100)} className="h-2" />
                     <div className="text-xs text-gray-500">
-                      {order.productionSummary.knittingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                      {order.productionSummary.knittingEntriesCount} entries{order.productionSummary.totalDelivered > 0 && order.productionSummary.totalKnitting === 0 ? ' (from delivery)' : ''} • <span className="text-amber-600">Greige base</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -2413,13 +2432,13 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {order.productionSummary.totalDyeing.toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveDyeing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
                       </span>
                       <span className="font-semibold text-purple-700">{getDyeingPercent()}%</span>
                     </div>
                     <Progress value={Math.min(getDyeingPercent(), 100)} className="h-2" />
                     <div className="text-xs text-gray-500">
-                      {order.productionSummary.dyeingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                      {order.productionSummary.dyeingEntriesCount} entries{order.productionSummary.totalDelivered > 0 && order.productionSummary.totalDyeing === 0 ? ' (from delivery)' : ''} • <span className="text-amber-600">Greige base</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -2435,13 +2454,13 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {order.productionSummary.totalFinishing.toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveFinishing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
                       </span>
                       <span className="font-semibold text-green-700">{getFinishingPercent()}%</span>
                     </div>
                     <Progress value={Math.min(getFinishingPercent(), 100)} className="h-2" />
                     <div className="text-xs text-gray-500">
-                      {order.productionSummary.finishingEntriesCount} entries • <span className="text-amber-600">Greige base</span>
+                      {order.productionSummary.finishingEntriesCount} entries{order.productionSummary.totalDelivered > 0 && order.productionSummary.totalFinishing === 0 ? ' (from delivery)' : ''} • <span className="text-amber-600">Greige base</span>
                     </div>
                   </CardContent>
                 </Card>

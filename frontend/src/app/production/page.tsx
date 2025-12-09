@@ -1301,7 +1301,7 @@ function LocalOrdersPageContent() {
                                             <tr 
                                               key={line.id}
                                               data-highlighted={isHighlighted}
-                                              className={`border-t border-slate-200 cursor-pointer ${
+                                              className={`text-sm border-t border-slate-200 cursor-pointer transition-all duration-300 ${
                                                 isHighlighted 
                                                   ? `bg-yellow-100 hover:bg-yellow-50 ring-2 ring-yellow-400 ring-inset ${isAnimating ? 'animate-pulse' : ''}` 
                                                   : 'hover:bg-slate-50/80'
