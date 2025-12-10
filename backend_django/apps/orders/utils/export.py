@@ -318,7 +318,7 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
     assigned_to = order.merchandiser.full_name if order.merchandiser else ""
     
     # Quantity Expected
-    quantity_expected = float(data_source.quantity) if hasattr(data_source, 'quantity') else 0
+    quantity_expected = float(data_source.quantity) if hasattr(data_source, 'quantity') and data_source.quantity else 0
     
     # Unit
     unit = getattr(data_source, 'unit', 'meters')
