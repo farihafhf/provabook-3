@@ -15,6 +15,7 @@ from .serializers_supplier_delivery import (
 )
 from apps.core.permissions import IsMerchandiser
 from apps.core.models import Notification
+from apps.authentication.models import User
 
 
 class SupplierDeliveryViewSet(viewsets.ModelViewSet):
@@ -75,21 +76,37 @@ class SupplierDeliveryViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         delivery = serializer.save(created_by=request.user)
         
-        # Create notification for the order's merchandiser
+        # Create notification for the order's merchandiser and all managers
         order = delivery.order
+        
+        # Build notification message
+        style_info = f" for style {delivery.style.style_number}" if delivery.style else ""
+        color_info = f" - {delivery.color.color_code}" if delivery.color else ""
+        notification_message = f'A delivery of {delivery.delivered_quantity} {delivery.unit} was recorded for order {order.order_number}{style_info}{color_info}'
+        
+        # Collect users to notify (merchandiser + all managers/admins)
+        users_to_notify = set()
+        
+        # Add the order's merchandiser
         if order.merchandiser:
-            # Build notification message
-            style_info = f" for style {delivery.style.style_number}" if delivery.style else ""
-            color_info = f" - {delivery.color.color_code}" if delivery.color else ""
-            
-            Notification.objects.create(
-                user=order.merchandiser,
-                title='Delivery Recorded',
-                message=f'A delivery of {delivery.delivered_quantity} {delivery.unit} was recorded for order {order.order_number}{style_info}{color_info}',
-                notification_type='delivery_recorded',
-                related_id=str(order.id),
-                related_type='order'
-            )
+            users_to_notify.add(order.merchandiser)
+        
+        # Add all managers and admins
+        managers = User.objects.filter(role__in=['manager', 'admin'], is_active=True)
+        for manager in managers:
+            users_to_notify.add(manager)
+        
+        # Create notifications for all users (except the one who made the delivery)
+        for user in users_to_notify:
+            if user.id != request.user.id:  # Don't notify the user who made the delivery
+                Notification.objects.create(
+                    user=user,
+                    title='Delivery Recorded',
+                    message=notification_message,
+                    notification_type='delivery_recorded',
+                    related_id=str(order.id),
+                    related_type='order'
+                )
         
         # Return full delivery data
         response_serializer = SupplierDeliverySerializer(delivery)

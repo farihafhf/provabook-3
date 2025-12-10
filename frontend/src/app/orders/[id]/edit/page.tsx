@@ -374,8 +374,10 @@ export default function OrderEditPage() {
       if (index === sourceIndex) return line;
       return {
         ...line,
+        styleNumber: sourceLine.styleNumber,
         colorCode: sourceLine.colorCode,
         cadName: sourceLine.cadName,
+        quantity: sourceLine.quantity,
         unit: sourceLine.unit,
         currency: sourceLine.currency,
       };
@@ -383,7 +385,7 @@ export default function OrderEditPage() {
     setOrderLines(newLines);
     toast({
       title: 'Basic Info Copied',
-      description: `Color, CAD, unit and currency from Line ${sourceIndex + 1} copied to all other lines`,
+      description: `Style, color, CAD, quantity, unit and currency from Line ${sourceIndex + 1} copied to all other lines`,
     });
   };
 
