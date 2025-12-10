@@ -1149,6 +1149,35 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      const response = await api.patch(`/orders/${order.id}/lines/bulk-status/`, {
+        status: newStatus,
+      });
+
+      const updatedCount = response.data?.updatedCount || 0;
+      toast({
+        title: 'Success',
+        description: `${updatedCount} line(s) updated to ${getStatusDisplayName(newStatus)}`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to bulk update line status:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update line statuses',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   // Mill Offer Handlers
   const handleMillOfferAdd = async (lineId: string, millName: string, price: number, currency: string) => {
     if (!order) return;
@@ -1524,6 +1553,30 @@ export default function OrderDetailPage() {
 
           {/* Line Items Tab */}
           <TabsContent value="lineitems" className="space-y-6">
+            {/* Bulk Status Update Header */}
+            {order.styles && order.styles.length > 0 && order.styles.some(s => s.lines && s.lines.length > 0) && (
+              <div className="flex items-center justify-between flex-wrap gap-4 bg-gray-50 p-4 rounded-lg border">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Package className="h-4 w-4" />
+                  <span>{order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} line(s) in this order</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Bulk Update All Lines:</span>
+                  <Select onValueChange={(value) => handleBulkStatusChange(value)} disabled={updating}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="upcoming">Upcoming</SelectItem>
+                      <SelectItem value="in_development">In Development</SelectItem>
+                      <SelectItem value="running">Running</SelectItem>
+                      <SelectItem value="bulk">Bulk</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Line Item Cards - Left Side (3/4 width on large screens) */}
               <div className="lg:col-span-3">
@@ -1582,11 +1635,30 @@ export default function OrderDetailPage() {
             {order.styles && order.styles.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Order Lines ({order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} lines)
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">Each line represents a unique Style + Color + CAD combination</p>
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        Order Lines ({order.styles.reduce((sum, s) => sum + (s.lines?.length || 0), 0)} lines)
+                      </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">Each line represents a unique Style + Color + CAD combination</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Bulk Update Status:</span>
+                      <Select onValueChange={(value) => handleBulkStatusChange(value)} disabled={updating}>
+                        <SelectTrigger className="w-[160px]">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="in_development">In Development</SelectItem>
+                          <SelectItem value="running">Running</SelectItem>
+                          <SelectItem value="bulk">Bulk</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 gap-3">

@@ -526,6 +526,47 @@ class OrderViewSet(viewsets.ModelViewSet):
         response_serializer = OrderSerializer(order)
         return Response(response_serializer.data)
     
+    @action(detail=True, methods=['patch'], url_path='lines/bulk-status')
+    def bulk_update_line_status(self, request, pk=None):
+        """
+        PATCH /orders/{id}/lines/bulk-status/
+        Update status for all lines in an order at once
+        
+        Request body:
+        {
+            "status": "running"
+        }
+        """
+        from .models_order_line import OrderLine
+        
+        order = self.get_object()
+        
+        # Validate status
+        new_status = request.data.get('status')
+        if not new_status:
+            return Response(
+                {'error': 'Status is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        valid_statuses = [choice[0] for choice in OrderStatus.choices]
+        if new_status not in valid_statuses:
+            return Response(
+                {'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all lines for this order
+        lines = OrderLine.objects.filter(style__order=order)
+        updated_count = lines.update(status=new_status)
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response({
+            'order': response_serializer.data,
+            'updatedCount': updated_count
+        })
+    
     @action(detail=True, methods=['patch'], url_path='lines/(?P<line_id>[^/.]+)/swatch-dates')
     def update_swatch_dates(self, request, pk=None, line_id=None):
         """

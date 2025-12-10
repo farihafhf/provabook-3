@@ -417,8 +417,11 @@ def _build_order_row(order, style, line, approval_types, dhaka_tz):
         approval_data.append(submission_date)
         approval_data.append(approval_date)
     
-    # Order Status (use order-level status)
-    order_status = order.get_status_display()
+    # Order Status (use line-level status if available, otherwise order-level)
+    if line and hasattr(line, 'status') and line.status:
+        order_status = line.get_status_display()
+    else:
+        order_status = order.get_status_display()
     
     # Bulk Start Date
     bulk_start_date = ""
