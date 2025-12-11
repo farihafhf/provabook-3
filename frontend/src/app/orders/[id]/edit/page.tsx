@@ -229,16 +229,13 @@ export default function OrderEditPage() {
       // This prevents stale closure issues where handleSubmit captures old state
       const currentOrderLines = orderLinesRef.current;
       
-      // Group lines by styleId (for existing styles) or styleNumber (for new styles)
-      // CRITICAL: Must use styleId as primary key to prevent duplicate style updates
-      // Previously used styleNumber-styleId which created separate groups for lines
-      // with different styleNumbers but same styleId, causing the backend to update
-      // the same style multiple times (last one wins, overwriting all lines)
+      // Group lines by styleNumber - lines with the same styleNumber belong to the same style
+      // Each line keeps its own id for backend to update correctly
       const styleGroups = new Map<string, typeof currentOrderLines>();
       
-      currentOrderLines.forEach(line => {
-        // Use styleId if available (existing style), otherwise use styleNumber (new style)
-        const styleKey = line.styleId || `new-${line.styleNumber}`;
+      currentOrderLines.forEach((line, index) => {
+        // Use styleNumber as the grouping key (empty styleNumber gets unique key)
+        const styleKey = line.styleNumber || `unnamed-style-${index}`;
         if (!styleGroups.has(styleKey)) {
           styleGroups.set(styleKey, []);
         }
@@ -321,6 +318,21 @@ export default function OrderEditPage() {
         }),
       };
 
+      // Debug: Log what we're sending to verify data integrity
+      console.log('=== EDIT ORDER SUBMIT ===');
+      console.log('Lines from ref:', currentOrderLines.map(l => ({ 
+        id: l.id?.slice(-8), 
+        styleNumber: l.styleNumber, 
+        quantity: l.quantity,
+        description: l.description?.slice(0, 30) 
+      })));
+      console.log('Grouped into styles:', orderData.styles.map((s: any) => ({
+        id: s.id?.slice(-8),
+        styleNumber: s.styleNumber,
+        lineCount: s.lines.length,
+        lines: s.lines.map((l: any) => ({ id: l.id?.slice(-8), qty: l.quantity }))
+      })));
+      
       await api.patch(`/orders/${params.id}/`, orderData);
 
       toast({
@@ -358,30 +370,10 @@ export default function OrderEditPage() {
     }
   };
 
-  // Style-level fields that should be synchronized across all lines with the same styleId
-  const STYLE_LEVEL_FIELDS: (keyof OrderLineFormData)[] = [
-    'styleNumber', 'description', 'fabricType', 'fabricComposition', 
-    'gsm', 'finishType', 'construction', 'cuttableWidth', 'finishingWidth'
-  ];
-
   const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
     setOrderLines(prevLines => {
       const newLines = [...prevLines];
-      const updatedLine = { ...newLines[index], [field]: value };
-      newLines[index] = updatedLine;
-      
-      // If this is a style-level field, synchronize it across all lines with the same styleId
-      // This ensures style-level data stays consistent when editing any line in the style
-      if (STYLE_LEVEL_FIELDS.includes(field) && updatedLine.styleId) {
-        return newLines.map((line, i) => {
-          if (i === index) return updatedLine;
-          if (line.styleId === updatedLine.styleId) {
-            return { ...line, [field]: value };
-          }
-          return line;
-        });
-      }
-      
+      newLines[index] = { ...newLines[index], [field]: value };
       return newLines;
     });
   };
