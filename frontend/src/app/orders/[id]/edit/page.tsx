@@ -229,11 +229,16 @@ export default function OrderEditPage() {
       // This prevents stale closure issues where handleSubmit captures old state
       const currentOrderLines = orderLinesRef.current;
       
-      // Group lines by style number
+      // Group lines by styleId (for existing styles) or styleNumber (for new styles)
+      // CRITICAL: Must use styleId as primary key to prevent duplicate style updates
+      // Previously used styleNumber-styleId which created separate groups for lines
+      // with different styleNumbers but same styleId, causing the backend to update
+      // the same style multiple times (last one wins, overwriting all lines)
       const styleGroups = new Map<string, typeof currentOrderLines>();
       
       currentOrderLines.forEach(line => {
-        const styleKey = `${line.styleNumber}-${line.styleId || ''}`;
+        // Use styleId if available (existing style), otherwise use styleNumber (new style)
+        const styleKey = line.styleId || `new-${line.styleNumber}`;
         if (!styleGroups.has(styleKey)) {
           styleGroups.set(styleKey, []);
         }
@@ -316,11 +321,6 @@ export default function OrderEditPage() {
         }),
       };
 
-      // Debug: Log what we're sending
-      console.log('=== SUBMITTING ORDER UPDATE ===');
-      console.log('currentOrderLines (from ref):', JSON.stringify(currentOrderLines, null, 2));
-      console.log('orderData being sent:', JSON.stringify(orderData, null, 2));
-      
       await api.patch(`/orders/${params.id}/`, orderData);
 
       toast({
