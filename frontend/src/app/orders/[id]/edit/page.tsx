@@ -306,6 +306,11 @@ export default function OrderEditPage() {
         }),
       };
 
+      // Debug: Log what we're sending
+      console.log('=== SUBMITTING ORDER UPDATE ===');
+      console.log('orderLines state before grouping:', JSON.stringify(orderLines, null, 2));
+      console.log('orderData being sent:', JSON.stringify(orderData, null, 2));
+      
       await api.patch(`/orders/${params.id}/`, orderData);
 
       toast({

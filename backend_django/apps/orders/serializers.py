@@ -755,6 +755,17 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         """
         from .models_style_color import OrderStyle
         from .models_order_line import OrderLine
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Debug: Log what we received
+        logger.info(f"=== ORDER UPDATE DEBUG ===")
+        logger.info(f"validated_data keys: {validated_data.keys()}")
+        if 'styles' in validated_data:
+            for i, style in enumerate(validated_data['styles']):
+                logger.info(f"Style {i}: id={style.get('id')}, style_number={style.get('style_number')}")
+                for j, line in enumerate(style.get('lines', [])):
+                    logger.info(f"  Line {j}: id={line.get('id')}, color_code={line.get('color_code')}, quantity={line.get('quantity')}")
         
         styles_data = validated_data.pop('styles', None)
         
@@ -814,9 +825,14 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         existing_style_ids.add(str(style.id))
                 
                 # Process lines for this style
-                for line_data in lines_data:
+                logger.info(f"Processing {len(lines_data)} lines for style {style.id}")
+                for line_idx, line_data in enumerate(lines_data):
+                    logger.info(f"  Processing line_data[{line_idx}] BEFORE convert: id={line_data.get('id')}, quantity={line_data.get('quantity')}, color_code={line_data.get('color_code')}")
+                    
                     # Convert camelCase to snake_case
                     line_data = self._convert_line_data_to_snake_case(line_data)
+                    logger.info(f"  Processing line_data[{line_idx}] AFTER convert: id={line_data.get('id')}, quantity={line_data.get('quantity')}, color_code={line_data.get('color_code')}")
+                    
                     line_id = line_data.pop('id', None)
                     
                     # CRITICAL FIX: Always remove approval_status and status from line_data
@@ -825,11 +841,14 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                     line_data.pop('approval_status', None)
                     line_data.pop('status', None)
                     
+                    logger.info(f"  Line ID: {line_id}, Final line_data: quantity={line_data.get('quantity')}, color_code={line_data.get('color_code')}")
+                    
                     if line_id:
                         # CRITICAL FIX: Look up line by ID only, verify it belongs to this order
                         try:
                             line = OrderLine.objects.get(id=line_id, style__order=instance)
                             all_processed_line_ids.add(str(line_id))
+                            logger.info(f"  Found line {line_id}, updating with: {line_data}")
                             
                             # Update the line's style if it changed (user moved line to different style)
                             if line.style_id != style.id:
@@ -840,6 +859,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 setattr(line, attr, value)
                             
                             line.save()
+                            logger.info(f"  Saved line {line_id}: quantity={line.quantity}, color_code={line.color_code}")
                         except OrderLine.DoesNotExist:
                             # Line ID provided but doesn't exist in this order, create new one
                             new_line = OrderLine.objects.create(style=style, **line_data)
