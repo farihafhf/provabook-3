@@ -358,10 +358,30 @@ export default function OrderEditPage() {
     }
   };
 
+  // Style-level fields that should be synchronized across all lines with the same styleId
+  const STYLE_LEVEL_FIELDS: (keyof OrderLineFormData)[] = [
+    'styleNumber', 'description', 'fabricType', 'fabricComposition', 
+    'gsm', 'finishType', 'construction', 'cuttableWidth', 'finishingWidth'
+  ];
+
   const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
     setOrderLines(prevLines => {
       const newLines = [...prevLines];
-      newLines[index] = { ...newLines[index], [field]: value };
+      const updatedLine = { ...newLines[index], [field]: value };
+      newLines[index] = updatedLine;
+      
+      // If this is a style-level field, synchronize it across all lines with the same styleId
+      // This ensures style-level data stays consistent when editing any line in the style
+      if (STYLE_LEVEL_FIELDS.includes(field) && updatedLine.styleId) {
+        return newLines.map((line, i) => {
+          if (i === index) return updatedLine;
+          if (line.styleId === updatedLine.styleId) {
+            return { ...line, [field]: value };
+          }
+          return line;
+        });
+      }
+      
       return newLines;
     });
   };
