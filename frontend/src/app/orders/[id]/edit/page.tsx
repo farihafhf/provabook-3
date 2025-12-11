@@ -226,22 +226,10 @@ export default function OrderEditPage() {
 
     try {
       // CRITICAL: Use ref to get the latest orderLines state
-      // This prevents stale closure issues where handleSubmit captures old state
       const currentOrderLines = orderLinesRef.current;
       
-      // Group lines by styleNumber - lines with the same styleNumber belong to the same style
-      // Each line keeps its own id for backend to update correctly
-      const styleGroups = new Map<string, typeof currentOrderLines>();
-      
-      currentOrderLines.forEach((line, index) => {
-        // Use styleNumber as the grouping key (empty styleNumber gets unique key)
-        const styleKey = line.styleNumber || `unnamed-style-${index}`;
-        if (!styleGroups.has(styleKey)) {
-          styleGroups.set(styleKey, []);
-        }
-        styleGroups.get(styleKey)!.push(line);
-      });
-
+      // NO GROUPING - Each line is its own style with exactly 1 line
+      // This ensures complete independence between lines
       const orderData: any = {
         poNumber: formData.poNumber || undefined,
         customerName: formData.customerName,
@@ -254,66 +242,64 @@ export default function OrderEditPage() {
           0
         ),
         unit: currentOrderLines[0]?.unit || 'meters',
-        styles: Array.from(styleGroups.entries()).map(([key, lines]) => {
-          const firstLine = lines[0];
+        // Each line becomes its own style - completely independent
+        styles: currentOrderLines.map((line, index) => {
+          // Build line data
+          const lineData: any = {
+            id: line.id,
+            colorCode: line.colorCode,
+            cadName: line.cadName || undefined,
+            quantity: line.quantity ? parseFloat(line.quantity) : undefined,
+            unit: line.unit,
+            millName: line.millName || undefined,
+            millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
+            provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
+            currency: line.currency,
+            etd: line.etd || undefined,
+            eta: line.eta || undefined,
+            submissionDate: line.submissionDate || undefined,
+            notes: line.notes || undefined,
+          };
+          
+          // Add local order production fields
+          if (orderType === 'local') {
+            lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
+            lineData.mixedFabricType = line.mixedFabricType || undefined;
+            lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
+            lineData.yarnBookedDate = line.yarnBookedDate || undefined;
+            lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
+            lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
+            lineData.fitCumPpSubmitDate = line.fitCumPpSubmitDate || undefined;
+            lineData.fitCumPpCommentsDate = line.fitCumPpCommentsDate || undefined;
+            lineData.knittingStartDate = line.knittingStartDate || undefined;
+            lineData.knittingCompleteDate = line.knittingCompleteDate || undefined;
+            lineData.dyeingStartDate = line.dyeingStartDate || undefined;
+            lineData.dyeingCompleteDate = line.dyeingCompleteDate || undefined;
+            lineData.bulkSizeSetDate = line.bulkSizeSetDate || undefined;
+            lineData.cuttingStartDate = line.cuttingStartDate || undefined;
+            lineData.cuttingCompleteDate = line.cuttingCompleteDate || undefined;
+            lineData.printSendDate = line.printSendDate || undefined;
+            lineData.printReceivedDate = line.printReceivedDate || undefined;
+            lineData.sewingInputDate = line.sewingInputDate || undefined;
+            lineData.sewingFinishDate = line.sewingFinishDate || undefined;
+            lineData.packingCompleteDate = line.packingCompleteDate || undefined;
+            lineData.finalInspectionDate = line.finalInspectionDate || undefined;
+            lineData.exFactoryDate = line.exFactoryDate || undefined;
+          }
+          
+          // Each line gets its own style
           return {
-            id: firstLine.styleId,
-            styleNumber: firstLine.styleNumber,
-            description: firstLine.description || undefined,
-            fabricType: firstLine.fabricType || formData.fabricType,
-            fabricComposition: firstLine.fabricComposition || undefined,
-            gsm: firstLine.gsm ? parseFloat(firstLine.gsm) : undefined,
-            finishType: firstLine.finishType || undefined,
-            construction: firstLine.construction || undefined,
-            cuttableWidth: firstLine.cuttableWidth || undefined,
-            finishingWidth: firstLine.finishingWidth || undefined,
-            lines: lines.map((line) => {
-              const lineData: any = {
-                id: line.id,
-                colorCode: line.colorCode,
-                cadName: line.cadName || undefined,
-                quantity: line.quantity ? parseFloat(line.quantity) : undefined,
-                unit: line.unit,
-                millName: line.millName || undefined,
-                millPrice: line.millPrice ? parseFloat(line.millPrice) : undefined,
-                provaPrice: line.provaPrice ? parseFloat(line.provaPrice) : undefined,
-                currency: line.currency,
-                etd: line.etd || undefined,
-                eta: line.eta || undefined,
-                submissionDate: line.submissionDate || undefined,
-                notes: line.notes || undefined,
-              };
-              
-              // Add local order production fields at line level for local orders
-              if (orderType === 'local') {
-                // Greige/Yarn calculation fields (yarnRequired is auto-calculated on backend)
-                lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
-                lineData.mixedFabricType = line.mixedFabricType || undefined;
-                lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
-                // Yarn dates
-                lineData.yarnBookedDate = line.yarnBookedDate || undefined;
-                lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
-                lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
-                lineData.fitCumPpSubmitDate = line.fitCumPpSubmitDate || undefined;
-                lineData.fitCumPpCommentsDate = line.fitCumPpCommentsDate || undefined;
-                lineData.knittingStartDate = line.knittingStartDate || undefined;
-                lineData.knittingCompleteDate = line.knittingCompleteDate || undefined;
-                lineData.dyeingStartDate = line.dyeingStartDate || undefined;
-                lineData.dyeingCompleteDate = line.dyeingCompleteDate || undefined;
-                lineData.bulkSizeSetDate = line.bulkSizeSetDate || undefined;
-                lineData.cuttingStartDate = line.cuttingStartDate || undefined;
-                lineData.cuttingCompleteDate = line.cuttingCompleteDate || undefined;
-                lineData.printSendDate = line.printSendDate || undefined;
-                lineData.printReceivedDate = line.printReceivedDate || undefined;
-                lineData.sewingInputDate = line.sewingInputDate || undefined;
-                lineData.sewingFinishDate = line.sewingFinishDate || undefined;
-                lineData.packingCompleteDate = line.packingCompleteDate || undefined;
-                lineData.finalInspectionDate = line.finalInspectionDate || undefined;
-                lineData.exFactoryDate = line.exFactoryDate || undefined;
-              }
-              
-              return lineData;
-            }),
+            id: line.styleId,
+            styleNumber: line.styleNumber || `Line-${index + 1}`,
+            description: line.description || undefined,
+            fabricType: line.fabricType || formData.fabricType,
+            fabricComposition: line.fabricComposition || undefined,
+            gsm: line.gsm ? parseFloat(line.gsm) : undefined,
+            finishType: line.finishType || undefined,
+            construction: line.construction || undefined,
+            cuttableWidth: line.cuttableWidth || undefined,
+            finishingWidth: line.finishingWidth || undefined,
+            lines: [lineData], // Exactly 1 line per style
           };
         }),
       };
