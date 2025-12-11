@@ -190,9 +190,10 @@ class OrderSerializer(serializers.ModelSerializer):
         
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Calculate total greige and yarn quantities from all lines
+        # Calculate total greige, yarn quantities and line-level deliveries from all lines
         total_greige = 0.0
         total_yarn = 0.0
+        line_level_delivered = 0.0
         
         for style in obj.styles.all():
             for line in style.lines.all():
@@ -209,12 +210,20 @@ class OrderSerializer(serializers.ModelSerializer):
                     total_yarn += float(line.greige_quantity)
                 elif line.quantity:
                     total_yarn += float(line.quantity)
+                
+                # Sum line-level deliveries
+                for delivery in line.deliveries.all():
+                    if delivery.delivered_quantity:
+                        line_level_delivered += float(delivery.delivered_quantity)
         
         # Get total delivered quantity from order-level supplier_deliveries
-        total_delivered = 0.0
+        order_level_delivered = 0.0
         for delivery in obj.supplier_deliveries.all():
             if delivery.delivered_quantity:
-                total_delivered += float(delivery.delivered_quantity)
+                order_level_delivered += float(delivery.delivered_quantity)
+        
+        # Total delivered = max of order-level or sum of line-level (avoid double counting)
+        total_delivered = max(order_level_delivered, line_level_delivered)
         
         # Calculate denominators
         greige_denominator = total_greige if total_greige > 0 else ordered_qty
@@ -977,6 +986,12 @@ class OrderListSerializer(serializers.ModelSerializer):
             # For local orders, use greige quantity as denominator for production percentages
             line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
             
+            # KEY LOGIC: Use max(production_entry_value, delivered_qty) for effective progress
+            # If delivery is made without production entries, delivered qty counts as progress
+            effective_line_knitting = max(line_knitting, delivered_qty)
+            effective_line_dyeing = max(line_dyeing, delivered_qty)
+            effective_line_finishing = max(line_finishing, delivered_qty)
+            
             # Get mill offers from prefetched data
             mill_offers_data = []
             try:
@@ -1057,12 +1072,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
                 # Line-level production entry summary (from ProductionEntry records)
                 # Use greige quantity as denominator for local orders
-                'productionKnitting': line_knitting,
-                'productionDyeing': line_dyeing,
-                'productionFinishing': line_finishing,
-                'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                # Uses effective values: max(production_entry, delivered_qty) for progress
+                'productionKnitting': effective_line_knitting,
+                'productionDyeing': effective_line_dyeing,
+                'productionFinishing': effective_line_finishing,
+                'productionKnittingPercent': round((effective_line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionDyeingPercent': round((effective_line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionFinishingPercent': round((effective_line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
                 # Line notes
                 'notes': line.notes,
             }
@@ -1135,11 +1151,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                 finishing_count += 1
         
         # Calculate total greige, yarn quantities from all lines
+        # Also sum line-level deliveries
         total_greige = 0.0
         total_yarn = 0.0
+        line_level_delivered = 0.0
         ordered_qty = float(obj.quantity) if obj.quantity else 0
         
-        # Iterate through styles and their lines to sum greige and yarn quantities
+        # Iterate through styles and their lines to sum greige, yarn, and line-level deliveries
         for style in obj.styles.all():
             for line in style.lines.all():
                 # Greige quantity (for knitting/dyeing/finishing denominator)
@@ -1158,13 +1176,21 @@ class OrderListSerializer(serializers.ModelSerializer):
                 elif line.quantity:
                     # Final fallback: use finished quantity
                     total_yarn += float(line.quantity)
+                
+                # Sum line-level deliveries (prefetched via styles__lines__deliveries)
+                for delivery in line.deliveries.all():
+                    if delivery.delivered_quantity:
+                        line_level_delivered += float(delivery.delivered_quantity)
         
         # Get total delivered quantity from order-level supplier_deliveries
-        # (Deliveries are at Order level, not Line level)
-        total_delivered = 0.0
+        order_level_delivered = 0.0
         for delivery in obj.supplier_deliveries.all():
             if delivery.delivered_quantity:
-                total_delivered += float(delivery.delivered_quantity)
+                order_level_delivered += float(delivery.delivered_quantity)
+        
+        # Total delivered = max of order-level or sum of line-level (avoid double counting)
+        # Use max to handle cases where deliveries are recorded at either level
+        total_delivered = max(order_level_delivered, line_level_delivered)
         
         # Different denominators for different progress types:
         # - Greige is used for knitting/dyeing/finishing (production stages)
