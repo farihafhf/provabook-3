@@ -186,29 +186,6 @@ function getStageBadgeClass(stage: string): string {
   return stageColors[stage] || 'bg-gray-100 text-gray-600 border-gray-200';
 }
 
-// Aggregate line stages to derive order-level stage
-function deriveOrderProductionStage(lines: OrderLine[]): string {
-  if (!lines || lines.length === 0) return 'Pre-Yarn';
-  
-  const stages = lines.map(deriveLineProductionStage);
-  const stageOrder = [
-    'Pre-Yarn', 'Yarn Booked', 'Yarn In', 'Knitting', 'Knitted',
-    'Dyeing', 'Dyed', 'Finishing', 'Cutting', 'Cut', 'Sewing', 'Sewing Complete',
-    'Packed', 'Ex-Factory', 'Delivered'
-  ];
-  
-  // Find the minimum stage (least progressed line)
-  let minStageIndex = stageOrder.length - 1;
-  for (const stage of stages) {
-    const idx = stageOrder.indexOf(stage);
-    if (idx !== -1 && idx < minStageIndex) {
-      minStageIndex = idx;
-    }
-  }
-  
-  return stageOrder[minStageIndex];
-}
-
 // Approval helper functions
 function formatApprovalName(key: string): string {
   const names: Record<string, string> = {
@@ -959,7 +936,6 @@ function LocalOrdersPageContent() {
                       <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[110px] border border-slate-300 bg-slate-100">Vendor</th>
                       <th className="py-3 px-4 font-semibold whitespace-nowrap min-w-[130px] border border-slate-300 bg-slate-100">Fabric Type</th>
                       <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[90px] border border-slate-300 bg-slate-100">Quantity</th>
-                      <th className="py-3 px-3 font-semibold whitespace-nowrap min-w-[130px] border border-slate-300 bg-slate-100">Production Stage</th>
                       <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">ETD</th>
                       <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">PI Sent</th>
                       <th className="py-3 px-3 font-semibold whitespace-nowrap border border-slate-300 bg-slate-100">LC Issue</th>
@@ -981,7 +957,6 @@ function LocalOrdersPageContent() {
                     ).map((order, index) => {
                       const isExpanded = expandedOrders.has(order.id);
                       const lines = order.lines || [];
-                      const orderStage = deriveOrderProductionStage(lines);
                       
                       return (
                         <React.Fragment key={order.id}>
@@ -1016,11 +991,6 @@ function LocalOrdersPageContent() {
                             <td className="py-4 px-3 text-center border border-slate-200">{order.customerName}</td>
                             <td className="py-4 px-4 text-center border border-slate-200">{order.fabricType}</td>
                             <td className="py-4 px-3 text-center border border-slate-200">{order.quantity.toLocaleString()} {order.unit}</td>
-                            <td className="py-4 px-3 text-center border border-slate-200">
-                              <Badge className={`${getStageBadgeClass(orderStage)} border`}>
-                                {orderStage}
-                              </Badge>
-                            </td>
                             <td className="py-4 px-3 text-center border border-slate-200">
                               {order.earliestEtd ? (
                                 <span className="font-medium">{formatDate(order.earliestEtd)}</span>
@@ -1097,7 +1067,7 @@ function LocalOrdersPageContent() {
                           {/* Expanded line items with production timeline */}
                           {isExpanded && lines.length > 0 && (
                             <tr>
-                              <td colSpan={14} className="p-0">
+                              <td colSpan={13} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
                                   {/* Mobile Card View */}
                                   <div className="md:hidden p-3 space-y-3">
