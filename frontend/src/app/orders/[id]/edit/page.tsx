@@ -297,9 +297,10 @@ export default function OrderEditPage() {
             lineData.exFactoryDate = line.exFactoryDate || undefined;
           }
           
-          // Each line gets its own style
+          // Each line gets its own style - DO NOT send styleId to avoid backend overwriting
+          // The backend will create/find styles based on data, not ID
           return {
-            id: line.styleId,
+            // NO id field - this forces backend to handle each style independently
             styleNumber: line.styleNumber || `Line-${index + 1}`,
             description: line.description || undefined,
             fabricType: line.fabricType || formData.fabricType,
@@ -316,18 +317,10 @@ export default function OrderEditPage() {
 
       // Debug: Log what we're sending to verify data integrity
       console.log('=== EDIT ORDER SUBMIT ===');
-      console.log('Lines from ref:', currentOrderLines.map(l => ({ 
-        id: l.id?.slice(-8), 
-        styleNumber: l.styleNumber, 
-        quantity: l.quantity,
-        description: l.description?.slice(0, 30) 
-      })));
-      console.log('Grouped into styles:', orderData.styles.map((s: any) => ({
-        id: s.id?.slice(-8),
-        styleNumber: s.styleNumber,
-        lineCount: s.lines.length,
-        lines: s.lines.map((l: any) => ({ id: l.id?.slice(-8), qty: l.quantity }))
-      })));
+      console.log(`Sending ${orderData.styles.length} styles (1 per line):`);
+      orderData.styles.forEach((s: any, i: number) => {
+        console.log(`  Style ${i + 1}: styleNumber="${s.styleNumber}", desc="${s.description?.slice(0,20) || ''}...", lineId="${s.lines[0]?.id?.slice(-8)}", qty=${s.lines[0]?.quantity}`);
+      });
       
       await api.patch(`/orders/${params.id}/`, orderData);
 
