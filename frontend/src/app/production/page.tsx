@@ -136,8 +136,12 @@ interface OrdersFilterParams {
   orderDateTo?: string | null;
 }
 
-// Derive production stage from line-level dates
+// Derive production stage from line-level dates, production entries, and delivery status
 function deriveLineProductionStage(line: OrderLine): string {
+  // First check: If delivered, that's the final stage
+  if (line.deliveredQty && line.deliveredQty > 0) return 'Delivered';
+  
+  // Second check: Date-based stages (most reliable)
   if (line.exFactoryDate) return 'Ex-Factory';
   if (line.packingCompleteDate) return 'Packed';
   if (line.sewingFinishDate) return 'Sewing Complete';
@@ -150,6 +154,13 @@ function deriveLineProductionStage(line: OrderLine): string {
   if (line.knittingStartDate) return 'Knitting';
   if (line.yarnReceivedDate) return 'Yarn In';
   if (line.yarnBookedDate) return 'Yarn Booked';
+  
+  // Third check: Production entry quantities (if dates aren't filled but entries exist)
+  // Check in reverse order of production flow
+  if (line.productionFinishing && line.productionFinishing > 0) return 'Finishing';
+  if (line.productionDyeing && line.productionDyeing > 0) return 'Dyeing';
+  if (line.productionKnitting && line.productionKnitting > 0) return 'Knitting';
+  
   return 'Pre-Yarn';
 }
 
@@ -163,12 +174,14 @@ function getStageBadgeClass(stage: string): string {
     'Knitted': 'bg-blue-200 text-blue-800 border-blue-400',
     'Dyeing': 'bg-purple-100 text-purple-700 border-purple-300',
     'Dyed': 'bg-purple-200 text-purple-800 border-purple-400',
+    'Finishing': 'bg-teal-100 text-teal-700 border-teal-300',
     'Cutting': 'bg-orange-100 text-orange-700 border-orange-300',
     'Cut': 'bg-orange-200 text-orange-800 border-orange-400',
     'Sewing': 'bg-pink-100 text-pink-700 border-pink-300',
     'Sewing Complete': 'bg-pink-200 text-pink-800 border-pink-400',
     'Packed': 'bg-green-100 text-green-700 border-green-300',
     'Ex-Factory': 'bg-green-200 text-green-800 border-green-400',
+    'Delivered': 'bg-emerald-200 text-emerald-800 border-emerald-400',
   };
   return stageColors[stage] || 'bg-gray-100 text-gray-600 border-gray-200';
 }
@@ -180,8 +193,8 @@ function deriveOrderProductionStage(lines: OrderLine[]): string {
   const stages = lines.map(deriveLineProductionStage);
   const stageOrder = [
     'Pre-Yarn', 'Yarn Booked', 'Yarn In', 'Knitting', 'Knitted',
-    'Dyeing', 'Dyed', 'Cutting', 'Cut', 'Sewing', 'Sewing Complete',
-    'Packed', 'Ex-Factory'
+    'Dyeing', 'Dyed', 'Finishing', 'Cutting', 'Cut', 'Sewing', 'Sewing Complete',
+    'Packed', 'Ex-Factory', 'Delivered'
   ];
   
   // Find the minimum stage (least progressed line)
