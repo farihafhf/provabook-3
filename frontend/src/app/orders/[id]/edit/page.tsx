@@ -344,14 +344,16 @@ export default function OrderEditPage() {
   };
 
   const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
-    const newLines = [...orderLines];
-    newLines[index] = { ...newLines[index], [field]: value };
-    setOrderLines(newLines);
+    setOrderLines(prevLines => {
+      const newLines = [...prevLines];
+      newLines[index] = { ...newLines[index], [field]: value };
+      return newLines;
+    });
   };
 
   const addOrderLine = () => {
-    setOrderLines([
-      ...orderLines,
+    setOrderLines(prevLines => [
+      ...prevLines,
       {
         styleNumber: '',
         colorCode: '',
@@ -363,26 +365,30 @@ export default function OrderEditPage() {
   };
 
   const removeOrderLine = (index: number) => {
-    if (orderLines.length > 1) {
-      setOrderLines(orderLines.filter((_, i) => i !== index));
-    }
+    setOrderLines(prevLines => {
+      if (prevLines.length > 1) {
+        return prevLines.filter((_, i) => i !== index);
+      }
+      return prevLines;
+    });
   };
 
   const copyBasicInfoToAll = (sourceIndex: number) => {
-    const sourceLine = orderLines[sourceIndex];
-    const newLines = orderLines.map((line, index) => {
-      if (index === sourceIndex) return line;
-      return {
-        ...line,
-        styleNumber: sourceLine.styleNumber,
-        colorCode: sourceLine.colorCode,
-        cadName: sourceLine.cadName,
-        quantity: sourceLine.quantity,
-        unit: sourceLine.unit,
-        currency: sourceLine.currency,
-      };
+    setOrderLines(prevLines => {
+      const sourceLine = prevLines[sourceIndex];
+      return prevLines.map((line, index) => {
+        if (index === sourceIndex) return line;
+        return {
+          ...line,
+          styleNumber: sourceLine.styleNumber,
+          colorCode: sourceLine.colorCode,
+          cadName: sourceLine.cadName,
+          quantity: sourceLine.quantity,
+          unit: sourceLine.unit,
+          currency: sourceLine.currency,
+        };
+      });
     });
-    setOrderLines(newLines);
     toast({
       title: 'Basic Info Copied',
       description: `Style, color, CAD, quantity, unit and currency from Line ${sourceIndex + 1} copied to all other lines`,
@@ -390,22 +396,23 @@ export default function OrderEditPage() {
   };
 
   const copyTechnicalDetailsToAll = (sourceIndex: number) => {
-    const sourceLine = orderLines[sourceIndex];
-    const newLines = orderLines.map((line, index) => {
-      if (index === sourceIndex) return line;
-      return {
-        ...line,
-        description: sourceLine.description,
-        fabricType: sourceLine.fabricType,
-        fabricComposition: sourceLine.fabricComposition,
-        gsm: sourceLine.gsm,
-        finishType: sourceLine.finishType,
-        cuttableWidth: sourceLine.cuttableWidth,
-        finishingWidth: sourceLine.finishingWidth,
-        construction: sourceLine.construction,
-      };
+    setOrderLines(prevLines => {
+      const sourceLine = prevLines[sourceIndex];
+      return prevLines.map((line, index) => {
+        if (index === sourceIndex) return line;
+        return {
+          ...line,
+          description: sourceLine.description,
+          fabricType: sourceLine.fabricType,
+          fabricComposition: sourceLine.fabricComposition,
+          gsm: sourceLine.gsm,
+          finishType: sourceLine.finishType,
+          cuttableWidth: sourceLine.cuttableWidth,
+          finishingWidth: sourceLine.finishingWidth,
+          construction: sourceLine.construction,
+        };
+      });
     });
-    setOrderLines(newLines);
     toast({
       title: 'Technical Details Copied',
       description: `Style technical details from Line ${sourceIndex + 1} copied to all other lines`,
@@ -413,17 +420,18 @@ export default function OrderEditPage() {
   };
 
   const copyCommercialDataToAll = (sourceIndex: number) => {
-    const sourceLine = orderLines[sourceIndex];
-    const newLines = orderLines.map((line, index) => {
-      if (index === sourceIndex) return line;
-      return {
-        ...line,
-        millName: sourceLine.millName,
-        millPrice: sourceLine.millPrice,
-        provaPrice: sourceLine.provaPrice,
-      };
+    setOrderLines(prevLines => {
+      const sourceLine = prevLines[sourceIndex];
+      return prevLines.map((line, index) => {
+        if (index === sourceIndex) return line;
+        return {
+          ...line,
+          millName: sourceLine.millName,
+          millPrice: sourceLine.millPrice,
+          provaPrice: sourceLine.provaPrice,
+        };
+      });
     });
-    setOrderLines(newLines);
     toast({
       title: 'Commercial Data Copied',
       description: `Commercial data from Line ${sourceIndex + 1} copied to all other lines`,
@@ -431,17 +439,18 @@ export default function OrderEditPage() {
   };
 
   const copyDatesToAll = (sourceIndex: number) => {
-    const sourceLine = orderLines[sourceIndex];
-    const newLines = orderLines.map((line, index) => {
-      if (index === sourceIndex) return line;
-      return {
-        ...line,
-        etd: sourceLine.etd,
-        eta: sourceLine.eta,
-        submissionDate: sourceLine.submissionDate,
-      };
+    setOrderLines(prevLines => {
+      const sourceLine = prevLines[sourceIndex];
+      return prevLines.map((line, index) => {
+        if (index === sourceIndex) return line;
+        return {
+          ...line,
+          etd: sourceLine.etd,
+          eta: sourceLine.eta,
+          submissionDate: sourceLine.submissionDate,
+        };
+      });
     });
-    setOrderLines(newLines);
     toast({
       title: 'Dates Copied',
       description: `Dates from Line ${sourceIndex + 1} copied to all other lines`,
@@ -449,36 +458,37 @@ export default function OrderEditPage() {
   };
 
   const copyProductionTrackingToAll = (sourceIndex: number) => {
-    const sourceLine = orderLines[sourceIndex];
-    const newLines = orderLines.map((line, index) => {
-      if (index === sourceIndex) return line;
-      return {
-        ...line,
-        processLossPercent: sourceLine.processLossPercent,
-        mixedFabricType: sourceLine.mixedFabricType,
-        mixedFabricPercent: sourceLine.mixedFabricPercent,
-        yarnBookedDate: sourceLine.yarnBookedDate,
-        yarnReceivedDate: sourceLine.yarnReceivedDate,
-        ppYards: sourceLine.ppYards,
-        fitCumPpSubmitDate: sourceLine.fitCumPpSubmitDate,
-        fitCumPpCommentsDate: sourceLine.fitCumPpCommentsDate,
-        knittingStartDate: sourceLine.knittingStartDate,
-        knittingCompleteDate: sourceLine.knittingCompleteDate,
-        dyeingStartDate: sourceLine.dyeingStartDate,
-        dyeingCompleteDate: sourceLine.dyeingCompleteDate,
-        bulkSizeSetDate: sourceLine.bulkSizeSetDate,
-        cuttingStartDate: sourceLine.cuttingStartDate,
-        cuttingCompleteDate: sourceLine.cuttingCompleteDate,
-        printSendDate: sourceLine.printSendDate,
-        printReceivedDate: sourceLine.printReceivedDate,
-        sewingInputDate: sourceLine.sewingInputDate,
-        sewingFinishDate: sourceLine.sewingFinishDate,
-        packingCompleteDate: sourceLine.packingCompleteDate,
-        finalInspectionDate: sourceLine.finalInspectionDate,
-        exFactoryDate: sourceLine.exFactoryDate,
-      };
+    setOrderLines(prevLines => {
+      const sourceLine = prevLines[sourceIndex];
+      return prevLines.map((line, index) => {
+        if (index === sourceIndex) return line;
+        return {
+          ...line,
+          processLossPercent: sourceLine.processLossPercent,
+          mixedFabricType: sourceLine.mixedFabricType,
+          mixedFabricPercent: sourceLine.mixedFabricPercent,
+          yarnBookedDate: sourceLine.yarnBookedDate,
+          yarnReceivedDate: sourceLine.yarnReceivedDate,
+          ppYards: sourceLine.ppYards,
+          fitCumPpSubmitDate: sourceLine.fitCumPpSubmitDate,
+          fitCumPpCommentsDate: sourceLine.fitCumPpCommentsDate,
+          knittingStartDate: sourceLine.knittingStartDate,
+          knittingCompleteDate: sourceLine.knittingCompleteDate,
+          dyeingStartDate: sourceLine.dyeingStartDate,
+          dyeingCompleteDate: sourceLine.dyeingCompleteDate,
+          bulkSizeSetDate: sourceLine.bulkSizeSetDate,
+          cuttingStartDate: sourceLine.cuttingStartDate,
+          cuttingCompleteDate: sourceLine.cuttingCompleteDate,
+          printSendDate: sourceLine.printSendDate,
+          printReceivedDate: sourceLine.printReceivedDate,
+          sewingInputDate: sourceLine.sewingInputDate,
+          sewingFinishDate: sourceLine.sewingFinishDate,
+          packingCompleteDate: sourceLine.packingCompleteDate,
+          finalInspectionDate: sourceLine.finalInspectionDate,
+          exFactoryDate: sourceLine.exFactoryDate,
+        };
+      });
     });
-    setOrderLines(newLines);
     toast({
       title: 'Production Tracking Copied',
       description: `Production tracking data from Line ${sourceIndex + 1} copied to all other lines`,
