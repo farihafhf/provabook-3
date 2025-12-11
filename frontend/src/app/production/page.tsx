@@ -292,8 +292,7 @@ function calculateProductionMetrics(orders: Order[]) {
       totalGreige += line.greigeQuantity || line.quantity || 0;
       // Yarn required (for yarn progress)
       totalYarn += line.yarnRequired || line.greigeQuantity || line.quantity || 0;
-      // Track delivered qty
-      totalDelivered += line.deliveredQty || 0;
+      // Note: Don't add line.deliveredQty here - it's already included in productionSummary.totalDelivered
       
       if (line.yarnReceivedDate) yarnReceivedLines++;
       if (line.knittingStartDate) knittingStartedLines++;
@@ -313,6 +312,7 @@ function calculateProductionMetrics(orders: Order[]) {
       totalKnittingEntries += order.productionSummary.knittingEntriesCount || 0;
       totalDyeingEntries += order.productionSummary.dyeingEntriesCount || 0;
       totalFinishingEntries += order.productionSummary.finishingEntriesCount || 0;
+      // Use backend's totalDelivered which accounts for both order-level and line-level deliveries
       totalDelivered += order.productionSummary.totalDelivered || 0;
       
       // Use weighted average of backend-calculated percentages (which account for delivered qty)
@@ -789,13 +789,13 @@ function LocalOrdersPageContent() {
                   {productionMetrics.knitting.entriesCount > 0 ? 'Progress' : 'Complete / Total Lines'}
                 </span>
                 <span className="font-semibold">
-                  {productionMetrics.knitting.entriesCount > 0 
-                    ? `${productionMetrics.knitting.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
+                  {productionMetrics.knitting.entriesCount > 0 || productionMetrics.totalDelivered > 0
+                    ? `${productionMetrics.knitting.effectiveQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.knitting.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
               <Progress 
-                value={productionMetrics.knitting.entriesCount > 0 
+                value={productionMetrics.knitting.entriesCount > 0 || productionMetrics.totalDelivered > 0
                   ? productionMetrics.knitting.qtyPercent 
                   : productionMetrics.knitting.percent} 
                 className="h-2" 
@@ -804,7 +804,7 @@ function LocalOrdersPageContent() {
                 <span>Started: {productionMetrics.knitting.started}</span>
                 <span className="text-amber-600">Greige base</span>
                 <span>
-                  {(productionMetrics.knitting.entriesCount > 0 
+                  {(productionMetrics.knitting.entriesCount > 0 || productionMetrics.totalDelivered > 0
                     ? productionMetrics.knitting.qtyPercent 
                     : productionMetrics.knitting.percent).toFixed(1)}%
                 </span>
@@ -826,13 +826,13 @@ function LocalOrdersPageContent() {
                   {productionMetrics.dyeing.entriesCount > 0 ? 'Progress' : 'Complete / Total Lines'}
                 </span>
                 <span className="font-semibold">
-                  {productionMetrics.dyeing.entriesCount > 0 
-                    ? `${productionMetrics.dyeing.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
+                  {productionMetrics.dyeing.entriesCount > 0 || productionMetrics.totalDelivered > 0
+                    ? `${productionMetrics.dyeing.effectiveQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.dyeing.complete} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
               <Progress 
-                value={productionMetrics.dyeing.entriesCount > 0 
+                value={productionMetrics.dyeing.entriesCount > 0 || productionMetrics.totalDelivered > 0
                   ? productionMetrics.dyeing.qtyPercent 
                   : productionMetrics.dyeing.percent} 
                 className="h-2" 
@@ -842,7 +842,7 @@ function LocalOrdersPageContent() {
                 <span>Started: {productionMetrics.dyeing.started}</span>
                 <span className="text-amber-600">Greige base</span>
                 <span>
-                  {(productionMetrics.dyeing.entriesCount > 0 
+                  {(productionMetrics.dyeing.entriesCount > 0 || productionMetrics.totalDelivered > 0
                     ? productionMetrics.dyeing.qtyPercent 
                     : productionMetrics.dyeing.percent).toFixed(1)}%
                 </span>
@@ -864,13 +864,13 @@ function LocalOrdersPageContent() {
                   {productionMetrics.finishing.entriesCount > 0 ? 'Progress' : 'Ex-Factory / Total Lines'}
                 </span>
                 <span className="font-semibold">
-                  {productionMetrics.finishing.entriesCount > 0 
-                    ? `${productionMetrics.finishing.totalQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
+                  {productionMetrics.finishing.entriesCount > 0 || productionMetrics.totalDelivered > 0
+                    ? `${productionMetrics.finishing.effectiveQty.toLocaleString()} / ${(productionMetrics.totalGreige || productionMetrics.totalQuantity).toLocaleString()}`
                     : `${productionMetrics.finishing.exFactory} / ${productionMetrics.totalLines}`}
                 </span>
               </div>
               <Progress 
-                value={productionMetrics.finishing.entriesCount > 0 
+                value={productionMetrics.finishing.entriesCount > 0 || productionMetrics.totalDelivered > 0
                   ? productionMetrics.finishing.qtyPercent 
                   : productionMetrics.finishing.percent} 
                 className="h-2" 
@@ -880,7 +880,7 @@ function LocalOrdersPageContent() {
                 <span>Sewing Done: {productionMetrics.finishing.sewingComplete}</span>
                 <span className="text-amber-600">Greige base</span>
                 <span>
-                  {(productionMetrics.finishing.entriesCount > 0 
+                  {(productionMetrics.finishing.entriesCount > 0 || productionMetrics.totalDelivered > 0
                     ? productionMetrics.finishing.qtyPercent 
                     : productionMetrics.finishing.percent).toFixed(1)}%
                 </span>
