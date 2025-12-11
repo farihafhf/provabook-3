@@ -52,13 +52,8 @@ class OrderStyle(TimestampedModel):
         verbose_name = 'Order Style'
         verbose_name_plural = 'Order Styles'
         ordering = ['sequence_number', 'created_at']
-        constraints = [
-            # Ensure style_number is unique within an order
-            models.UniqueConstraint(
-                fields=['order', 'style_number'],
-                name='unique_style_per_order'
-            )
-        ]
+        # No unique constraint - multiple styles can have the same style_number
+        # Each line gets its own independent style
         indexes = [
             models.Index(fields=['order', 'style_number']),
         ]
