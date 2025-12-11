@@ -794,24 +794,11 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                         style = OrderStyle.objects.create(order=instance, **style_data)
                         existing_style_ids.add(str(style.id))
                 else:
-                    # No ID provided, check if style with same style_number exists
-                    style_number = style_data.get('style_number')
-                    if style_number:
-                        try:
-                            style = OrderStyle.objects.get(order=instance, style_number=style_number)
-                            existing_style_ids.add(str(style.id))
-                            
-                            # Update style fields
-                            for attr, value in style_data.items():
-                                setattr(style, attr, value)
-                            style.save()
-                        except OrderStyle.DoesNotExist:
-                            style = OrderStyle.objects.create(order=instance, **style_data)
-                            existing_style_ids.add(str(style.id))
-                    else:
-                        # No style_number, just create new style
-                        style = OrderStyle.objects.create(order=instance, **style_data)
-                        existing_style_ids.add(str(style.id))
+                    # No ID provided - ALWAYS create a new style
+                    # This ensures each line can have its own independent style data
+                    # even if multiple lines have the same styleNumber
+                    style = OrderStyle.objects.create(order=instance, **style_data)
+                    existing_style_ids.add(str(style.id))
                 
                 # Process lines for this style
                 for line_data in lines_data:
