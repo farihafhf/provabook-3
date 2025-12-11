@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,7 +87,13 @@ export default function OrderEditPage() {
   const [orderType, setOrderType] = useState<'foreign' | 'local'>('foreign');
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([]);
+  const orderLinesRef = useRef<OrderLineFormData[]>([]);
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set([0])); // First line expanded by default
+
+  // Keep ref in sync with state to ensure handleSubmit always has latest values
+  useEffect(() => {
+    orderLinesRef.current = orderLines;
+  }, [orderLines]);
 
   const toggleLineExpanded = (index: number) => {
     const newExpanded = new Set(expandedLines);
@@ -219,10 +225,14 @@ export default function OrderEditPage() {
     setSubmitting(true);
 
     try {
-      // Group lines by style number
-      const styleGroups = new Map<string, typeof orderLines>();
+      // CRITICAL: Use ref to get the latest orderLines state
+      // This prevents stale closure issues where handleSubmit captures old state
+      const currentOrderLines = orderLinesRef.current;
       
-      orderLines.forEach(line => {
+      // Group lines by style number
+      const styleGroups = new Map<string, typeof currentOrderLines>();
+      
+      currentOrderLines.forEach(line => {
         const styleKey = `${line.styleNumber}-${line.styleId || ''}`;
         if (!styleGroups.has(styleKey)) {
           styleGroups.set(styleKey, []);
@@ -237,11 +247,11 @@ export default function OrderEditPage() {
         fabricType: formData.fabricType,
         orderDate: formData.orderDate || undefined,
         notes: formData.notes || undefined,
-        quantity: orderLines.reduce(
+        quantity: currentOrderLines.reduce(
           (total, line) => total + (parseFloat(line.quantity) || 0),
           0
         ),
-        unit: orderLines[0]?.unit || 'meters',
+        unit: currentOrderLines[0]?.unit || 'meters',
         styles: Array.from(styleGroups.entries()).map(([key, lines]) => {
           const firstLine = lines[0];
           return {
@@ -308,7 +318,7 @@ export default function OrderEditPage() {
 
       // Debug: Log what we're sending
       console.log('=== SUBMITTING ORDER UPDATE ===');
-      console.log('orderLines state before grouping:', JSON.stringify(orderLines, null, 2));
+      console.log('currentOrderLines (from ref):', JSON.stringify(currentOrderLines, null, 2));
       console.log('orderData being sent:', JSON.stringify(orderData, null, 2));
       
       await api.patch(`/orders/${params.id}/`, orderData);
