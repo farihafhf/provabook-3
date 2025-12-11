@@ -2,6 +2,7 @@
 Views for ProductionEntry model
 Handles CRUD operations for knitting, dyeing, finishing entries
 """
+from decimal import Decimal
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q
 
 from .models_production_entry import ProductionEntry, ProductionEntryType
+from .models_order_line import OrderLine
 from .serializers_production_entry import (
     ProductionEntrySerializer,
     ProductionEntryCreateSerializer,
@@ -19,6 +21,136 @@ from .serializers_production_entry import (
 )
 from apps.core.permissions import IsMerchandiser
 from apps.core.models import Notification
+
+
+def update_order_line_production_dates(entry: ProductionEntry):
+    """
+    Update OrderLine start/complete dates based on production entries.
+    
+    Logic:
+    - When a knitting/dyeing entry is first recorded for an order line, set the start date
+    - When knitting/dyeing reaches 100% complete (quantity >= target), set the complete date
+    
+    The entry_date from the production entry becomes the start/complete date.
+    """
+    order_line = entry.order_line
+    if not order_line:
+        return  # No order line associated, nothing to update
+    
+    entry_type = entry.entry_type
+    
+    # Only handle knitting and dyeing for now
+    if entry_type not in [ProductionEntryType.KNITTING, ProductionEntryType.DYEING]:
+        return
+    
+    # Get all entries for this order line and entry type
+    entries_queryset = ProductionEntry.objects.filter(
+        order_line=order_line,
+        entry_type=entry_type
+    )
+    
+    # Calculate total quantity for this entry type
+    total_qty = entries_queryset.aggregate(
+        total=Sum('quantity')
+    )['total'] or Decimal('0')
+    
+    # Get target quantity (greige_quantity or quantity from order line)
+    target_qty = order_line.greige_quantity or order_line.quantity or Decimal('0')
+    
+    # Get the earliest entry date for start date
+    earliest_entry = entries_queryset.order_by('entry_date').first()
+    earliest_date = earliest_entry.entry_date if earliest_entry else None
+    
+    # Get the latest entry date for complete date (when 100% is reached)
+    latest_entry = entries_queryset.order_by('-entry_date').first()
+    latest_date = latest_entry.entry_date if latest_entry else None
+    
+    updated = False
+    
+    if entry_type == ProductionEntryType.KNITTING:
+        # Set knitting_start_date to the earliest entry date
+        if earliest_date and order_line.knitting_start_date != earliest_date:
+            order_line.knitting_start_date = earliest_date
+            updated = True
+        
+        # Set knitting_complete_date when 100% complete
+        if target_qty > 0 and total_qty >= target_qty:
+            if order_line.knitting_complete_date != latest_date:
+                order_line.knitting_complete_date = latest_date
+                updated = True
+        else:
+            # Clear complete date if no longer at 100% (e.g., entry deleted/updated)
+            if order_line.knitting_complete_date is not None:
+                order_line.knitting_complete_date = None
+                updated = True
+    
+    elif entry_type == ProductionEntryType.DYEING:
+        # Set dyeing_start_date to the earliest entry date
+        if earliest_date and order_line.dyeing_start_date != earliest_date:
+            order_line.dyeing_start_date = earliest_date
+            updated = True
+        
+        # Set dyeing_complete_date when 100% complete
+        if target_qty > 0 and total_qty >= target_qty:
+            if order_line.dyeing_complete_date != latest_date:
+                order_line.dyeing_complete_date = latest_date
+                updated = True
+        else:
+            # Clear complete date if no longer at 100%
+            if order_line.dyeing_complete_date is not None:
+                order_line.dyeing_complete_date = None
+                updated = True
+    
+    if updated:
+        # Save without triggering auto-calculation of dates in model.save()
+        # We specifically want to set these dates from production entries
+        order_line.save(update_fields=[
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'updated_at'
+        ])
+
+
+def clear_order_line_production_dates_if_empty(order_line: OrderLine, entry_type: str):
+    """
+    Clear start/complete dates if all entries of a type are deleted.
+    """
+    if not order_line:
+        return
+    
+    # Check if any entries of this type remain
+    remaining_entries = ProductionEntry.objects.filter(
+        order_line=order_line,
+        entry_type=entry_type
+    ).exists()
+    
+    if remaining_entries:
+        return  # Still have entries, dates will be updated by update_order_line_production_dates
+    
+    updated = False
+    
+    if entry_type == ProductionEntryType.KNITTING:
+        if order_line.knitting_start_date is not None:
+            order_line.knitting_start_date = None
+            updated = True
+        if order_line.knitting_complete_date is not None:
+            order_line.knitting_complete_date = None
+            updated = True
+    
+    elif entry_type == ProductionEntryType.DYEING:
+        if order_line.dyeing_start_date is not None:
+            order_line.dyeing_start_date = None
+            updated = True
+        if order_line.dyeing_complete_date is not None:
+            order_line.dyeing_complete_date = None
+            updated = True
+    
+    if updated:
+        order_line.save(update_fields=[
+            'knitting_start_date', 'knitting_complete_date',
+            'dyeing_start_date', 'dyeing_complete_date',
+            'updated_at'
+        ])
 
 
 class ProductionEntryViewSet(viewsets.ModelViewSet):
@@ -94,6 +226,9 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         entry = serializer.save(created_by=request.user)
         
+        # Update order line production dates (start/complete) based on this entry
+        update_order_line_production_dates(entry)
+        
         # Create notification for the order's merchandiser
         order = entry.order
         if order.merchandiser and order.merchandiser != request.user:
@@ -121,9 +256,44 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         
+        # Re-fetch instance to get updated data
+        instance.refresh_from_db()
+        
+        # Update order line production dates (start/complete) based on this entry
+        update_order_line_production_dates(instance)
+        
         # Return full entry data
         response_serializer = ProductionEntrySerializer(instance)
         return Response(response_serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete entry and update order line dates"""
+        instance = self.get_object()
+        
+        # Store references before deletion
+        order_line = instance.order_line
+        entry_type = instance.entry_type
+        
+        # Delete the entry
+        instance.delete()
+        
+        # Clear or recalculate order line dates after deletion
+        if order_line and entry_type in [ProductionEntryType.KNITTING, ProductionEntryType.DYEING]:
+            # Check if any entries remain for this type
+            remaining_entries = ProductionEntry.objects.filter(
+                order_line=order_line,
+                entry_type=entry_type
+            )
+            
+            if remaining_entries.exists():
+                # Recalculate dates using the first remaining entry
+                first_remaining = remaining_entries.first()
+                update_order_line_production_dates(first_remaining)
+            else:
+                # No entries left, clear the dates
+                clear_order_line_production_dates_if_empty(order_line, entry_type)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
     
     @action(detail=False, methods=['get'])
     def summary(self, request):
