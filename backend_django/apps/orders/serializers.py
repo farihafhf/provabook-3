@@ -986,11 +986,9 @@ class OrderListSerializer(serializers.ModelSerializer):
             # For local orders, use greige quantity as denominator for production percentages
             line_greige_qty = float(line.greige_quantity) if line.greige_quantity else line_qty
             
-            # KEY LOGIC: Use max(production_entry_value, delivered_qty) for effective progress
-            # If delivery is made without production entries, delivered qty counts as progress
-            effective_line_knitting = max(line_knitting, delivered_qty)
-            effective_line_dyeing = max(line_dyeing, delivered_qty)
-            effective_line_finishing = max(line_finishing, delivered_qty)
+            # NOTE: Line-level data shows ACTUAL production entries, not effective values
+            # The max(production, delivered) logic is applied at ORDER level in get_production_summary
+            # This ensures the expanded view shows real production entry data while cards show effective progress
             
             # Get mill offers from prefetched data
             mill_offers_data = []
@@ -1071,14 +1069,13 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'finalInspectionDate': line.final_inspection_date.isoformat() if line.final_inspection_date else None,
                 'exFactoryDate': line.ex_factory_date.isoformat() if line.ex_factory_date else None,
                 # Line-level production entry summary (from ProductionEntry records)
-                # Use greige quantity as denominator for local orders
-                # Uses effective values: max(production_entry, delivered_qty) for progress
-                'productionKnitting': effective_line_knitting,
-                'productionDyeing': effective_line_dyeing,
-                'productionFinishing': effective_line_finishing,
-                'productionKnittingPercent': round((effective_line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                'productionDyeingPercent': round((effective_line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
-                'productionFinishingPercent': round((effective_line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                # Shows ACTUAL production entries - the max(production, delivered) logic is applied at ORDER level
+                'productionKnitting': line_knitting,
+                'productionDyeing': line_dyeing,
+                'productionFinishing': line_finishing,
+                'productionKnittingPercent': round((line_knitting / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionDyeingPercent': round((line_dyeing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
+                'productionFinishingPercent': round((line_finishing / line_greige_qty) * 100, 1) if line_greige_qty > 0 else 0,
                 # Line notes
                 'notes': line.notes,
             }
