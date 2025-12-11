@@ -194,6 +194,16 @@ export default function OrderEditPage() {
           });
         });
         
+        // Debug: Log what was loaded from API
+        console.log('=== LOADED FROM API ===');
+        console.log('Lines loaded:', lines.map((l, i) => ({ 
+          index: i + 1,
+          id: l.id?.slice(-8), 
+          styleId: l.styleId?.slice(-8),
+          styleNumber: l.styleNumber, 
+          quantity: l.quantity 
+        })));
+        
         setOrderLines(lines);
       } else {
         // Fallback to single line
@@ -357,6 +367,9 @@ export default function OrderEditPage() {
   };
 
   const updateOrderLine = (index: number, field: keyof OrderLineFormData, value: any) => {
+    // Debug: Track every field change
+    console.log(`[UPDATE] Line ${index + 1}: ${field} = "${value}"`);
+    
     setOrderLines(prevLines => {
       const newLines = [...prevLines];
       newLines[index] = { ...newLines[index], [field]: value };
@@ -387,6 +400,7 @@ export default function OrderEditPage() {
   };
 
   const copyBasicInfoToAll = (sourceIndex: number) => {
+    console.log(`[COPY BASIC] Triggered from Line ${sourceIndex + 1}`);
     setOrderLines(prevLines => {
       const sourceLine = prevLines[sourceIndex];
       return prevLines.map((line, index) => {
@@ -409,6 +423,7 @@ export default function OrderEditPage() {
   };
 
   const copyTechnicalDetailsToAll = (sourceIndex: number) => {
+    console.log(`[COPY TECHNICAL] Triggered from Line ${sourceIndex + 1}`);
     setOrderLines(prevLines => {
       const sourceLine = prevLines[sourceIndex];
       return prevLines.map((line, index) => {
