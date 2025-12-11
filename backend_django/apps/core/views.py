@@ -430,3 +430,16 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             is_read=False
         ).update(is_read=True)
         return Response({'message': 'All notifications marked as read'})
+    
+    @action(detail=True, methods=['delete'], url_path='clear')
+    def clear(self, request, pk=None):
+        """DELETE /notifications/{id}/clear/ - delete a specific notification"""
+        notification = self.get_object()
+        notification.delete()
+        return Response({'message': 'Notification cleared'}, status=204)
+    
+    @action(detail=False, methods=['delete'], url_path='clear-all')
+    def clear_all(self, request):
+        """DELETE /notifications/clear-all/ - delete all notifications for the user"""
+        deleted_count, _ = Notification.objects.filter(user=request.user).delete()
+        return Response({'message': f'{deleted_count} notifications cleared'})

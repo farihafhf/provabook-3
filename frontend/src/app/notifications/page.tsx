@@ -76,6 +76,43 @@ export default function NotificationsPage() {
     }
   };
 
+  const clearNotification = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    try {
+      await api.delete(`/notifications/${id}/clear`);
+      setNotifications(notifications.filter(n => n.id !== id));
+      toast({
+        title: 'Notification cleared',
+        description: 'The notification has been removed.',
+      });
+    } catch (error) {
+      console.error('Failed to clear notification:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clear notification',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await api.delete('/notifications/clear-all');
+      setNotifications([]);
+      toast({
+        title: 'All notifications cleared',
+        description: 'All notifications have been removed.',
+      });
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to clear notifications',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'task_assigned':
@@ -187,12 +224,20 @@ export default function NotificationsPage() {
               )}
             </p>
           </div>
-          {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} variant="outline" size="sm">
-              <CheckCheck className="mr-2 h-4 w-4" />
-              Mark all as read
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <Button onClick={markAllAsRead} variant="outline" size="sm">
+                <CheckCheck className="mr-2 h-4 w-4" />
+                Mark all as read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button onClick={clearAllNotifications} variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
 
         <Card>
@@ -239,9 +284,19 @@ export default function NotificationsPage() {
                             <Badge className="bg-purple-600 hover:bg-purple-700">New</Badge>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <p className="text-xs text-gray-500">
+                            {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => clearNotification(e, notification.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                         
                         {/* Approve/Decline buttons for deletion requests */}
                         {notification.notificationType === 'deletion_request' && 
