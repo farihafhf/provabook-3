@@ -33,8 +33,12 @@ def update_order_line_production_dates(entry: ProductionEntry):
     
     The entry_date from the production entry becomes the start/complete date.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     order_line = entry.order_line
     if not order_line:
+        logger.debug(f"Production entry {entry.id} has no order_line, skipping date update")
         return  # No order line associated, nothing to update
     
     entry_type = entry.entry_type
@@ -54,8 +58,13 @@ def update_order_line_production_dates(entry: ProductionEntry):
         total=Sum('quantity')
     )['total'] or Decimal('0')
     
-    # Get target quantity (greige_quantity or quantity from order line)
-    target_qty = order_line.greige_quantity or order_line.quantity or Decimal('0')
+    # Get target quantity - prefer greige_quantity if set and > 0, otherwise use quantity
+    greige_qty = Decimal(str(order_line.greige_quantity)) if order_line.greige_quantity else Decimal('0')
+    line_qty = Decimal(str(order_line.quantity)) if order_line.quantity else Decimal('0')
+    target_qty = greige_qty if greige_qty > 0 else line_qty
+    
+    logger.info(f"Production date update: entry_type={entry_type}, order_line={order_line.id}, "
+                f"total_qty={total_qty}, target_qty={target_qty}, greige={greige_qty}, line_qty={line_qty}")
     
     # Get the earliest entry date for start date
     earliest_entry = entries_queryset.order_by('entry_date').first()
@@ -67,41 +76,51 @@ def update_order_line_production_dates(entry: ProductionEntry):
     
     updated = False
     
+    is_complete = target_qty > 0 and total_qty >= target_qty
+    logger.info(f"  → is_complete={is_complete} (total_qty={total_qty} >= target_qty={target_qty})")
+    
     if entry_type == ProductionEntryType.KNITTING:
         # Set knitting_start_date to the earliest entry date
         if earliest_date and order_line.knitting_start_date != earliest_date:
+            logger.info(f"  → Setting knitting_start_date to {earliest_date}")
             order_line.knitting_start_date = earliest_date
             updated = True
         
         # Set knitting_complete_date when 100% complete
-        if target_qty > 0 and total_qty >= target_qty:
+        if is_complete:
             if order_line.knitting_complete_date != latest_date:
+                logger.info(f"  → Setting knitting_complete_date to {latest_date} (100% complete)")
                 order_line.knitting_complete_date = latest_date
                 updated = True
         else:
             # Clear complete date if no longer at 100% (e.g., entry deleted/updated)
             if order_line.knitting_complete_date is not None:
+                logger.info(f"  → Clearing knitting_complete_date (no longer 100%)")
                 order_line.knitting_complete_date = None
                 updated = True
     
     elif entry_type == ProductionEntryType.DYEING:
         # Set dyeing_start_date to the earliest entry date
         if earliest_date and order_line.dyeing_start_date != earliest_date:
+            logger.info(f"  → Setting dyeing_start_date to {earliest_date}")
             order_line.dyeing_start_date = earliest_date
             updated = True
         
         # Set dyeing_complete_date when 100% complete
-        if target_qty > 0 and total_qty >= target_qty:
+        if is_complete:
             if order_line.dyeing_complete_date != latest_date:
+                logger.info(f"  → Setting dyeing_complete_date to {latest_date} (100% complete)")
                 order_line.dyeing_complete_date = latest_date
                 updated = True
         else:
             # Clear complete date if no longer at 100%
             if order_line.dyeing_complete_date is not None:
+                logger.info(f"  → Clearing dyeing_complete_date (no longer 100%)")
                 order_line.dyeing_complete_date = None
                 updated = True
     
     if updated:
+        logger.info(f"  → Saving order_line {order_line.id} with updated dates")
         # Save without triggering auto-calculation of dates in model.save()
         # We specifically want to set these dates from production entries
         order_line.save(update_fields=[
@@ -109,6 +128,8 @@ def update_order_line_production_dates(entry: ProductionEntry):
             'dyeing_start_date', 'dyeing_complete_date',
             'updated_at'
         ])
+    else:
+        logger.info(f"  → No changes to save for order_line {order_line.id}")
 
 
 def clear_order_line_production_dates_if_empty(order_line: OrderLine, entry_type: str):
