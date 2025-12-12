@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,8 @@ interface OrderLineFormData {
 export default function OrderEditPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const targetLineId = searchParams.get('lineId');
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [loading, setLoading] = useState(true);
@@ -89,6 +91,8 @@ export default function OrderEditPage() {
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([]);
   const orderLinesRef = useRef<OrderLineFormData[]>([]);
   const [expandedLines, setExpandedLines] = useState<Set<number>>(new Set([0])); // First line expanded by default
+  const [highlightedLineIndex, setHighlightedLineIndex] = useState<number | null>(null);
+  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Keep ref in sync with state to ensure handleSubmit always has latest values
   useEffect(() => {
@@ -205,6 +209,28 @@ export default function OrderEditPage() {
         })));
         
         setOrderLines(lines);
+        
+        // Handle lineId query param - find, expand, scroll to, and highlight target line
+        if (targetLineId) {
+          const targetIndex = lines.findIndex(line => line.id === targetLineId);
+          if (targetIndex !== -1) {
+            // Expand the target line
+            setExpandedLines(new Set([targetIndex]));
+            // Highlight the target line briefly
+            setHighlightedLineIndex(targetIndex);
+            // Scroll to the target line after a short delay to allow rendering
+            setTimeout(() => {
+              lineRefs.current[targetIndex]?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              // Remove highlight after 2 seconds
+              setTimeout(() => {
+                setHighlightedLineIndex(null);
+              }, 2000);
+            }, 100);
+          }
+        }
       } else {
         // Fallback to single line
         setOrderLines([
@@ -621,7 +647,12 @@ export default function OrderEditPage() {
             {orderLines.map((line, lineIndex) => (
                 <Card
                   key={line.id || lineIndex}
-                  className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all"
+                  ref={(el) => { lineRefs.current[lineIndex] = el; }}
+                  className={`border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-all ${
+                    highlightedLineIndex === lineIndex 
+                      ? 'ring-2 ring-indigo-500 ring-offset-2 bg-indigo-50 animate-pulse' 
+                      : ''
+                  }`}
                 >
                   <CardHeader 
                     className="pb-3 bg-gradient-to-r from-indigo-50 to-purple-50 cursor-pointer hover:bg-indigo-100 transition-colors"

@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory, Pencil } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 
 interface MillOffer {
@@ -71,6 +72,7 @@ interface LineItemDetailSheetProps {
   line: OrderLine | null;
   open: boolean;
   onClose: () => void;
+  orderId: string;
   orderStatus?: string;
   onStatusChange?: (lineId: string, newStatus: string) => Promise<void>;
   onApprovalChange?: (approvalType: string, newStatus: string, lineId: string, lineLabel: string, customTimestamp?: string) => Promise<void>;
@@ -143,6 +145,7 @@ export function LineItemDetailSheet({
   line,
   open,
   onClose,
+  orderId,
   orderStatus,
   onStatusChange,
   onApprovalChange,
@@ -151,6 +154,7 @@ export function LineItemDetailSheet({
   onSwatchDatesChange,
   updating = false,
 }: LineItemDetailSheetProps) {
+  const router = useRouter();
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedApprovals, setSelectedApprovals] = useState<Record<string, string>>({});
   
@@ -327,7 +331,21 @@ export function LineItemDetailSheet({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Order Line Details</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-2xl">Order Line Details</DialogTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4"
+              onClick={() => {
+                router.push(`/orders/${orderId}/edit?lineId=${line.id}`);
+                onClose();
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Line
+            </Button>
+          </div>
           <DialogDescription>
             View and manage line item status and approvals
           </DialogDescription>

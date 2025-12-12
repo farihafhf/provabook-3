@@ -3154,6 +3154,7 @@ export default function OrderDetailPage() {
             setShowLineItemSheet(false);
             setSelectedLineItem(null);
           }}
+          orderId={order.id}
           orderStatus={order.status}
           onStatusChange={handleLineStatusChange}
           onApprovalChange={handleLineApprovalChange}
