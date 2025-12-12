@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Calendar, Copy, ChevronDown, ChevronRight, Globe, MapPin } from 'lucide-react';
+import { Plus, Trash2, Calendar, Copy, ChevronDown, ChevronRight, Globe, MapPin, ImageIcon, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -32,6 +32,10 @@ interface OrderLineFormData {
   
   // Optional CAD
   cadCode?: string;
+  
+  // Optional Sample Photo
+  samplePhoto?: File;
+  samplePhotoPreview?: string;
   
   // Optional Style Technical Details
   description?: string;
@@ -277,6 +281,78 @@ export function CreateOrderDialog({
     });
   };
 
+  const handlePhotoSelect = (index: number, file: File) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload JPG, PNG, GIF, or WebP images only',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Image size must be less than 10MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const newLines = [...orderLines];
+      newLines[index] = {
+        ...newLines[index],
+        samplePhoto: file,
+        samplePhotoPreview: reader.result as string,
+      };
+      setOrderLines(newLines);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoRemove = (index: number) => {
+    const newLines = [...orderLines];
+    newLines[index] = {
+      ...newLines[index],
+      samplePhoto: undefined,
+      samplePhotoPreview: undefined,
+    };
+    setOrderLines(newLines);
+  };
+
+  const uploadSamplePhotos = async (orderId: string) => {
+    const photosToUpload = orderLines.filter(line => line.samplePhoto);
+    if (photosToUpload.length === 0) return;
+
+    const token = localStorage.getItem('access_token');
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
+
+    for (const line of photosToUpload) {
+      if (!line.samplePhoto) continue;
+      
+      try {
+        const formData = new FormData();
+        formData.append('file', line.samplePhoto);
+        formData.append('category', 'sample');
+        formData.append('subcategory', 'quality_test');
+        const description = `Sample photo for ${line.styleNumber}${line.colorCode ? ` - ${line.colorCode}` : ''}${line.cadCode ? ` - ${line.cadCode}` : ''}`;
+        formData.append('description', description);
+
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
+        });
+      } catch (error) {
+        console.error('Failed to upload sample photo:', error);
+      }
+    }
+  };
+
   const validateForm = () => {
     // All fields are optional - only basic validation
     if (orderLines.length === 0) {
@@ -402,11 +478,20 @@ export function CreateOrderDialog({
 
       console.log('Creating order with data:', orderData);
 
-      await api.post('/orders/', orderData);
+      const response = await api.post('/orders/', orderData);
+      const createdOrder = response.data;
+
+      // Upload sample photos if any
+      const photosToUpload = orderLines.filter(line => line.samplePhoto);
+      if (photosToUpload.length > 0 && createdOrder.id) {
+        await uploadSamplePhotos(createdOrder.id);
+      }
 
       toast({
         title: 'Success',
-        description: 'Order created successfully',
+        description: photosToUpload.length > 0 
+          ? `Order created successfully with ${photosToUpload.length} sample photo(s)`
+          : 'Order created successfully',
       });
 
       // Reset form
@@ -767,6 +852,61 @@ export function CreateOrderDialog({
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Sample Photo Upload */}
+                <div className="border-b pb-4">
+                  <Label className="text-sm font-semibold text-emerald-700 mb-2 block flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Sample Photo (Optional)
+                  </Label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Upload a sample photo for this line. It will be saved as a Quality Test document.
+                  </p>
+                  {line.samplePhotoPreview ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={line.samplePhotoPreview}
+                        alt="Sample preview"
+                        className="h-24 w-24 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handlePhotoRemove(lineIndex);
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1 truncate max-w-[96px]">
+                        {line.samplePhoto?.name}
+                      </p>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor={`line-${lineIndex}-photo`}
+                      className="flex items-center justify-center w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-colors"
+                    >
+                      <div className="text-center">
+                        <ImageIcon className="h-6 w-6 mx-auto text-gray-400" />
+                        <span className="text-xs text-gray-500 mt-1 block">Add Photo</span>
+                      </div>
+                      <input
+                        id={`line-${lineIndex}-photo`}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handlePhotoSelect(lineIndex, file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
 
                 {/* Optional: Style Technical Details */}
