@@ -406,16 +406,17 @@ class OrderLine(TimestampedModel):
     @property
     def line_label(self):
         """Human-readable label for this line"""
+        style_num = self.style.style_number if self.style else ""
         parts = []
         if self.color_code:
             color_label = self.color_name or self.color_code
-            parts.append(f"Color: {color_label}")
+            parts.append(color_label)
         if self.cad_code:
             cad_label = self.cad_name or self.cad_code
-            parts.append(f"CAD: {cad_label}")
-        if not parts:
-            return "Base line"
-        return " | ".join(parts)
+            parts.append(cad_label)
+        if parts:
+            return f"{style_num} - {' | '.join(parts)}" if style_num else " | ".join(parts)
+        return style_num or "Base line"
 
 
 class MillOffer(TimestampedModel):

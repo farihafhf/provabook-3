@@ -322,12 +322,26 @@ export function CreateOrderDialog({
     setOrderLines(newLines);
   };
 
-  const uploadSamplePhotos = async (orderId: string) => {
+  const uploadSamplePhotos = async (orderId: string, createdOrder: any) => {
     const photosToUpload = orderLines.filter(line => line.samplePhoto);
     if (photosToUpload.length === 0) return;
 
     const token = localStorage.getItem('access_token');
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/orders/${orderId}/documents/upload/`;
+
+    // Build a map of created lines by style+color+cad for matching
+    const createdLinesMap = new Map<string, string>();
+    if (createdOrder.styles) {
+      for (const style of createdOrder.styles) {
+        if (style.lines) {
+          for (const line of style.lines) {
+            // Create a key from style number + color code + cad code
+            const key = `${style.styleNumber || ''}|${line.colorCode || ''}|${line.cadCode || ''}`;
+            createdLinesMap.set(key, line.id);
+          }
+        }
+      }
+    }
 
     for (const line of photosToUpload) {
       if (!line.samplePhoto) continue;
@@ -339,6 +353,13 @@ export function CreateOrderDialog({
         formData.append('subcategory', 'quality_test');
         const description = `Sample photo for ${line.styleNumber}${line.colorCode ? ` - ${line.colorCode}` : ''}${line.cadCode ? ` - ${line.cadCode}` : ''}`;
         formData.append('description', description);
+
+        // Find the matching created line ID
+        const matchKey = `${line.styleNumber || ''}|${line.colorCode || ''}|${line.cadCode || ''}`;
+        const orderLineId = createdLinesMap.get(matchKey);
+        if (orderLineId) {
+          formData.append('orderLine', orderLineId);
+        }
 
         await fetch(apiUrl, {
           method: 'POST',
@@ -484,7 +505,7 @@ export function CreateOrderDialog({
       // Upload sample photos if any
       const photosToUpload = orderLines.filter(line => line.samplePhoto);
       if (photosToUpload.length > 0 && createdOrder.id) {
-        await uploadSamplePhotos(createdOrder.id);
+        await uploadSamplePhotos(createdOrder.id, createdOrder);
       }
 
       toast({
