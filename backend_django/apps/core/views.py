@@ -436,7 +436,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         """DELETE /notifications/{id}/clear/ - delete a specific notification"""
         notification = self.get_object()
         notification.delete()
-        return Response({'message': 'Notification cleared'}, status=204)
+        return Response({'message': 'Notification cleared'})
     
     @action(detail=False, methods=['delete'], url_path='clear-all')
     def clear_all(self, request):
