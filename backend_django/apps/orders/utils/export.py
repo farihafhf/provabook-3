@@ -799,6 +799,8 @@ def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
     from apps.orders.models_style_color import OrderStyle
     from apps.orders.models_order_line import OrderLine
     from apps.orders.models import ApprovalHistory
+    from apps.orders.models_supplier_delivery import SupplierDelivery
+    from django.db.models import Sum
     
     workbook = Workbook()
     worksheet = workbook.active
@@ -857,32 +859,35 @@ def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
         "STYLE NAME",           # A
         "FABRICS",              # B
         "COLOR",                # C
-        "ORDER QTY",            # D
-        "YARN\nREQ",            # E
-        "YARN\nBOOKED",         # F
-        "YARN\nRCVD",           # G
-        "LABDIP\nSUB",          # H
-        "LABDIP\nAPPROVED",     # I
-        "PP Yds",               # J
-        "FIT CUM PP \nSUBMITE", # K
-        "FIT CUM PP \nCOMMENTS",# L
-        "KNITTING\nSTART",      # M
-        "KNITTING\nCOMPLTE",    # N
-        "DYEING\nSTART",        # O
-        "DYEING\nCOMPLTE",      # P
-        "1st BULK SUBMISSION",  # Q
-        "LINE",                 # R
-        "BULK SIZE SET",        # S
-        "CUTTING\nSTART",       # T
-        "CUTTING\nCOMPLTE",     # U
-        "PRINT\nSEND",          # V
-        "PRINT\nRCVD",          # W
-        "SEWING\nINPUT",        # X
-        "SEWING\nFINISH",       # Y
-        "PACKING\nCOMPLTE",     # Z
-        "FINAL\nINSPECTION",    # AA
-        "EX-FACTORY",           # AB
-        "REMARKS",              # AC
+        "STATUS",               # D
+        "ORDER QTY",            # E
+        "QTY\nDELIVERED",       # F
+        "REMAINING\nQTY",       # G
+        "YARN\nREQ",            # H
+        "YARN\nBOOKED",         # I
+        "YARN\nRCVD",           # J
+        "LABDIP\nSUB",          # K
+        "LABDIP\nAPPROVED",     # L
+        "PP Yds",               # M
+        "FIT CUM PP \nSUBMITE", # N
+        "FIT CUM PP \nCOMMENTS",# O
+        "KNITTING\nSTART",      # P
+        "KNITTING\nCOMPLTE",    # Q
+        "DYEING\nSTART",        # R
+        "DYEING\nCOMPLTE",      # S
+        "1st BULK SUBMISSION",  # T
+        "LINE",                 # U
+        "BULK SIZE SET",        # V
+        "CUTTING\nSTART",       # W
+        "CUTTING\nCOMPLTE",     # X
+        "PRINT\nSEND",          # Y
+        "PRINT\nRCVD",          # Z
+        "SEWING\nINPUT",        # AA
+        "SEWING\nFINISH",       # AB
+        "PACKING\nCOMPLTE",     # AC
+        "FINAL\nINSPECTION",    # AD
+        "EX-FACTORY",           # AE
+        "REMARKS",              # AF
     ]
     
     header_row = 5
@@ -989,11 +994,26 @@ def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
                 quantity = float(line.quantity) if line.quantity else 0
                 total_quantity += quantity
                 
+                # Calculate delivered quantity from SupplierDelivery records
+                delivered_agg = SupplierDelivery.objects.filter(
+                    order_line=line
+                ).aggregate(total_delivered=Sum('delivered_quantity'))
+                qty_delivered = float(delivered_agg['total_delivered'] or 0)
+                
+                # Calculate remaining quantity
+                remaining_qty = quantity - qty_delivered if quantity > 0 else 0
+                
+                # Get human-readable status
+                status_display = line.get_status_display() if hasattr(line, 'get_status_display') else (line.status or "")
+                
                 row_data = [
                     style.style_number or "",                           # STYLE NAME
                     fabric_info,                                        # FABRICS
                     line.color_code or "",                              # COLOR
+                    status_display,                                     # STATUS
                     quantity if quantity > 0 else "",                   # ORDER QTY
+                    qty_delivered if qty_delivered > 0 else "",         # QTY DELIVERED
+                    remaining_qty if remaining_qty > 0 else "",         # REMAINING QTY
                     float(line.yarn_required) if line.yarn_required else "",  # YARN REQ
                     format_date(line.yarn_booked_date),                 # YARN BOOKED
                     format_date(line.yarn_received_date),               # YARN RCVD
@@ -1030,14 +1050,14 @@ def generate_tna_excel(queryset: Iterable, filters: dict = None) -> tuple:
     
     # Total row
     total_row = data_row
-    worksheet.cell(row=total_row, column=1, value="TOTAL QYUANTITY =")
+    worksheet.cell(row=total_row, column=1, value="TOTAL QUANTITY =")
     worksheet.cell(row=total_row, column=1).font = Font(bold=True)
     worksheet.cell(row=total_row, column=1).fill = total_fill
-    worksheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=3)
+    worksheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=4)
     
-    worksheet.cell(row=total_row, column=4, value=total_quantity)
-    worksheet.cell(row=total_row, column=4).font = Font(bold=True)
-    worksheet.cell(row=total_row, column=4).fill = total_fill
+    worksheet.cell(row=total_row, column=5, value=total_quantity)
+    worksheet.cell(row=total_row, column=5).font = Font(bold=True)
+    worksheet.cell(row=total_row, column=5).fill = total_fill
     
     # Apply borders to total row
     for col_idx in range(1, len(headers) + 1):
