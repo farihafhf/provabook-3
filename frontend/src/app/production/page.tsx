@@ -48,6 +48,7 @@ interface OrderLine {
   deliveredQty?: number;
   approvalStatus?: Record<string, string>;
   approvalDates?: Record<string, string>;
+  notes?: string;
   // Local order production fields - greige/yarn calculation
   processLossPercent?: number;
   mixedFabricType?: string;
@@ -127,6 +128,7 @@ interface Order {
   productionSummary?: ProductionSummary;
   lcIssueDate?: string;
   piSentDate?: string;
+  notes?: string;
 }
 
 interface OrdersFilterParams {
@@ -1091,6 +1093,24 @@ function LocalOrdersPageContent() {
                             <tr>
                               <td colSpan={13} className="p-0">
                                 <div className="bg-gradient-to-b from-slate-50 to-white border-t border-b border-slate-200">
+                                  {/* Order Notes - shown if notes exist */}
+                                  {order.notes && (
+                                    <div className="hidden md:block px-4 py-2 bg-amber-50 border-b border-amber-200">
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">📝 Notes:</span>
+                                        <p className="text-sm text-amber-900">{order.notes}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Order Notes - Mobile */}
+                                  {order.notes && (
+                                    <div className="md:hidden px-3 py-2 bg-amber-50 border-b border-amber-200">
+                                      <div className="flex items-start gap-2">
+                                        <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">📝 Notes:</span>
+                                        <p className="text-sm text-amber-900">{order.notes}</p>
+                                      </div>
+                                    </div>
+                                  )}
                                   {/* Mobile Card View */}
                                   <div className="md:hidden p-3 space-y-3">
                                     {lines.map((line) => {
@@ -1217,6 +1237,13 @@ function LocalOrdersPageContent() {
                                               </div>
                                             </div>
                                           </div>
+
+                                          {/* Line Notes - Mobile */}
+                                          {line.notes && (
+                                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+                                              <p className="text-amber-700 font-medium">📝 Note: {line.notes}</p>
+                                            </div>
+                                          )}
                                         </div>
                                       );
                                     })}
@@ -1268,6 +1295,7 @@ function LocalOrdersPageContent() {
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-teal-50">Sew</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[85px] bg-lime-50">Ex-Fact</th>
                                           <th className="py-2 px-3 text-left font-semibold min-w-[200px]">Approval Stages</th>
+                                          <th className="py-2 px-3 text-left font-semibold min-w-[150px] bg-amber-50">Notes</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1615,6 +1643,16 @@ function LocalOrdersPageContent() {
                                                     });
                                                   })()}
                                                 </div>
+                                              </td>
+                                              {/* Notes */}
+                                              <td className="py-2 px-3 min-w-[150px] bg-amber-50/30">
+                                                {line.notes ? (
+                                                  <span className="text-sm text-slate-700 line-clamp-2" title={line.notes}>
+                                                    {line.notes}
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-slate-400 text-xs">-</span>
+                                                )}
                                               </td>
                                             </tr>
                                           );
