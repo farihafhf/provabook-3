@@ -937,7 +937,7 @@ function LocalOrdersPageContent() {
           </CardHeader>
           <CardContent 
             ref={mainScrollRef}
-            className="max-h-[calc(100vh-420px)] overflow-y-auto"
+            className="max-h-[calc(100vh-280px)] overflow-y-auto"
           >
             {orders.length === 0 ? (
               <div className="text-center py-12">

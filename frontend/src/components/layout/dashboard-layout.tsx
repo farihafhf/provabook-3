@@ -241,7 +241,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Desktop Header - Hidden on mobile */}
-        <header className="hidden md:block bg-white border-b border-gray-200 px-6 py-4">
+        <header className="hidden md:block bg-gradient-to-r from-amber-50 via-orange-50/40 to-amber-50/60 border-b border-amber-100/80 px-6 py-4">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
