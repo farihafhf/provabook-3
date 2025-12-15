@@ -411,6 +411,7 @@ function LocalOrdersPageContent() {
   const [highlightedLines, setHighlightedLines] = useState<Set<string>>(new Set());
   // State for lines that should animate (pulse effect) - cleared after animation completes
   const [animatingLines, setAnimatingLines] = useState<Set<string>>(new Set());
+  const [productionCardsExpanded, setProductionCardsExpanded] = useState(false);
 
   // Memoize the filter change handler to prevent unnecessary re-renders
   // and ensure stable reference for OrderFilters component
@@ -721,8 +722,27 @@ function LocalOrdersPageContent() {
           defaultOrderType="local"
         />
 
-        {/* Production Stage Cards - Aggregated from line-level data */}
-        <div className="grid gap-4 md:grid-cols-4">
+        {/* Production Stage Cards - Collapsible section */}
+        <div className="border rounded-lg bg-white">
+          <button
+            onClick={() => setProductionCardsExpanded(!productionCardsExpanded)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <span>Production Overview</span>
+              <Badge variant="outline" className="text-xs">
+                {productionMetrics.totalLines} lines
+              </Badge>
+            </span>
+            {productionCardsExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+          
+          {productionCardsExpanded && (
+          <div className="grid gap-4 md:grid-cols-4 p-4 pt-0 border-t">
           {/* Yarn Card - uses Yarn Required as denominator */}
           <Card className="border-l-4 border-l-amber-500">
             <CardHeader className="pb-2">
@@ -877,6 +897,8 @@ function LocalOrdersPageContent() {
               </div>
             </CardContent>
           </Card>
+          </div>
+          )}
         </div>
 
         {/* Filters */}
