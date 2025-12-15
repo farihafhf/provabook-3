@@ -677,8 +677,8 @@ function LocalOrdersPageContent() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <div className="flex items-center gap-2 text-gray-600">
+        <div className="flex items-center justify-center h-full min-h-full bg-gradient-to-br from-teal-50/40 via-emerald-50/20 to-white rounded-xl p-4 md:p-6 -m-3 md:-m-6">
+          <div className="flex items-center gap-2 text-teal-700">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span>Loading local orders...</span>
           </div>
@@ -689,12 +689,12 @@ function LocalOrdersPageContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-full bg-gradient-to-br from-teal-50/40 via-emerald-50/20 to-white rounded-xl p-4 md:p-6 -m-3 md:-m-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Local Orders</h1>
-            <p className="text-gray-500 mt-2">Manage local orders with detailed stage tracking</p>
+            <h1 className="text-3xl font-bold text-teal-900">Local Orders</h1>
+            <p className="text-teal-700/70 mt-2">Manage local orders with detailed stage tracking</p>
           </div>
           <div className="flex items-center gap-2">
             <Button

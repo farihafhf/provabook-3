@@ -24,6 +24,25 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* Sidebar warm theme */
+    --sidebar-bg-from: 25 100% 97%;
+    --sidebar-bg-to: 35 100% 96%;
+    --sidebar-border: 30 30% 90%;
+    --sidebar-accent: 25 95% 53%;
+    --sidebar-accent-light: 25 100% 95%;
+    
+    /* Foreign orders page - warm coral/amber theme */
+    --foreign-bg: 30 100% 98%;
+    --foreign-accent: 25 95% 53%;
+    --foreign-accent-light: 30 100% 94%;
+    --foreign-border: 30 40% 88%;
+    
+    /* Local orders page - warm sage/teal theme */
+    --local-bg: 160 40% 97%;
+    --local-accent: 160 55% 40%;
+    --local-accent-light: 160 50% 92%;
+    --local-border: 160 30% 85%;
   }
 
   .dark {

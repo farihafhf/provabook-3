@@ -711,8 +711,8 @@ function OrdersPageContent() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <p>Loading orders...</p>
+        <div className="flex items-center justify-center h-full min-h-full bg-gradient-to-br from-amber-50/40 via-orange-50/20 to-white rounded-xl p-4 md:p-6 -m-3 md:-m-6">
+          <p className="text-amber-700">Loading orders...</p>
         </div>
       </DashboardLayout>
     );
@@ -720,11 +720,11 @@ function OrdersPageContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 min-h-full bg-gradient-to-br from-amber-50/40 via-orange-50/20 to-white rounded-xl p-4 md:p-6 -m-3 md:-m-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Orders</h1>
-            <p className="text-gray-500 mt-2">Manage textile fabric orders</p>
+            <h1 className="text-3xl font-bold text-amber-900">Orders</h1>
+            <p className="text-amber-700/70 mt-2">Manage textile fabric orders</p>
           </div>
           <div className="flex items-center gap-2">
             <Button

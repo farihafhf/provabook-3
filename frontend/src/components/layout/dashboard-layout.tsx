@@ -95,12 +95,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
 
       {/* Mobile Slide-out Menu */}
-      <div className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-amber-50 via-orange-50/50 to-white shadow-xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Mobile Menu Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 border-b border-amber-100/80">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-primary p-1.5">
+              <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 p-1.5 shadow-sm">
                 <Package className="h-5 w-5 text-white" />
               </div>
               <span className="font-bold text-lg">Provabook</span>
@@ -116,7 +116,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               const isActive = pathname?.startsWith(item.href);
               return (
                 <Link key={item.name} href={item.href} onClick={() => setMobileMenuOpen(false)}>
-                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-100'}`}>
+                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 shadow-sm' : 'text-gray-700 hover:bg-amber-50/70'}`}>
                     <item.icon className="h-5 w-5" />
                     <span className="flex-1 font-medium">{item.name}</span>
                     {item.badge !== undefined && item.badge > 0 && (
@@ -132,12 +132,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
 
           {/* Mobile User Section */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="p-4 border-t border-amber-100/80 bg-gradient-to-b from-amber-50/30 to-amber-50/60">
             {user && (
               <div className="flex items-center gap-3 mb-3">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user.profilePictureUrl || undefined} alt={user.fullName} />
-                  <AvatarFallback className="bg-primary text-white text-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white text-sm">
                     {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                   </AvatarFallback>
                 </Avatar>
@@ -187,10 +187,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
 
       {/* Desktop Sidebar - Hidden on mobile */}
-      <aside className={`hidden md:flex bg-white border-r border-gray-200 flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className="p-4 border-b border-gray-200">
+      <aside className={`hidden md:flex bg-gradient-to-b from-amber-50 via-orange-50/40 to-white border-r border-amber-100/80 flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
+        <div className="p-4 border-b border-amber-100/80">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary p-2">
+            <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 p-2 shadow-sm">
               <Package className="h-6 w-6 text-white" />
             </div>
             {sidebarOpen && <span className="font-bold text-xl">Provabook</span>}
@@ -202,7 +202,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             const isActive = pathname?.startsWith(item.href);
             return (
               <Link key={item.name} href={item.href}>
-                <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors relative ${isActive ? 'bg-primary/10 text-primary' : 'text-gray-700 hover:bg-gray-100'}`}>
+                <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative ${isActive ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 shadow-sm' : 'text-gray-700 hover:bg-amber-50/70'}`}>
                   <item.icon className="h-5 w-5" />
                   {sidebarOpen && <span className="flex-1">{item.name}</span>}
                   {item.badge !== undefined && item.badge > 0 && (
@@ -220,7 +220,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-amber-100/80 bg-gradient-to-b from-transparent to-amber-50/40">
           {sidebarOpen && user && (
             <div className="mb-3 px-3">
               <p className="text-sm font-medium">{user.fullName}</p>
@@ -270,7 +270,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Button variant="ghost" className="flex items-center gap-2 px-2">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={user.profilePictureUrl || undefined} alt={user.fullName} />
-                        <AvatarFallback className="bg-primary text-white text-sm">
+                        <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-500 text-white text-sm">
                           {user.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
                         </AvatarFallback>
                       </Avatar>
