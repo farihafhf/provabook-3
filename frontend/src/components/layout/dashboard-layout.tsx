@@ -95,12 +95,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
 
       {/* Mobile Slide-out Menu */}
-      <div className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-amber-50 via-orange-50/50 to-white shadow-xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 bg-gradient-to-b from-amber-50 via-orange-50 to-white shadow-xl transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Mobile Menu Header */}
           <div className="flex items-center justify-between p-4 border-b border-amber-100/80">
             <div className="flex items-center gap-2">
-              <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 p-1.5 shadow-sm">
+              <div className="rounded-lg bg-primary p-1.5 shadow-sm">
                 <Package className="h-5 w-5 text-white" />
               </div>
               <span className="font-bold text-lg">Provabook</span>
@@ -132,7 +132,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
 
           {/* Mobile User Section */}
-          <div className="p-4 border-t border-amber-100/80 bg-gradient-to-b from-amber-50/30 to-amber-50/60">
+          <div className="p-4 border-t border-amber-100 bg-gradient-to-b from-amber-50 to-orange-50">
             {user && (
               <div className="flex items-center gap-3 mb-3">
                 <Avatar className="h-10 w-10">
@@ -190,7 +190,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside className={`hidden md:flex bg-gradient-to-b from-amber-50 via-orange-50/40 to-white border-r border-amber-100/80 flex-col transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'}`}>
         <div className="p-4 border-b border-amber-100/80">
           <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 p-2 shadow-sm">
+            <div className="rounded-lg bg-primary p-2 shadow-sm">
               <Package className="h-6 w-6 text-white" />
             </div>
             {sidebarOpen && <span className="font-bold text-xl">Provabook</span>}
