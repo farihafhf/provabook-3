@@ -22,6 +22,16 @@ backend_django/.env
 backend_django/venv/
 backend_django/logs/
 
+# Nest backend local environment (never commit secrets)
+backend/.env
+
+# Nest backend build artifacts
+backend/node_modules/
+backend/dist/
+
+# Local-only hosting secrets reference
+.windsurf/rules/hosting-vars.md
+
 # Node / Next.js
 frontend/node_modules/
 frontend/.next/

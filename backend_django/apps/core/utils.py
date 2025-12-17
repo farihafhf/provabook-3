@@ -3,8 +3,12 @@ Utility functions
 """
 import os
 import uuid
-import boto3
-from botocore.exceptions import ClientError
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+except ImportError:
+    boto3 = None
+    ClientError = Exception
 from django.conf import settings
 
 
@@ -17,6 +21,9 @@ def get_r2_client():
     """
     if not settings.R2_ACCESS_KEY_ID or not settings.R2_SECRET_ACCESS_KEY or not settings.R2_ENDPOINT_URL:
         raise ValueError("Cloudflare R2 credentials not configured")
+
+    if boto3 is None:
+        raise ValueError("Cloudflare R2 dependencies are not installed (boto3)")
     
     return boto3.client(
         's3',
