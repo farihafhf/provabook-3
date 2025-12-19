@@ -768,25 +768,6 @@ function LocalOrdersPageContent() {
             </CardContent>
           </Card>
 
-        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) setSamplePhotoViewer(null); }}>
-          <DialogContent className="max-w-3xl max-h-[90vh]">
-            <DialogHeader>
-              <DialogTitle className="truncate">
-                {samplePhotoViewer?.fileName || 'Sample Photo'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="mt-4 flex items-center justify-center">
-              {samplePhotoViewer && (
-                <img
-                  src={samplePhotoViewer.fileUrl}
-                  alt={samplePhotoViewer.fileName}
-                  className="max-h-[70vh] w-full object-contain rounded-md"
-                />
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
           {/* Knitting Card - uses Greige as denominator */}
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-2">
@@ -1699,6 +1680,26 @@ function LocalOrdersPageContent() {
                 {deleting ? 'Deleting...' : 'Delete'}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sample Photo Viewer Dialog */}
+        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) setSamplePhotoViewer(null); }}>
+          <DialogContent className="max-w-3xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle className="truncate">
+                {samplePhotoViewer?.fileName || 'Sample Photo'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4 flex items-center justify-center">
+              {samplePhotoViewer && (
+                <img
+                  src={samplePhotoViewer.fileUrl}
+                  alt={samplePhotoViewer.fileName}
+                  className="max-h-[70vh] w-full object-contain rounded-md"
+                />
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
