@@ -44,7 +44,7 @@ An end-to-end platform for mills and sourcing teams to move fabric programs from
 
 ## 🖼️ Screens & Visuals
 
-| Dashboard & Navigation | Samples Workspace | Local Orders Board |
+| Dashboard & Navigation | Sample Orders | Notifications |
 | --- | --- | --- |
 | ![Dashboard](images/Screenshot%202025-12-20%20214058.jpg) | ![Sample Orders](images/Screenshot%202025-12-20%20214151.jpg) | ![Notifications](images/Screenshot%202025-12-20%20214210.jpg) |
 
