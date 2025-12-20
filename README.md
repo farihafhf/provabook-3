@@ -46,7 +46,7 @@ An end-to-end platform for mills and sourcing teams to move fabric programs from
 
 | Dashboard & Navigation | Samples Workspace | Local Orders Board |
 | --- | --- | --- |
-| ![Dashboard](images/Screenshot%202025-12-20%20214058.jpg) | ![Samples](images/Screenshot%202025-12-20%20214151.jpg) | ![Local Orders](images/Screenshot%202025-12-20%20214210.jpg) |
+| ![Dashboard](images/Screenshot%202025-12-20%20214058.jpg) | ![Sample Orders](images/Screenshot%202025-12-20%20214151.jpg) | ![Notifications](images/Screenshot%202025-12-20%20214210.jpg) |
 
 ---
 
@@ -232,11 +232,6 @@ _Django tests are configured but currently lean on manual QA for domain flows._
 - `TRAILING_SLASH_SOLUTION.md` – how frontend/backend auto-handle API slashes.
 - Frontend specific notes: `frontend/README.md`.
 
----
-
-## 📞 Support
-
-Internal application – reach the Provabook dev squad via Slack `#provabook-dev` or email `dev-team@company.com`.
 
 ---
 
