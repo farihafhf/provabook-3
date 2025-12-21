@@ -278,7 +278,11 @@ if R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_ENDPOINT_URL:
         MEDIA_URL = f'{R2_ENDPOINT_URL}/{R2_BUCKET_NAME}/'
 
 # File Upload Settings
-MAX_UPLOAD_SIZE = env.int('MAX_UPLOAD_SIZE', default=10485760)  # 10MB
+MAX_UPLOAD_SIZE = env.int('MAX_UPLOAD_SIZE', default=62914560)  # 60MB
+
+# Django built-in upload limits (must match MAX_UPLOAD_SIZE for consistency)
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE  # Max size for request body
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB - files larger than this go to temp disk
 ALLOWED_FILE_EXTENSIONS = env.list(
     'ALLOWED_FILE_EXTENSIONS',
     default=['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx']
