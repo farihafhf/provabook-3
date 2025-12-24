@@ -43,6 +43,12 @@ interface OrderLine {
   swatchReceivedDate?: string;
   swatchSentDate?: string;
   notes?: string;
+  customGates?: Array<{
+    id: string;
+    name: string;
+    gateKey: string;
+    status: string;
+  }>;
   samplePhoto?: {
     id: string;
     fileName: string;
@@ -1406,7 +1412,9 @@ function OrdersPageContent() {
                                                   allTypes.add(key);
                                                 });
                                                 
-                                                if (allTypes.size === 0) {
+                                                const hasCustomGates = (line.customGates || []).filter(g => g.status && g.status !== 'default').length > 0;
+                                                
+                                                if (allTypes.size === 0 && !hasCustomGates) {
                                                   return <span className="text-slate-400 text-xs italic">No approvals yet</span>;
                                                 }
                                                 
@@ -1424,30 +1432,50 @@ function OrdersPageContent() {
                                                   return (priorityOrder[a] || 99) - (priorityOrder[b] || 99);
                                                 });
                                                 
-                                                return sortedTypes.map(type => {
-                                                  // Get current status (could be submission, resubmission, approved, rejected, pending, etc.)
-                                                  const status = line.approvalStatus?.[type] || 'pending';
-                                                  const approvalDate = line.approvalDates?.[type];
-                                                  const badge = getApprovalBadge(status);
-                                                  
-                                                  return (
-                                                    <div 
-                                                      key={type} 
-                                                      className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200 whitespace-nowrap"
-                                                      title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
-                                                    >
-                                                      <span className="text-[10px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
-                                                      <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
-                                                        {badge.label.substring(0, 3)}
-                                                      </Badge>
-                                                      {approvalDate && (
-                                                        <span className="text-[10px] text-slate-500 font-medium">
-                                                          {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                });
+                                                return (
+                                                  <>
+                                                    {sortedTypes.map(type => {
+                                                      // Get current status (could be submission, resubmission, approved, rejected, pending, etc.)
+                                                      const status = line.approvalStatus?.[type] || 'pending';
+                                                      const approvalDate = line.approvalDates?.[type];
+                                                      const badge = getApprovalBadge(status);
+                                                      
+                                                      return (
+                                                        <div 
+                                                          key={type} 
+                                                          className="flex items-center gap-1 bg-slate-50 rounded px-1.5 py-1 border border-slate-200 whitespace-nowrap"
+                                                          title={`${formatApprovalName(type)}: ${badge.label}${approvalDate ? ` on ${formatDate(approvalDate)}` : ''}`}
+                                                        >
+                                                          <span className="text-[10px] font-semibold text-slate-600">{getApprovalAbbrev(type)}</span>
+                                                          <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
+                                                            {badge.label.substring(0, 3)}
+                                                          </Badge>
+                                                          {approvalDate && (
+                                                            <span className="text-[10px] text-slate-500 font-medium">
+                                                              {new Date(approvalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                            </span>
+                                                          )}
+                                                        </div>
+                                                      );
+                                                    })}
+                                                    {/* Custom Approval Gates */}
+                                                    {(line.customGates || []).filter(g => g.status && g.status !== 'default').map(gate => {
+                                                      const badge = getApprovalBadge(gate.status);
+                                                      return (
+                                                        <div 
+                                                          key={gate.id} 
+                                                          className="flex items-center gap-1 bg-purple-50 rounded px-1.5 py-1 border border-purple-200 whitespace-nowrap"
+                                                          title={`${gate.name}: ${badge.label}`}
+                                                        >
+                                                          <span className="text-[10px] font-semibold text-purple-600">{gate.name.substring(0, 6)}</span>
+                                                          <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
+                                                            {badge.label.substring(0, 3)}
+                                                          </Badge>
+                                                        </div>
+                                                      );
+                                                    })}
+                                                  </>
+                                                );
                                               })()}
                                             </div>
                                           </td>

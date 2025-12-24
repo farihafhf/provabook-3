@@ -12,11 +12,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Sum, Count, Q, Prefetch
 from django.utils import timezone
 from django.http import HttpResponse, FileResponse
-from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory
+from .models import Order, OrderStatus, OrderCategory, Document, ApprovalHistory, CustomApprovalGate
 from .serializers import (
     OrderSerializer, OrderCreateSerializer, OrderUpdateSerializer,
     OrderListSerializer, OrderAlertSerializer, OrderStatsSerializer, ApprovalUpdateSerializer,
-    StageChangeSerializer, DocumentSerializer, ApprovalHistorySerializer, ApprovalHistoryUpdateSerializer
+    StageChangeSerializer, DocumentSerializer, ApprovalHistorySerializer, ApprovalHistoryUpdateSerializer,
+    CustomApprovalGateSerializer, CustomApprovalGateCreateSerializer, CustomApprovalGateUpdateSerializer
 )
 from .filters import OrderFilter
 from .utils.export import generate_orders_excel, generate_purchase_order_pdf, generate_tna_excel
@@ -1057,3 +1058,101 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
+    @action(detail=True, methods=['get', 'post'], url_path='lines/(?P<line_id>[^/.]+)/custom-gates')
+    def custom_approval_gates(self, request, pk=None, line_id=None):
+        """
+        GET /orders/{id}/lines/{line_id}/custom-gates/
+        Get all custom approval gates for an order line
+        
+        POST /orders/{id}/lines/{line_id}/custom-gates/
+        Create a new custom approval gate
+        """
+        from .models_order_line import OrderLine
+        
+        order = self.get_object()
+        
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if request.method == 'GET':
+            gates = CustomApprovalGate.objects.filter(order_line=line)
+            serializer = CustomApprovalGateSerializer(gates, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            serializer = CustomApprovalGateCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            name = serializer.validated_data['name']
+            
+            # Create the custom gate
+            gate = CustomApprovalGate.objects.create(
+                order_line=line,
+                name=name,
+                created_by=request.user if request.user.is_authenticated else None
+            )
+            
+            response_serializer = CustomApprovalGateSerializer(gate)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch', 'delete'], url_path='custom-gates/(?P<gate_id>[^/.]+)')
+    def update_custom_gate(self, request, pk=None, gate_id=None):
+        """
+        PATCH /orders/{id}/custom-gates/{gate_id}/
+        Update a custom approval gate status
+        
+        DELETE /orders/{id}/custom-gates/{gate_id}/
+        Delete a custom approval gate
+        """
+        order = self.get_object()
+        
+        try:
+            gate = CustomApprovalGate.objects.get(
+                id=gate_id,
+                order_line__style__order=order
+            )
+        except CustomApprovalGate.DoesNotExist:
+            return Response(
+                {'error': 'Custom approval gate not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if request.method == 'DELETE':
+            gate.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        elif request.method == 'PATCH':
+            serializer = CustomApprovalGateUpdateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            new_status = serializer.validated_data['status']
+            custom_timestamp = serializer.validated_data.get('custom_timestamp')
+            old_status = gate.status
+            
+            # Update the gate status
+            gate.status = new_status
+            gate.save(update_fields=['status', 'updated_at'])
+            
+            # Create approval history record for custom gate status change
+            # Only create if status actually changed and is not 'default'
+            if new_status != 'default' and old_status != new_status:
+                history_entry = ApprovalHistory.objects.create(
+                    order=order,
+                    order_line=gate.order_line,
+                    approval_type=gate.gate_key,
+                    status=new_status,
+                    changed_by=request.user if request.user.is_authenticated else None
+                )
+                
+                # Apply custom timestamp if provided
+                if custom_timestamp:
+                    ApprovalHistory.objects.filter(pk=history_entry.pk).update(created_at=custom_timestamp)
+            
+            response_serializer = CustomApprovalGateSerializer(gate)
+            return Response(response_serializer.data)

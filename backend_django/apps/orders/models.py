@@ -404,3 +404,72 @@ class ApprovalHistory(TimestampedModel):
         if self.order_line:
             return f"{self.order.order_number} - {self.order_line.line_label} - {self.get_approval_type_display()} - {self.get_status_display()}"
         return f"{self.order.order_number} - {self.get_approval_type_display()} - {self.get_status_display()}"
+
+
+class CustomApprovalGate(TimestampedModel):
+    """
+    Custom Approval Gate model - Allows users to create custom approval gates for order lines.
+    These custom gates work alongside the standard 6 approval gates (price, quality, labDip, 
+    strikeOff, handloom, ppSample).
+    
+    The gate_key is a slugified version of the name, prefixed with 'custom_' to distinguish
+    from standard gates.
+    """
+    
+    STATUS_CHOICES = [
+        ('default', 'Default'),
+        ('submission', 'Submission'),
+        ('resubmission', 'Re-submission'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    order_line = models.ForeignKey(
+        'OrderLine',
+        on_delete=models.CASCADE,
+        related_name='custom_approval_gates'
+    )
+    
+    name = models.CharField(
+        max_length=100,
+        help_text='Display name for the custom approval gate'
+    )
+    
+    gate_key = models.CharField(
+        max_length=120,
+        help_text='Unique key for this gate (auto-generated from name)'
+    )
+    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='default'
+    )
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_custom_gates'
+    )
+    
+    class Meta:
+        db_table = 'custom_approval_gates'
+        ordering = ['created_at']
+        verbose_name = 'Custom Approval Gate'
+        verbose_name_plural = 'Custom Approval Gates'
+        unique_together = [['order_line', 'gate_key']]
+        indexes = [
+            models.Index(fields=['order_line', 'gate_key']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        if not self.gate_key:
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9]+', '_', self.name.lower()).strip('_')
+            self.gate_key = f'custom_{slug}'
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.order_line.line_label} - {self.name} ({self.status})"

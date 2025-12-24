@@ -3,7 +3,7 @@ Orders serializers
 """
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory
+from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory, CustomApprovalGate
 from apps.authentication.serializers import UserSerializer
 from apps.core.utils import get_file_presigned_url
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
@@ -1361,3 +1361,80 @@ class ApprovalHistoryUpdateSerializer(serializers.Serializer):
         if value and value > timezone.now():
             raise serializers.ValidationError("Timestamp cannot be in the future")
         return value
+
+
+class CustomApprovalGateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CustomApprovalGate model
+    Returns camelCase for frontend
+    """
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    
+    class Meta:
+        model = CustomApprovalGate
+        fields = [
+            'id', 'order_line', 'name', 'gate_key', 'status',
+            'created_by', 'created_by_name', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'gate_key', 'created_by', 'created_at', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Convert to camelCase for frontend"""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'orderLineId': str(data['order_line']),
+            'name': data['name'],
+            'gateKey': data['gate_key'],
+            'status': data['status'],
+            'createdBy': str(data['created_by']) if data.get('created_by') else None,
+            'createdByName': data.get('created_by_name'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }
+
+
+class CustomApprovalGateCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating a custom approval gate
+    Accepts camelCase from frontend
+    """
+    name = serializers.CharField(max_length=100)
+    order_line_id = serializers.UUIDField()
+    
+    def to_internal_value(self, data):
+        """Convert camelCase to snake_case"""
+        field_mapping = {
+            'orderLineId': 'order_line_id',
+        }
+        
+        converted_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            converted_data[new_key] = value
+        
+        return super().to_internal_value(converted_data)
+
+
+class CustomApprovalGateUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for updating a custom approval gate status
+    Accepts camelCase from frontend
+    """
+    status = serializers.ChoiceField(
+        choices=['default', 'submission', 'resubmission', 'approved', 'rejected']
+    )
+    custom_timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    
+    def to_internal_value(self, data):
+        """Convert camelCase to snake_case"""
+        field_mapping = {
+            'customTimestamp': 'custom_timestamp',
+        }
+        
+        converted_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            converted_data[new_key] = value
+        
+        return super().to_internal_value(converted_data)

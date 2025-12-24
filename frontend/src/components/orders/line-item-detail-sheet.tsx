@@ -15,9 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory, Pencil } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory, Pencil, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface MillOffer {
   id: string;
@@ -26,6 +28,18 @@ interface MillOffer {
   price: number;
   currency: string;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CustomApprovalGate {
+  id: string;
+  orderLineId: string;
+  name: string;
+  gateKey: string;
+  status: string;
+  createdBy?: string;
+  createdByName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -174,6 +188,98 @@ export function LineItemDetailSheet({
   const [swatchReceivedDate, setSwatchReceivedDate] = useState('');
   const [swatchSentDate, setSwatchSentDate] = useState('');
   const [savingSwatchDates, setSavingSwatchDates] = useState(false);
+
+  // Custom approval gate state
+  const [customGates, setCustomGates] = useState<CustomApprovalGate[]>([]);
+  const [newGateName, setNewGateName] = useState('');
+  const [creatingGate, setCreatingGate] = useState(false);
+  const [updatingGateId, setUpdatingGateId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Fetch custom approval gates when dialog opens
+  useEffect(() => {
+    if (open && line && orderId) {
+      fetchCustomGates();
+    }
+  }, [open, line?.id, orderId]);
+
+  const fetchCustomGates = async () => {
+    if (!line || !orderId) return;
+    try {
+      const response = await api.get(`/orders/${orderId}/lines/${line.id}/custom-gates/`);
+      setCustomGates(response.data);
+    } catch (error) {
+      console.error('Failed to fetch custom gates:', error);
+    }
+  };
+
+  const handleCreateCustomGate = async () => {
+    if (!line || !orderId || !newGateName.trim()) return;
+    
+    setCreatingGate(true);
+    try {
+      const response = await api.post(`/orders/${orderId}/lines/${line.id}/custom-gates/`, {
+        name: newGateName.trim(),
+        orderLineId: line.id,
+      });
+      setCustomGates(prev => [...prev, response.data]);
+      setNewGateName('');
+      toast({
+        title: 'Success',
+        description: `Custom gate "${newGateName.trim()}" created`,
+      });
+    } catch (error: any) {
+      console.error('Failed to create custom gate:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to create custom gate',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingGate(false);
+    }
+  };
+
+  const handleDeleteCustomGate = async (gateId: string) => {
+    if (!orderId) return;
+    try {
+      await api.delete(`/orders/${orderId}/custom-gates/${gateId}/`);
+      setCustomGates(prev => prev.filter(g => g.id !== gateId));
+      toast({
+        title: 'Success',
+        description: 'Custom gate deleted',
+      });
+    } catch (error: any) {
+      console.error('Failed to delete custom gate:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to delete custom gate',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCustomGateStatusChange = async (gateId: string, newStatus: string, customTimestamp?: string) => {
+    if (!orderId) return;
+    
+    setUpdatingGateId(gateId);
+    try {
+      const response = await api.patch(`/orders/${orderId}/custom-gates/${gateId}/`, {
+        status: newStatus,
+        ...(customTimestamp && { customTimestamp }),
+      });
+      setCustomGates(prev => prev.map(g => g.id === gateId ? response.data : g));
+    } catch (error: any) {
+      console.error('Failed to update custom gate:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to update custom gate',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingGateId(null);
+    }
+  };
 
   // Sync local state when the sheet opens or when line data changes
   // This ensures the UI updates immediately when approval/status changes are made
@@ -647,6 +753,74 @@ export function LineItemDetailSheet({
                     </Select>
                   </div>
                 ))}
+
+                {/* Custom Approval Gates */}
+                {customGates.map((gate) => (
+                  <div key={gate.id} className="p-3 border rounded-lg space-y-2 bg-purple-50 border-purple-200">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        {getApprovalIcon(gate.status)}
+                        {gate.name}
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700 border-purple-300">
+                          Custom
+                        </Badge>
+                      </Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCustomGate(gate.id)}
+                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <Select
+                      value={gate.status}
+                      onValueChange={(value) => handleCustomGateStatusChange(gate.id, value)}
+                      disabled={updatingGateId === gate.id}
+                    >
+                      <SelectTrigger className="w-full bg-white">
+                        <SelectValue placeholder="Default" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Default</SelectItem>
+                        <SelectItem value="submission">Submission</SelectItem>
+                        <SelectItem value="resubmission">Re-submission</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Custom Gate Section */}
+              <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                <Label className="text-sm font-semibold text-gray-700 mb-2 block">Add Custom Approval Gate</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter gate name (e.g., Buyer Approval)"
+                    value={newGateName}
+                    onChange={(e) => setNewGateName(e.target.value)}
+                    className="flex-1 bg-white"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newGateName.trim()) {
+                        handleCreateCustomGate();
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={handleCreateCustomGate}
+                    disabled={creatingGate || !newGateName.trim()}
+                    size="sm"
+                  >
+                    {creatingGate ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
