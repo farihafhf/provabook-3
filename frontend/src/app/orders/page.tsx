@@ -119,6 +119,17 @@ type ApiError = {
   message?: string;
 };
 
+// Generate abbreviation from custom gate name (e.g., "Proto Sample" -> "P.S", "Buyer Approval" -> "B.A")
+const getCustomGateAbbrev = (name: string): string => {
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    // Multiple words: take first letter of each word (max 3)
+    return words.slice(0, 3).map(w => w.charAt(0).toUpperCase()).join('.');
+  }
+  // Single word: take first 3-4 characters
+  return name.substring(0, 4).toUpperCase();
+};
+
 const getErrorMessage = (error: unknown, defaultMessage: string): string => {
   if (typeof error === 'object' && error !== null) {
     const maybeError = error as ApiError;
@@ -1467,7 +1478,7 @@ function OrdersPageContent() {
                                                           className="flex items-center gap-1 bg-purple-50 rounded px-1.5 py-1 border border-purple-200 whitespace-nowrap"
                                                           title={`${gate.name}: ${badge.label}`}
                                                         >
-                                                          <span className="text-[10px] font-semibold text-purple-600">{gate.name.substring(0, 6)}</span>
+                                                          <span className="text-[10px] font-semibold text-purple-600">{getCustomGateAbbrev(gate.name)}</span>
                                                           <Badge className={`${badge.bg} ${badge.text} text-[10px] px-1.5 py-0 font-medium`}>
                                                             {badge.label.substring(0, 3)}
                                                           </Badge>

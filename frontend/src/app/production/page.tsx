@@ -144,6 +144,17 @@ interface OrdersFilterParams {
   orderDateTo?: string | null;
 }
 
+// Generate abbreviation from custom gate name (e.g., "Proto Sample" -> "P.S", "Buyer Approval" -> "B.A")
+const getCustomGateAbbrev = (name: string): string => {
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 2) {
+    // Multiple words: take first letter of each word (max 3)
+    return words.slice(0, 3).map(w => w.charAt(0).toUpperCase()).join('.');
+  }
+  // Single word: take first 3-4 characters
+  return name.substring(0, 4).toUpperCase();
+};
+
 // Derive production stage from line-level dates, production entries, and delivery status
 function deriveLineProductionStage(line: OrderLine): string {
   // First check: If delivered, that's the final stage
@@ -1641,7 +1652,7 @@ function LocalOrdersPageContent() {
                                                               className="flex items-center gap-0.5 bg-purple-50 rounded px-1 py-0.5 border border-purple-200 whitespace-nowrap"
                                                               title={`${gate.name}: ${badge.label}`}
                                                             >
-                                                              <span className="text-[9px] font-semibold text-purple-600">{gate.name.substring(0, 6)}</span>
+                                                              <span className="text-[9px] font-semibold text-purple-600">{getCustomGateAbbrev(gate.name)}</span>
                                                               <Badge className={`${badge.bg} ${badge.text} text-[9px] px-1 py-0 font-medium`}>
                                                                 {badge.label.substring(0, 3)}
                                                               </Badge>
