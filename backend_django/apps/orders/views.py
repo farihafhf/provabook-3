@@ -50,6 +50,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         'styles__lines__documents',
         'styles__lines__deliveries',  # Prefetch line-level deliveries for production progress
         'styles__lines__production_entries',  # Prefetch line-level production entries
+        'styles__lines__custom_approval_gates',  # Prefetch custom approval gates per line
         'documents',  # Prefetch documents for LC/PI dates
         'production_entries',  # Prefetch production entries for local orders (order-level)
         'supplier_deliveries',  # Prefetch supplier deliveries for production summary

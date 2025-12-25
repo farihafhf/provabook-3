@@ -920,6 +920,20 @@ class OrderListSerializer(serializers.ModelSerializer):
             except Exception:
                 sample_photo = None
             
+            # Get custom approval gates from prefetched data
+            custom_gates_data = []
+            try:
+                for gate in line.custom_approval_gates.all():
+                    custom_gates_data.append({
+                        'id': str(gate.id),
+                        'orderLineId': str(gate.order_line_id),
+                        'name': gate.name,
+                        'gateKey': gate.gate_key,
+                        'status': gate.status,
+                    })
+            except Exception:
+                pass  # Gracefully handle if table doesn't exist
+            
             line_data = {
                 'id': str(line.id),
                 'styleNumber': style.style_number,
@@ -938,6 +952,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'approvalDates': approval_dates,
                 # Mill offers for development stage
                 'millOffers': mill_offers_data,
+                # Custom approval gates
+                'customGates': custom_gates_data,
                 # Delivery summary
                 'deliveredQty': delivered_qty,
                 'samplePhoto': sample_photo,

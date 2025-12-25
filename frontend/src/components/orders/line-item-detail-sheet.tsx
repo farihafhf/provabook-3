@@ -93,6 +93,7 @@ interface LineItemDetailSheetProps {
   onMillOfferAdd?: (lineId: string, millName: string, price: number, currency: string) => Promise<void>;
   onMillOfferDelete?: (millOfferId: string) => Promise<void>;
   onSwatchDatesChange?: (lineId: string, swatchReceivedDate: string | null, swatchSentDate: string | null) => Promise<void>;
+  onCustomGateChange?: () => Promise<void>;
   updating?: boolean;
 }
 
@@ -166,6 +167,7 @@ export function LineItemDetailSheet({
   onMillOfferAdd,
   onMillOfferDelete,
   onSwatchDatesChange,
+  onCustomGateChange,
   updating = false,
 }: LineItemDetailSheetProps) {
   const router = useRouter();
@@ -228,6 +230,8 @@ export function LineItemDetailSheet({
         title: 'Success',
         description: `Custom gate "${newGateName.trim()}" created`,
       });
+      // Notify parent to refresh data
+      if (onCustomGateChange) await onCustomGateChange();
     } catch (error: any) {
       console.error('Failed to create custom gate:', error);
       toast({
@@ -249,6 +253,8 @@ export function LineItemDetailSheet({
         title: 'Success',
         description: 'Custom gate deleted',
       });
+      // Notify parent to refresh data
+      if (onCustomGateChange) await onCustomGateChange();
     } catch (error: any) {
       console.error('Failed to delete custom gate:', error);
       toast({
@@ -269,6 +275,8 @@ export function LineItemDetailSheet({
         ...(customTimestamp && { customTimestamp }),
       });
       setCustomGates(prev => prev.map(g => g.id === gateId ? response.data : g));
+      // Notify parent to refresh data
+      if (onCustomGateChange) await onCustomGateChange();
     } catch (error: any) {
       console.error('Failed to update custom gate:', error);
       toast({

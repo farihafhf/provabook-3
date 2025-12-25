@@ -3161,6 +3161,10 @@ export default function OrderDetailPage() {
           onMillOfferAdd={handleMillOfferAdd}
           onMillOfferDelete={handleMillOfferDelete}
           onSwatchDatesChange={handleSwatchDatesChange}
+          onCustomGateChange={async () => {
+            // Refresh order data when custom gates are modified
+            await fetchOrder();
+          }}
           updating={updating}
         />
 
