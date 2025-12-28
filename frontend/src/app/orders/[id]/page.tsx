@@ -1121,6 +1121,33 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleOrderTypeChange = async (newOrderType: string) => {
+    if (!order) return;
+    
+    setUpdating(true);
+    try {
+      await api.patch(`/orders/${order.id}/`, { orderType: newOrderType });
+      
+      const typeLabel = newOrderType === 'local' ? 'Local' : 'Foreign';
+      toast({
+        title: 'Order Type Updated',
+        description: `Order changed to ${typeLabel}. It will now appear in the ${typeLabel} orders list.`,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to change order type:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to change order type',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleLineStatusChange = async (lineId: string, newStatus: string) => {
     if (!order) return;
     
@@ -1478,6 +1505,26 @@ export default function OrderDetailPage() {
                   👤 {order.merchandiserDetails.fullName}
                 </Badge>
               )}
+              {/* Order Type Switcher */}
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={order.orderType || 'foreign'} 
+                  onValueChange={handleOrderTypeChange}
+                  disabled={updating}
+                >
+                  <SelectTrigger className={`w-[120px] h-8 text-xs font-semibold ${
+                    order.orderType === 'local' 
+                      ? 'bg-amber-100 border-amber-400 text-amber-800' 
+                      : 'bg-teal-100 border-teal-400 text-teal-800'
+                  }`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="foreign">🌍 Foreign</SelectItem>
+                    <SelectItem value="local">🏭 Local</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 items-center">
