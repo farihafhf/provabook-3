@@ -25,6 +25,7 @@ import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-tim
 import { LineItemCard } from '@/components/orders/line-item-card';
 import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
 import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
+import { ActivityLogDialog } from '@/components/orders/activity-log-dialog';
 
 interface MillOffer {
   id: string;
@@ -328,6 +329,9 @@ export default function OrderDetailPage() {
 
   // Greige/Yarn Calculations Dialog state
   const [showCalculationsDialog, setShowCalculationsDialog] = useState(false);
+
+  // Activity Log Dialog state
+  const [showActivityLogDialog, setShowActivityLogDialog] = useState(false);
 
   // Helper function to calculate greige for a line
   const calculateLineGreige = (line: OrderLine): number => {
@@ -2123,6 +2127,28 @@ export default function OrderDetailPage() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Activity Log Card */}
+                <Card className="border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-indigo-800">
+                      <FileText className="h-5 w-5" />
+                      Activity Log
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Track progress updates, factory plans, and notes with timestamps
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={() => setShowActivityLogDialog(true)}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      View Activity Log
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
 
               <div className="space-y-4">
@@ -3406,6 +3432,16 @@ export default function OrderDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Activity Log Dialog */}
+        {order && (
+          <ActivityLogDialog
+            open={showActivityLogDialog}
+            onClose={() => setShowActivityLogDialog(false)}
+            orderId={order.id}
+            onRefresh={fetchOrder}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

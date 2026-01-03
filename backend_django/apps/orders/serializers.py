@@ -3,7 +3,7 @@ Orders serializers
 """
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory, CustomApprovalGate
+from .models import Order, OrderStatus, OrderCategory, OrderType, Document, ApprovalHistory, CustomApprovalGate, OrderActivityLog
 from apps.authentication.serializers import UserSerializer
 from apps.core.utils import get_file_presigned_url
 from .serializers_style_color import OrderStyleSerializer, OrderStyleCreateUpdateSerializer
@@ -1454,3 +1454,109 @@ class CustomApprovalGateUpdateSerializer(serializers.Serializer):
             converted_data[new_key] = value
         
         return super().to_internal_value(converted_data)
+
+
+class OrderActivityLogSerializer(serializers.ModelSerializer):
+    """
+    Serializer for OrderActivityLog model
+    Returns camelCase for frontend
+    """
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    created_by_email = serializers.CharField(source='created_by.email', read_only=True)
+    line_label = serializers.CharField(source='order_line.line_label', read_only=True)
+    
+    class Meta:
+        model = OrderActivityLog
+        fields = [
+            'id', 'order', 'order_line', 'category', 'content',
+            'created_by', 'created_by_name', 'created_by_email',
+            'line_label', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def to_representation(self, instance):
+        """Convert to camelCase for frontend"""
+        data = super().to_representation(instance)
+        
+        category_display = dict(OrderActivityLog.CATEGORY_CHOICES).get(data['category'], data['category'])
+        
+        return {
+            'id': str(data['id']),
+            'orderId': str(data['order']),
+            'orderLineId': str(data['order_line']) if data.get('order_line') else None,
+            'category': data['category'],
+            'categoryDisplay': category_display,
+            'content': data['content'],
+            'createdBy': str(data['created_by']) if data.get('created_by') else None,
+            'createdByName': data.get('created_by_name'),
+            'createdByEmail': data.get('created_by_email'),
+            'lineLabel': data.get('line_label'),
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+        }
+
+
+class OrderActivityLogCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating an activity log entry
+    Accepts camelCase from frontend
+    """
+    category = serializers.ChoiceField(
+        choices=['general', 'production', 'quality', 'communication', 'milestone', 'issue', 'plan'],
+        default='general'
+    )
+    content = serializers.CharField()
+    order_line_id = serializers.UUIDField(required=False, allow_null=True)
+    custom_timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    
+    def to_internal_value(self, data):
+        """Convert camelCase to snake_case"""
+        field_mapping = {
+            'orderLineId': 'order_line_id',
+            'customTimestamp': 'custom_timestamp',
+        }
+        
+        converted_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            converted_data[new_key] = value
+        
+        return super().to_internal_value(converted_data)
+    
+    def validate_custom_timestamp(self, value):
+        """Validate timestamp is not in the future"""
+        if value and value > timezone.now():
+            raise serializers.ValidationError("Timestamp cannot be in the future")
+        return value
+
+
+class OrderActivityLogUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for updating an activity log entry
+    Accepts camelCase from frontend
+    """
+    category = serializers.ChoiceField(
+        choices=['general', 'production', 'quality', 'communication', 'milestone', 'issue', 'plan'],
+        required=False
+    )
+    content = serializers.CharField(required=False)
+    custom_timestamp = serializers.DateTimeField(required=False, allow_null=True)
+    
+    def to_internal_value(self, data):
+        """Convert camelCase to snake_case"""
+        field_mapping = {
+            'customTimestamp': 'custom_timestamp',
+        }
+        
+        converted_data = {}
+        for key, value in data.items():
+            new_key = field_mapping.get(key, key)
+            converted_data[new_key] = value
+        
+        return super().to_internal_value(converted_data)
+    
+    def validate_custom_timestamp(self, value):
+        """Validate timestamp is not in the future"""
+        if value and value > timezone.now():
+            raise serializers.ValidationError("Timestamp cannot be in the future")
+        return value
