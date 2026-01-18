@@ -707,13 +707,26 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         """
         from .models_style_color import OrderStyle
         from .models_order_line import OrderLine
+        import logging
+        logger = logging.getLogger(__name__)
         
         styles_data = validated_data.pop('styles', None)
+        
+        # DEBUG: Log finished fabric data
+        logger.info(f"=== ORDER UPDATE DEBUG ===")
+        logger.info(f"Order ID: {instance.id}")
+        logger.info(f"Finished Fabric Qty in validated_data: {validated_data.get('finished_fabric_quantity')}")
+        logger.info(f"Finished Fabric Unit in validated_data: {validated_data.get('finished_fabric_unit')}")
         
         # Update order-level fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        
+        # DEBUG: Verify it was saved
+        instance.refresh_from_db()
+        logger.info(f"After save - Order finished_fabric_quantity: {instance.finished_fabric_quantity}")
+        logger.info(f"After save - Order finished_fabric_unit: {instance.finished_fabric_unit}")
         
         # Update styles if provided
         if styles_data is not None:
@@ -770,6 +783,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                             line = OrderLine.objects.get(id=line_id, style__order=instance)
                             all_processed_line_ids.add(str(line_id))
                             
+                            # DEBUG: Log line finished fabric before update
+                            logger.info(f"Line {line_id} - Before: finished_fabric_quantity={line.finished_fabric_quantity}")
+                            logger.info(f"Line {line_id} - line_data has: {line_data.get('finished_fabric_quantity')}")
+                            
                             # Update the line's style if it changed (user moved line to different style)
                             if line.style_id != style.id:
                                 line.style = style
@@ -779,6 +796,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
                                 setattr(line, attr, value)
                             
                             line.save()
+                            
+                            # DEBUG: Verify line data after save
+                            line.refresh_from_db()
+                            logger.info(f"Line {line_id} - After save: finished_fabric_quantity={line.finished_fabric_quantity}, greige={line.greige_quantity}, yarn={line.yarn_required}")
                         except OrderLine.DoesNotExist:
                             # Line ID provided but doesn't exist in this order, create new one
                             new_line = OrderLine.objects.create(style=style, **line_data)

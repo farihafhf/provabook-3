@@ -357,9 +357,12 @@ export default function OrderEditPage() {
 
       // Debug: Log what we're sending to verify data integrity
       console.log('=== EDIT ORDER SUBMIT ===');
+      console.log('Order Type:', orderType);
+      console.log('Finished Fabric Quantity:', orderData.finishedFabricQuantity);
+      console.log('Finished Fabric Unit:', orderData.finishedFabricUnit);
       console.log(`Sending ${orderData.styles.length} styles (1 per line):`);
       orderData.styles.forEach((s: any, i: number) => {
-        console.log(`  Style ${i + 1}: styleNumber="${s.styleNumber}", desc="${s.description?.slice(0,20) || ''}...", lineId="${s.lines[0]?.id?.slice(-8)}", qty=${s.lines[0]?.quantity}`);
+        console.log(`  Style ${i + 1}: styleNumber="${s.styleNumber}", desc="${s.description?.slice(0,20) || ''}...", lineId="${s.lines[0]?.id?.slice(-8)}", qty=${s.lines[0]?.quantity}, finishedFabric=${s.lines[0]?.finishedFabricQuantity}`);
       });
       
       await api.patch(`/orders/${params.id}/`, orderData);
