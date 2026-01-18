@@ -986,7 +986,7 @@ function LocalOrdersPageContent() {
                           <tr
                             className="text-sm cursor-pointer hover:bg-gray-50"
                             onClick={() => {
-                              router.push(`/orders/${order.id}`);
+                              router.push(`/orders/${order.id}?from=production`);
                             }}
                           >
                             <td className="py-4 px-2 text-center text-gray-500 font-medium border border-slate-200">{index + 1}</td>
@@ -1052,7 +1052,7 @@ function LocalOrdersPageContent() {
                                   size="sm"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    router.push(`/orders/${order.id}`);
+                                    router.push(`/orders/${order.id}?from=production`);
                                   }}
                                   title="View Details"
                                 >
@@ -1137,7 +1137,7 @@ function LocalOrdersPageContent() {
                                           }`}
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            router.push(`/orders/${order.id}`);
+                                            router.push(`/orders/${order.id}?from=production`);
                                           }}
                                         >
                                           {/* Header with badges */}
@@ -1339,7 +1339,7 @@ function LocalOrdersPageContent() {
                                               }`}
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                router.push(`/orders/${order.id}`);
+                                                router.push(`/orders/${order.id}?from=production`);
                                               }}
                                             >
                                               {/* Style / Color / CAD */}

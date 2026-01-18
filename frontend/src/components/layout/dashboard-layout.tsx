@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
@@ -40,6 +40,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -81,8 +82,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Notifications', href: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
+  // Check if we're on an order detail page from production
+  const isLocalOrderDetail = pathname?.startsWith('/orders/') && searchParams?.get('from') === 'production';
+
+  // Helper function to check if a nav item is active
+  const isNavItemActive = (item: typeof navigation[0]) => {
+    // Special case: Local order detail pages should highlight Local Orders
+    if (isLocalOrderDetail && item.href === '/production') {
+      return true;
+    }
+    // Special case: Prevent Foreign Orders from being highlighted on local order details
+    if (isLocalOrderDetail && item.href === '/orders') {
+      return false;
+    }
+    // Default: match by pathname prefix
+    return pathname?.startsWith(item.href);
+  };
+
   // Get current page name for mobile header
-  const currentPage = navigation.find(item => pathname?.startsWith(item.href))?.name || 'Provabook';
+  const currentPage = navigation.find(item => isNavItemActive(item))?.name || 'Provabook';
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -113,7 +131,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Mobile Navigation */}
           <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = pathname?.startsWith(item.href);
+              const isActive = isNavItemActive(item);
               return (
                 <Link key={item.name} href={item.href} onClick={() => setMobileMenuOpen(false)}>
                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 shadow-sm' : 'text-gray-700 hover:bg-amber-50/70'}`}>
@@ -199,7 +217,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => {
-            const isActive = pathname?.startsWith(item.href);
+            const isActive = isNavItemActive(item);
             return (
               <Link key={item.name} href={item.href}>
                 <div className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 relative ${isActive ? 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 shadow-sm' : 'text-gray-700 hover:bg-amber-50/70'}`}>
