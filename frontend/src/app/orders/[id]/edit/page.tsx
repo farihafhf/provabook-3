@@ -40,6 +40,9 @@ interface OrderLineFormData {
   cuttableWidth?: string;
   finishingWidth?: string;
   // Local order production fields (line-level)
+  // Finished Fabric fields
+  finishedFabricQuantity?: string;
+  finishedFabricUnit?: string;
   // Greige/Yarn calculation fields
   processLossPercent?: string;
   mixedFabricType?: string;
@@ -84,6 +87,8 @@ export default function OrderEditPage() {
     fabricType: '',
     orderDate: '',
     notes: '',
+    finishedFabricQuantity: '',
+    finishedFabricUnit: 'kg',
   });
   
   const [orderType, setOrderType] = useState<'foreign' | 'local'>('foreign');
@@ -130,6 +135,8 @@ export default function OrderEditPage() {
         fabricType: order.fabricType || '',
         orderDate: order.orderDate || '',
         notes: order.notes || '',
+        finishedFabricQuantity: order.finishedFabricQuantity ? order.finishedFabricQuantity.toString() : '',
+        finishedFabricUnit: order.finishedFabricUnit || 'kg',
       });
       
       // Set order type
@@ -169,6 +176,9 @@ export default function OrderEditPage() {
               cuttableWidth: style.cuttableWidth || '',
               finishingWidth: style.finishingWidth || '',
               // Local order production fields (line-level)
+              // Finished Fabric fields
+              finishedFabricQuantity: item.finishedFabricQuantity ? item.finishedFabricQuantity.toString() : '',
+              finishedFabricUnit: item.finishedFabricUnit || 'kg',
               // Greige/Yarn calculation fields
               processLossPercent: item.processLossPercent ? item.processLossPercent.toString() : '',
               mixedFabricType: item.mixedFabricType || '',
@@ -278,6 +288,8 @@ export default function OrderEditPage() {
           0
         ),
         unit: currentOrderLines[0]?.unit || 'meters',
+        finishedFabricQuantity: orderType === 'local' && formData.finishedFabricQuantity ? parseFloat(formData.finishedFabricQuantity) : undefined,
+        finishedFabricUnit: orderType === 'local' && formData.finishedFabricUnit ? formData.finishedFabricUnit : undefined,
         // Each line becomes its own style - completely independent
         styles: currentOrderLines.map((line, index) => {
           // Build line data
@@ -299,6 +311,8 @@ export default function OrderEditPage() {
           
           // Add local order production fields
           if (orderType === 'local') {
+            lineData.finishedFabricQuantity = line.finishedFabricQuantity ? parseFloat(line.finishedFabricQuantity) : undefined;
+            lineData.finishedFabricUnit = line.finishedFabricUnit || undefined;
             lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
             lineData.mixedFabricType = line.mixedFabricType || undefined;
             lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
@@ -630,6 +644,50 @@ export default function OrderEditPage() {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   />
                 </div>
+                
+                {/* Order-Level Finished Fabric (Local Orders Only) */}
+                {orderType === 'local' && (
+                  <>
+                    <div className="col-span-3 border-t pt-4">
+                      <Label className="text-sm font-semibold text-green-700 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Finished Fabric (Order-Level)
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Used for production calculations. Optional field.
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="finishedFabricQuantity">Finished Fabric Quantity</Label>
+                      <Input
+                        id="finishedFabricQuantity"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g., 1000"
+                        value={formData.finishedFabricQuantity}
+                        onChange={(e) => setFormData({ ...formData, finishedFabricQuantity: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="finishedFabricUnit">Unit</Label>
+                      <Select
+                        value={formData.finishedFabricUnit}
+                        onValueChange={(value) => setFormData({ ...formData, finishedFabricUnit: value })}
+                      >
+                        <SelectTrigger id="finishedFabricUnit">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kg">kg</SelectItem>
+                          <SelectItem value="yards">yards</SelectItem>
+                          <SelectItem value="meters">meters</SelectItem>
+                          <SelectItem value="lbs">lbs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1006,6 +1064,47 @@ export default function OrderEditPage() {
                           )}
                         </div>
                         
+                        {/* Finished Fabric Section */}
+                        <div className="bg-green-50 p-3 rounded-lg border border-green-200 mb-3">
+                          <Label className="text-sm font-semibold text-green-800 mb-2 block">
+                            Finished Fabric (Line-Level)
+                          </Label>
+                          <p className="text-xs text-gray-600 mb-2">
+                            Optional: Override quantity for this line's production calculations
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label className="text-sm">Finished Fabric Quantity</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="e.g., 500"
+                                value={line.finishedFabricQuantity || ''}
+                                onChange={(e) => updateOrderLine(lineIndex, 'finishedFabricQuantity', e.target.value)}
+                                className="text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-sm">Unit</Label>
+                              <Select
+                                value={line.finishedFabricUnit || 'kg'}
+                                onValueChange={(value) => updateOrderLine(lineIndex, 'finishedFabricUnit', value)}
+                              >
+                                <SelectTrigger className="text-sm">
+                                  <SelectValue placeholder="Select unit" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="kg">kg</SelectItem>
+                                  <SelectItem value="yards">yards</SelectItem>
+                                  <SelectItem value="meters">meters</SelectItem>
+                                  <SelectItem value="lbs">lbs</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+
                         {/* Greige & Yarn Calculation Section */}
                         <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 mb-3">
                           <Label className="text-sm font-semibold text-amber-800 mb-2 block">

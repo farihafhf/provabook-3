@@ -61,6 +61,9 @@ interface OrderLineFormData {
   notes?: string;
   
   // Local Order Production Fields (only used for local orders)
+  // Finished Fabric fields
+  finishedFabricQuantity?: string;
+  finishedFabricUnit?: string;
   // Greige/Yarn calculation fields
   processLossPercent?: string;
   mixedFabricType?: string;
@@ -108,6 +111,8 @@ export function CreateOrderDialog({
     fabricType: '',
     orderDate: '',
     notes: '',
+    finishedFabricQuantity: '',
+    finishedFabricUnit: 'kg',
   });
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([
@@ -435,6 +440,8 @@ export function CreateOrderDialog({
           0
         ),
         unit: orderLines[0]?.unit || 'meters',
+        finishedFabricQuantity: orderType === 'local' && formData.finishedFabricQuantity ? parseFloat(formData.finishedFabricQuantity) : undefined,
+        finishedFabricUnit: orderType === 'local' && formData.finishedFabricUnit ? formData.finishedFabricUnit : undefined,
         styles: Array.from(styleGroups.entries()).map(([styleNumber, lines]) => {
           const firstLine = lines[0];
           return {
@@ -468,6 +475,9 @@ export function CreateOrderDialog({
               
               // Add local order production fields at line level for local orders
               if (orderType === 'local') {
+                // Finished Fabric fields
+                lineData.finishedFabricQuantity = line.finishedFabricQuantity ? parseFloat(line.finishedFabricQuantity) : undefined;
+                lineData.finishedFabricUnit = line.finishedFabricUnit || undefined;
                 // Greige/Yarn calculation fields (yarnRequired is auto-calculated on backend)
                 lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
                 lineData.mixedFabricType = line.mixedFabricType || undefined;
@@ -723,6 +733,54 @@ export function CreateOrderDialog({
                   }
                 />
               </div>
+              
+              {/* Order-Level Finished Fabric (Local Orders Only) */}
+              {orderType === 'local' && (
+                <>
+                  <div className="col-span-2 border-t pt-4">
+                    <Label className="text-sm font-semibold text-green-700 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Finished Fabric (Order-Level)
+                    </Label>
+                    <p className="text-xs text-gray-500 mt-1 mb-3">
+                      This will be used for production calculations (greige, yarn) instead of order quantity. Optional field.
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="finishedFabricQuantity">Finished Fabric Quantity</Label>
+                    <Input
+                      id="finishedFabricQuantity"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g., 1000"
+                      value={formData.finishedFabricQuantity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, finishedFabricQuantity: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="finishedFabricUnit">Unit</Label>
+                    <Select
+                      value={formData.finishedFabricUnit}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, finishedFabricUnit: value })
+                      }
+                    >
+                      <SelectTrigger id="finishedFabricUnit">
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="yards">yards</SelectItem>
+                        <SelectItem value="meters">meters</SelectItem>
+                        <SelectItem value="lbs">lbs</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1176,6 +1234,47 @@ export function CreateOrderDialog({
                       )}
                     </summary>
                     <div className="space-y-4 mt-3">
+                      {/* Finished Fabric Section */}
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <Label className="text-sm font-semibold text-green-800 mb-2 block">
+                          Finished Fabric (Line-Level)
+                        </Label>
+                        <p className="text-xs text-gray-600 mb-3">
+                          Optional: Override quantity for this line's production calculations
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor={`line-${lineIndex}-finishedFabricQuantity`}>Finished Fabric Quantity</Label>
+                            <Input
+                              id={`line-${lineIndex}-finishedFabricQuantity`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="e.g., 500"
+                              value={line.finishedFabricQuantity || ''}
+                              onChange={(e) => updateOrderLine(lineIndex, 'finishedFabricQuantity', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`line-${lineIndex}-finishedFabricUnit`}>Unit</Label>
+                            <Select
+                              value={line.finishedFabricUnit || 'kg'}
+                              onValueChange={(value) => updateOrderLine(lineIndex, 'finishedFabricUnit', value)}
+                            >
+                              <SelectTrigger id={`line-${lineIndex}-finishedFabricUnit`}>
+                                <SelectValue placeholder="Select unit" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="kg">kg</SelectItem>
+                                <SelectItem value="yards">yards</SelectItem>
+                                <SelectItem value="meters">meters</SelectItem>
+                                <SelectItem value="lbs">lbs</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Greige & Yarn Calculation Section */}
                       <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
                         <Label className="text-sm font-semibold text-amber-800 mb-2 block">

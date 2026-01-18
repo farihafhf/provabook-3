@@ -71,6 +71,8 @@ interface OrderLine {
   cuttableWidth?: string;
   finishingWidth?: string;
   // Local order production fields - greige/yarn calculation
+  finishedFabricQuantity?: number;
+  finishedFabricUnit?: string;
   processLossPercent?: number;
   mixedFabricType?: string;
   mixedFabricPercent?: number;
@@ -336,7 +338,8 @@ export default function OrderDetailPage() {
   // Helper function to calculate greige for a line
   const calculateLineGreige = (line: OrderLine): number => {
     if (line.greigeQuantity) return line.greigeQuantity;
-    const qty = line.quantity || 0;
+    // Use finished fabric quantity if available, otherwise use line quantity
+    const qty = line.finishedFabricQuantity || line.quantity || 0;
     const lossPercent = (line.processLossPercent || 0) / 100;
     return qty * (1 + lossPercent);
   };
@@ -3344,6 +3347,13 @@ export default function OrderDetailPage() {
                             {/* Input values */}
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-gray-500 uppercase">Inputs</p>
+                              {line.finishedFabricQuantity && (
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-4 w-4 text-green-500" />
+                                  <span className="text-gray-600">Finished Fabric:</span>
+                                  <span className="font-semibold text-green-600">{line.finishedFabricQuantity} {line.finishedFabricUnit || line.unit}</span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-2">
                                 <Percent className="h-4 w-4 text-red-500" />
                                 <span className="text-gray-600">Process Loss:</span>
@@ -3361,8 +3371,8 @@ export default function OrderDetailPage() {
                             <div className="space-y-2 col-span-2">
                               <p className="text-xs font-medium text-gray-500 uppercase">Calculation</p>
                               <div className="bg-gray-50 p-2 rounded text-xs font-mono">
-                                <p>Greige = {line.quantity} × (1 + {line.processLossPercent || 0}%)</p>
-                                <p className="font-semibold text-amber-700">= {Math.round(lineGreige).toLocaleString()} {line.unit}</p>
+                                <p>Greige = {line.finishedFabricQuantity || line.quantity} × (1 + {line.processLossPercent || 0}%)</p>
+                                <p className="font-semibold text-amber-700">= {Math.round(lineGreige).toLocaleString()} {line.finishedFabricUnit || line.unit}</p>
                                 {line.mixedFabricType && (
                                   <>
                                     <p className="mt-1">{line.mixedFabricType} = {Math.round(lineGreige).toLocaleString()} × {line.mixedFabricPercent || 0}%</p>

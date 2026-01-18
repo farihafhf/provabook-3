@@ -130,6 +130,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'approvalHistoryData': data.get('approval_history_data', []),
             # Order type
             'orderType': data.get('order_type'),
+            # Finished Fabric fields for local orders
+            'finishedFabricQuantity': float(data['finished_fabric_quantity']) if data.get('finished_fabric_quantity') else None,
+            'finishedFabricUnit': data.get('finished_fabric_unit'),
             # Production entry summary for local orders (aggregated from order lines)
             'productionSummary': data.get('production_summary'),
         }
@@ -158,7 +161,9 @@ class OrderSerializer(serializers.ModelSerializer):
             finishing_entries_count=Count('id', filter=Q(entry_type=ProductionEntryType.FINISHING)),
         )
         
-        ordered_qty = float(obj.quantity) if obj.quantity else 0
+        # Get order-level finished fabric quantity (for denominator if set)
+        order_finished_fabric = float(obj.finished_fabric_quantity) if obj.finished_fabric_quantity else None
+        ordered_qty = order_finished_fabric if order_finished_fabric else float(obj.quantity) if obj.quantity else 0
         
         # Calculate total greige, yarn quantities and line-level deliveries from all lines
         total_greige = 0.0
@@ -167,17 +172,23 @@ class OrderSerializer(serializers.ModelSerializer):
         
         for style in obj.styles.all():
             for line in style.lines.all():
-                # Greige quantity
+                # Greige quantity (calculated from finished fabric if available)
                 if line.greige_quantity:
                     total_greige += float(line.greige_quantity)
+                elif line.finished_fabric_quantity:
+                    # Fallback: use finished fabric if greige not calculated yet
+                    total_greige += float(line.finished_fabric_quantity)
                 elif line.quantity:
                     total_greige += float(line.quantity)
                 
-                # Yarn required
+                # Yarn required (calculated from greige)
                 if line.yarn_required:
                     total_yarn += float(line.yarn_required)
                 elif line.greige_quantity:
                     total_yarn += float(line.greige_quantity)
+                elif line.finished_fabric_quantity:
+                    # Fallback: use finished fabric if yarn not calculated yet
+                    total_yarn += float(line.finished_fabric_quantity)
                 elif line.quantity:
                     total_yarn += float(line.quantity)
                 
@@ -961,6 +972,8 @@ class OrderListSerializer(serializers.ModelSerializer):
                 'swatchReceivedDate': line.swatch_received_date.isoformat() if line.swatch_received_date else None,
                 'swatchSentDate': line.swatch_sent_date.isoformat() if line.swatch_sent_date else None,
                 # Local order production fields - greige/yarn calculation
+                'finishedFabricQuantity': float(line.finished_fabric_quantity) if line.finished_fabric_quantity else None,
+                'finishedFabricUnit': line.finished_fabric_unit,
                 'processLossPercent': float(line.process_loss_percent) if line.process_loss_percent else None,
                 'mixedFabricType': line.mixed_fabric_type,
                 'mixedFabricPercent': float(line.mixed_fabric_percent) if line.mixed_fabric_percent else None,

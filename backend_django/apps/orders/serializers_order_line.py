@@ -73,6 +73,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'total_value', 'total_cost', 'total_commission', 'profit', 'line_label',
             'total_delivered_quantity', 'actual_delivery_date', 'days_overdue_at_delivery',
             # Local order production fields - greige/yarn calculation
+            'finished_fabric_quantity', 'finished_fabric_unit',
             'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent', 'greige_quantity',
             'yarn_required', 'yarn_booked_date', 'yarn_received_date',
             'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
@@ -178,6 +179,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'actualDeliveryDate': data.get('actual_delivery_date'),
             'daysOverdueAtDelivery': data.get('days_overdue_at_delivery'),
             # Local order production fields - greige/yarn calculation
+            'finishedFabricQuantity': float(data['finished_fabric_quantity']) if data.get('finished_fabric_quantity') else None,
+            'finishedFabricUnit': data.get('finished_fabric_unit'),
             'processLossPercent': float(data['process_loss_percent']) if data.get('process_loss_percent') else None,
             'mixedFabricType': data.get('mixed_fabric_type'),
             'mixedFabricPercent': float(data['mixed_fabric_percent']) if data.get('mixed_fabric_percent') else None,

@@ -163,6 +163,16 @@ class OrderLine(TimestampedModel):
     # ========== Local Order Production Fields ==========
     # These fields are only relevant for local orders (order.order_type == 'local')
     
+    # Finished Fabric Fields (for local order calculations)
+    finished_fabric_quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Finished fabric quantity for local orders (used for production calculations instead of line quantity)'
+    )
+    finished_fabric_unit = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text='Unit for finished fabric quantity (e.g., kg, yards, meters)'
+    )
+    
     # Process Loss & Mixed Fabric Fields (for calculating greige and yarn)
     process_loss_percent = models.DecimalField(
         max_digits=5, decimal_places=2, blank=True, null=True,
@@ -309,13 +319,19 @@ class OrderLine(TimestampedModel):
         Example: 1000 kg finished, 10% process loss, 4% lycra
         - Greige = 1000 * 1.10 = 1100 kg
         - Yarn = 1100 * 0.96 = 1056 kg
+        
+        For local orders:
+        - Uses finished_fabric_quantity if set, otherwise falls back to quantity
         """
         from decimal import Decimal
         
-        if not self.quantity:
+        # Use finished_fabric_quantity if available, otherwise use quantity
+        base_qty = self.finished_fabric_quantity if self.finished_fabric_quantity else self.quantity
+        
+        if not base_qty:
             return
         
-        finished = Decimal(str(self.quantity))
+        finished = Decimal(str(base_qty))
         
         # Get process loss (default 0 if not set)
         loss_percent = Decimal(str(self.process_loss_percent or 0)) / Decimal('100')

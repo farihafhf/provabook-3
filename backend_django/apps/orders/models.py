@@ -106,6 +106,16 @@ class Order(TimestampedModel):
         help_text='Type of order - Foreign or Local'
     )
     
+    # Local Order Specific Fields - Finished Fabric
+    finished_fabric_quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Finished fabric quantity for local orders (used for production calculations instead of order quantity)'
+    )
+    finished_fabric_unit = models.CharField(
+        max_length=20, blank=True, null=True,
+        help_text='Unit for finished fabric quantity (e.g., kg, yards, meters)'
+    )
+    
     # Additional Information
     notes = models.TextField(blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True, default=dict)
