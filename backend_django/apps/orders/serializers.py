@@ -437,6 +437,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date',
             'status', 'category', 'notes', 'metadata', 'styles',
             'order_type',
+            'finished_fabric_quantity', 'finished_fabric_unit',
         ]
     
     def to_internal_value(self, data):
@@ -459,6 +460,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'orderDate': 'order_date',
             'expectedDeliveryDate': 'expected_delivery_date',
             'orderType': 'order_type',
+            'finishedFabricQuantity': 'finished_fabric_quantity',
+            'finishedFabricUnit': 'finished_fabric_unit',
         }
         
         # Convert camelCase to snake_case
@@ -578,6 +581,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser', 'styles',
             'order_type',
+            'finished_fabric_quantity', 'finished_fabric_unit',
         ]
     
     def to_internal_value(self, data):
@@ -602,6 +606,8 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'expectedDeliveryDate': 'expected_delivery_date',
             'actualDeliveryDate': 'actual_delivery_date',
             'orderType': 'order_type',
+            'finishedFabricQuantity': 'finished_fabric_quantity',
+            'finishedFabricUnit': 'finished_fabric_unit',
         }
         
         # Convert camelCase to snake_case

@@ -228,6 +228,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
             # Local order production field mappings - greige/yarn calculation
+            'finishedFabricQuantity': 'finished_fabric_quantity',
+            'finishedFabricUnit': 'finished_fabric_unit',
             'processLossPercent': 'process_loss_percent',
             'mixedFabricType': 'mixed_fabric_type',
             'mixedFabricPercent': 'mixed_fabric_percent',
@@ -276,6 +278,7 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'submission_date', 'approval_date',
             'approval_status', 'status', 'notes',
             # Local order production fields - greige/yarn calculation
+            'finished_fabric_quantity', 'finished_fabric_unit',
             'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent', 'greige_quantity',
             'yarn_required', 'yarn_booked_date', 'yarn_received_date',
             'pp_yards', 'fit_cum_pp_submit_date', 'fit_cum_pp_comments_date',
@@ -306,6 +309,8 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
             # Local order production field mappings - greige/yarn calculation
+            'finishedFabricQuantity': 'finished_fabric_quantity',
+            'finishedFabricUnit': 'finished_fabric_unit',
             'processLossPercent': 'process_loss_percent',
             'mixedFabricType': 'mixed_fabric_type',
             'mixedFabricPercent': 'mixed_fabric_percent',
