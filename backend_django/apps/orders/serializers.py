@@ -437,7 +437,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date',
             'status', 'category', 'notes', 'metadata', 'styles',
             'order_type',
-            'finished_fabric_quantity', 'finished_fabric_unit',
         ]
     
     def to_internal_value(self, data):
@@ -460,8 +459,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'orderDate': 'order_date',
             'expectedDeliveryDate': 'expected_delivery_date',
             'orderType': 'order_type',
-            'finishedFabricQuantity': 'finished_fabric_quantity',
-            'finishedFabricUnit': 'finished_fabric_unit',
         }
         
         # Convert camelCase to snake_case
@@ -663,6 +660,30 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'submissionDate': 'submission_date',
             'approvalDate': 'approval_date',
             'approvalStatus': 'approval_status',
+            'finishedFabricQuantity': 'finished_fabric_quantity',
+            'finishedFabricUnit': 'finished_fabric_unit',
+            'processLossPercent': 'process_loss_percent',
+            'mixedFabricType': 'mixed_fabric_type',
+            'mixedFabricPercent': 'mixed_fabric_percent',
+            'yarnBookedDate': 'yarn_booked_date',
+            'yarnReceivedDate': 'yarn_received_date',
+            'ppYards': 'pp_yards',
+            'fitCumPpSubmitDate': 'fit_cum_pp_submit_date',
+            'fitCumPpCommentsDate': 'fit_cum_pp_comments_date',
+            'knittingStartDate': 'knitting_start_date',
+            'knittingCompleteDate': 'knitting_complete_date',
+            'dyeingStartDate': 'dyeing_start_date',
+            'dyeingCompleteDate': 'dyeing_complete_date',
+            'bulkSizeSetDate': 'bulk_size_set_date',
+            'cuttingStartDate': 'cutting_start_date',
+            'cuttingCompleteDate': 'cutting_complete_date',
+            'printSendDate': 'print_send_date',
+            'printReceivedDate': 'print_received_date',
+            'sewingInputDate': 'sewing_input_date',
+            'sewingFinishDate': 'sewing_finish_date',
+            'packingCompleteDate': 'packing_complete_date',
+            'finalInspectionDate': 'final_inspection_date',
+            'exFactoryDate': 'ex_factory_date',
         }
         
         converted = {}
