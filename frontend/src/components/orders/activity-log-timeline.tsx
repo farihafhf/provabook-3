@@ -103,12 +103,15 @@ export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineP
   const fetchActivityLogs = async () => {
     setLoading(true);
     try {
+      console.log('ActivityLogTimeline: Fetching logs for order', orderId);
       const response = await api.get(`/orders/${orderId}/activity-logs/`);
+      console.log('ActivityLogTimeline: Response', response.data);
       const allLogs = response.data.logs || [];
+      console.log('ActivityLogTimeline: Got', allLogs.length, 'logs');
       // Show only the most recent 5 entries in the timeline
       setLogs(allLogs.slice(0, 5));
     } catch (error) {
-      console.error('Failed to fetch activity logs:', error);
+      console.error('ActivityLogTimeline: Failed to fetch activity logs:', error);
       setLogs([]);
     } finally {
       setLoading(false);
