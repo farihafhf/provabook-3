@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
@@ -30,17 +30,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/lib/api';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-export function DashboardLayout({ children }: DashboardLayoutProps) {
+function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,18 +81,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'Notifications', href: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
-  // Check if we're on an order detail page from production
-  const isLocalOrderDetail = pathname?.startsWith('/orders/') && searchParams?.get('from') === 'production';
-
   // Helper function to check if a nav item is active
   const isNavItemActive = (item: typeof navigation[0]) => {
-    // Special case: Local order detail pages should highlight Local Orders
-    if (isLocalOrderDetail && item.href === '/production') {
-      return true;
-    }
-    // Special case: Prevent Foreign Orders from being highlighted on local order details
-    if (isLocalOrderDetail && item.href === '/orders') {
-      return false;
+    // Check if we're on an order detail page from production by checking URL
+    if (pathname?.startsWith('/orders/') && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isLocalOrderDetail = searchParams.get('from') === 'production';
+      
+      // Special case: Local order detail pages should highlight Local Orders
+      if (isLocalOrderDetail && item.href === '/production') {
+        return true;
+      }
+      // Special case: Prevent Foreign Orders from being highlighted on local order details
+      if (isLocalOrderDetail && item.href === '/orders') {
+        return false;
+      }
     }
     // Default: match by pathname prefix
     return pathname?.startsWith(item.href);
@@ -341,5 +343,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
       <Toaster />
     </div>
+  );
+}
+
+export function DashboardLayout({ children }: DashboardLayoutProps) {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 }
