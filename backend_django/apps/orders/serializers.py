@@ -38,7 +38,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'quantity', 'unit', 'color_quantity_breakdown', 'colorways',
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
-            'order_type',
+            'order_type', 'finished_fabric_quantity', 'finished_fabric_unit',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details', 'created_by', 'created_by_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
