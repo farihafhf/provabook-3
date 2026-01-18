@@ -124,7 +124,9 @@ export default function OrderEditPage() {
 
   const fetchOrder = async () => {
     try {
-      const response = await api.get(`/orders/${params.id}`);
+      const response = await api.get(`/orders/${params.id}`, {
+        params: { _t: Date.now() }
+      });
       const order = response.data;
       
       // Set basic order data
