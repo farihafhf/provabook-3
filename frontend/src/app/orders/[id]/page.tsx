@@ -26,6 +26,7 @@ import { LineItemCard } from '@/components/orders/line-item-card';
 import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
 import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
 import { ActivityLogDialog } from '@/components/orders/activity-log-dialog';
+import { ActivityLogTimeline } from '@/components/orders/activity-log-timeline';
 
 interface MillOffer {
   id: string;
@@ -1684,9 +1685,14 @@ export default function OrderDetailPage() {
                 )}
               </div>
 
-              {/* Document Tracking Timeline - Right Side (1/4 width on large screens) */}
-              <div className="lg:col-span-1">
+              {/* Document Tracking Timeline & Activity Log - Right Side (1/4 width on large screens) */}
+              <div className="lg:col-span-1 space-y-4">
                 <DocumentTrackingTimeline documents={documents} />
+                
+                {/* Horizontal separator */}
+                <div className="border-t border-gray-200" />
+                
+                <ActivityLogTimeline orderId={order.id} onRefresh={fetchOrder} />
               </div>
             </div>
           </TabsContent>
