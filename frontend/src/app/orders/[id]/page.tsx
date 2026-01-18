@@ -1685,6 +1685,15 @@ export default function OrderDetailPage() {
                 )}
               </div>
 
+              {/* Document Tracking Timeline & Activity Log - Right Side (1/4 width on large screens) */}
+              <div className="lg:col-span-1 space-y-4">
+                <DocumentTrackingTimeline documents={documents} />
+                
+                {/* Horizontal separator */}
+                <div className="border-t border-gray-200" />
+                
+                <ActivityLogTimeline orderId={order.id} onRefresh={fetchOrder} />
+              </div>
             </div>
           </TabsContent>
 
@@ -2872,53 +2881,38 @@ export default function OrderDetailPage() {
 
           {/* Documents Tab */}
           <TabsContent value="documents" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Left side - Document upload/list (3/4 width) */}
-              <div className="lg:col-span-3 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Upload Document</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FileUpload 
-                      orderId={order.id}
-                      orderLines={order.styles?.flatMap(style => 
-                        (style.lines || []).map(line => ({
-                          id: line.id,
-                          styleNumber: style.styleNumber,
-                          colorCode: line.colorCode,
-                          cadCode: line.cadCode
-                        }))
-                      )}
-                      onUploadComplete={fetchDocuments}
-                    />
-                  </CardContent>
-                </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Document</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <FileUpload 
+                  orderId={order.id}
+                  orderLines={order.styles?.flatMap(style => 
+                    (style.lines || []).map(line => ({
+                      id: line.id,
+                      styleNumber: style.styleNumber,
+                      colorCode: line.colorCode,
+                      cadCode: line.cadCode
+                    }))
+                  )}
+                  onUploadComplete={fetchDocuments}
+                />
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Uploaded Documents</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <DocumentList 
-                      documents={documents}
-                      orderId={params.id as string}
-                      onDelete={handleDeleteDocument}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right side - Document Timeline & Activity Log (1/4 width) */}
-              <div className="lg:col-span-1 space-y-4">
-                <DocumentTrackingTimeline documents={documents} />
-                
-                {/* Horizontal separator */}
-                <div className="border-t border-gray-200" />
-                
-                <ActivityLogTimeline orderId={order.id} onRefresh={fetchOrder} />
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Uploaded Documents</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DocumentList 
+                  documents={documents}
+                  orderId={params.id as string}
+                  onDelete={handleDeleteDocument}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
