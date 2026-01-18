@@ -5,12 +5,18 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: true,
+    rawBody: false,
+  });
   const configService = app.get(ConfigService);
 
-  // CORS
+  // CORS - Support multiple origins (comma-separated)
+  const frontendUrls = configService.get('FRONTEND_URL') || 'http://localhost:3001';
+  const allowedOrigins = frontendUrls.split(',').map((url: string) => url.trim());
+  
   app.enableCors({
-    origin: configService.get('FRONTEND_URL') || 'http://localhost:3001',
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -50,9 +56,10 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = configService.get('PORT') || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0'); // Listen on all network interfaces for mobile access
   
   console.log(`🚀 Provabook Backend is running on: http://localhost:${port}`);
+  console.log(`📱 Mobile Access: http://192.168.68.60:${port}`);
   console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
 }
 

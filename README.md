@@ -1,283 +1,238 @@
-# Provabook - Textile Company Operations Platform
+# Provabook – Textile Operations Control Center
 
-A comprehensive full-stack web application for managing textile fabric orders from inquiry to delivery.
-
-## 🎯 Overview
-
-Provabook is a centralized operations platform designed to replace scattered emails and spreadsheets in textile manufacturing. It manages the complete lifecycle of fabric orders with workflow enforcement, document management, and role-based access control.
-
-## 🏗️ Architecture
-
-### Tech Stack
-- **Backend**: NestJS + TypeORM + PostgreSQL
-- **Frontend**: Next.js 14 (App Router) + TypeScript
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth
-- **Storage**: Supabase Storage
-- **UI Framework**: Tailwind CSS + Shadcn/UI
-- **Hosting**: Vercel (Frontend), Supabase (Backend & DB)
-
-### Project Structure
-```
-provabook/
-├── backend/          # NestJS REST API
-├── frontend/         # Next.js application
-└── README.md         # This file
-```
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+ and npm/yarn/pnpm
-- A Supabase account (free tier works)
-- Git
-
-### 1. Supabase Setup
-
-#### Create a Supabase Project
-1. Go to [supabase.com](https://supabase.com) and sign up/login
-2. Click "New Project"
-3. Name it "provabook" and set a strong database password
-4. Wait for the project to be provisioned (~2 minutes)
-
-#### Get Your Credentials
-After your project is ready:
-1. Go to **Project Settings** → **API**
-2. Copy these values (you'll need them in step 3):
-   - `Project URL` (e.g., `https://xxxxx.supabase.co`)
-   - `anon/public key` (starts with `eyJ...`)
-   - `service_role key` (starts with `eyJ...`, keep this secret!)
-3. Go to **Project Settings** → **Database**
-4. Copy the connection string under "Connection string" → "URI"
-   - It looks like: `postgresql://postgres:[YOUR-PASSWORD]@db.xxxxx.supabase.co:5432/postgres`
-   - Replace `[YOUR-PASSWORD]` with your actual database password
-
-#### Enable Storage
-1. In Supabase dashboard, go to **Storage**
-2. Create a new bucket named `documents`
-3. Set it to **Private** (not public)
-4. Add storage policies (see backend README for SQL)
-
-### 2. Backend Setup
-
-```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Create .env file
-cp .env.example .env
-
-# Edit .env with your Supabase credentials:
-# - DATABASE_URL from Supabase (connection string)
-# - SUPABASE_URL (project URL)
-# - SUPABASE_ANON_KEY (anon key)
-# - SUPABASE_SERVICE_ROLE_KEY (service role key)
-# - JWT_SECRET (generate a strong random string)
-
-# Run database migrations
-npm run migration:run
-
-# Seed demo data (optional but recommended)
-npm run seed
-
-# Start development server
-npm run start:dev
-```
-
-Backend will be available at `http://localhost:3000`
-
-### 3. Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Create .env.local file
-cp .env.example .env.local
-
-# Edit .env.local with your Supabase credentials:
-# - NEXT_PUBLIC_SUPABASE_URL (same as backend SUPABASE_URL)
-# - NEXT_PUBLIC_SUPABASE_ANON_KEY (same as backend SUPABASE_ANON_KEY)
-# - NEXT_PUBLIC_API_URL (http://localhost:3000 for development)
-
-# Start development server
-npm run dev
-```
-
-Frontend will be available at `http://localhost:3001`
-
-### 4. First Login
-
-After running the seed script, you can login with:
-
-**Administrator:**
-- Email: `admin@provabook.com`
-- Password: `Admin@123`
-
-**Manager:**
-- Email: `manager@provabook.com`
-- Password: `Manager@123`
-
-**Merchandiser:**
-- Email: `merchandiser@provabook.com`
-- Password: `Merchandiser@123`
-
-## 📋 Features
-
-### Core Modules
-
-1. **Order Management**
-   - Track orders with fabric specs, quantities, colorways
-   - Upload and associate documents (POs, CADs, tech packs)
-   - Categorize: Upcoming, Running, Archived
-
-2. **Development & Sampling**
-   - Track sample types: Lab Dip, Hand Loom, Strike-Off, Presentation, PP
-   - Version control with submission/receipt tracking
-   - Mandatory resubmission plans for rejections
-   - Automated reminders
-
-3. **Pricing & Financials**
-   - Multiple PI versions (Draft, Sent, Revised, Confirmed)
-   - LC tracking with critical dates
-   - Business rule enforcement
-
-4. **Production Readiness**
-   - Pre-production checklist
-   - Mobile-friendly daily metrics logging
-   - Workflow gates
-
-5. **Incidents & Blockers**
-   - Quality rejections, delays, breakdowns
-   - Action plans with responsible persons
-   - Resolution tracking
-
-6. **Shipment & Delivery**
-   - Upload packing lists, AWB, invoices
-   - ETD/ETA tracking
-   - Delivery confirmation
-
-### System Features
-- Role-based access control (Admin, Manager, Merchandiser, QA/Logistics/Field Staff)
-- Dashboard with KPIs and visual timelines
-- Automated notifications and reminders
-- Complete audit logging
-- Secure file storage with pre-signed URLs
-- Real-time status updates
-
-## 🔐 User Roles & Permissions
-
-| Role | Permissions |
-|------|-------------|
-| **Administrator** | Full CRUD access, user management, system configuration |
-| **Manager** | View all orders, generate reports, receive alerts |
-| **Merchandiser** | Full CRUD on assigned orders, update statuses, upload documents |
-| **QA/Logistics/Field Staff** | Limited access for quality checks and production metrics |
-
-## 🗄️ Database Schema
-
-The application uses PostgreSQL with the following main entities:
-- Users (managed by Supabase Auth + custom profiles)
-- Orders
-- Samples
-- Proforma Invoices (PI)
-- Letters of Credit (LC)
-- Production Metrics
-- Incidents
-- Shipments
-- Documents
-- Notifications
-- Audit Logs
-
-See `backend/src/database/migrations/` for complete schema.
-
-## 📱 API Documentation
-
-Once the backend is running, API documentation is available at:
-- Swagger UI: `http://localhost:3000/api/docs`
-
-## 🧪 Testing
-
-### Backend Tests
-```bash
-cd backend
-npm run test          # Unit tests
-npm run test:e2e      # E2E tests
-npm run test:cov      # Coverage report
-```
-
-### Frontend Tests
-```bash
-cd frontend
-npm run test          # Jest tests
-npm run test:e2e      # Playwright E2E tests
-```
-
-## 🚀 Production Deployment
-
-### Backend Deployment (Render/Railway/Heroku)
-1. Push code to GitHub
-2. Connect repository to hosting platform
-3. Set environment variables from `.env`
-4. Deploy!
-
-### Frontend Deployment (Vercel)
-1. Push code to GitHub
-2. Import project in Vercel
-3. Set environment variables from `.env.local`
-4. Deploy automatically on every push to main
-
-### Database
-Your Supabase database is already production-ready. Just ensure:
-- Strong database password
-- Row Level Security (RLS) policies enabled
-- Regular backups configured
-
-## 📚 Additional Documentation
-
-- [Backend Documentation](./backend/README.md)
-- [Frontend Documentation](./frontend/README.md)
-- [API Reference](http://localhost:3000/api/docs)
-- [Architecture Decisions](./docs/architecture.md)
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-- Verify DATABASE_URL is correct and database is accessible
-- Check if port 3000 is already in use
-- Ensure migrations have run successfully: `npm run migration:run`
-
-### Frontend can't connect to backend
-- Verify NEXT_PUBLIC_API_URL in `.env.local`
-- Ensure backend is running on port 3000
-- Check browser console for CORS errors
-
-### Authentication issues
-- Verify Supabase credentials in both frontend and backend
-- Check Supabase dashboard for auth errors
-- Ensure JWT_SECRET matches in backend .env
-
-### Database migration errors
-- Ensure DATABASE_URL is correct
-- Check PostgreSQL version (should be 12+)
-- Try: `npm run migration:revert` then `npm run migration:run`
-
-## 🤝 Contributing
-
-This is an internal application. For bugs or feature requests, contact the development team.
-
-## 📄 License
-
-Proprietary - Internal Use Only
-
-## 📞 Support
-
-For technical support, contact the IT department or email dev-team@company.com
+An end-to-end platform for mills and sourcing teams to move fabric programs from inquiry to shipment without spreadsheets, inbox clutter, or missed milestones.
 
 ---
 
-**Built with ❤️ for efficient textile operations management**
+## 📌 At a Glance
+
+- **Frontline visibility:** Order health, production KPIs, incidents, and shipments updated in real time.
+- **Role-aware workflows:** Admin, manager, merchandiser, QA/logistics, and on-floor roles get tailored dashboards and permissions.
+- **Document-first:** Tech packs, approvals, PI/LC packets, and incident dossiers live alongside every order.
+
+---
+
+## 🧭 Table of Contents
+
+1. [Why teams pick Provabook](#-why-teams-pick-provabook)
+2. [Screens & Visuals](#-screens--visuals)
+3. [Feature Map](#-feature-map)
+4. [Recently Shipped Improvements](#-recently-shipped-improvements)
+5. [Architecture & Tech](#-architecture--tech)
+6. [Project Structure](#-project-structure)
+7. [Quick Start](#-quick-start)
+8. [Demo Accounts](#-demo-accounts)
+9. [API & Docs](#-api--docs)
+10. [Testing](#-testing)
+11. [Deployment Notes](#-deployment-notes)
+12. [Documentation Map](#-documentation-map)
+13. [Support](#-support)
+
+---
+
+## 💡 Why teams pick Provabook
+
+| Need | How Provabook solves it |
+| --- | --- |
+| **Unified source of truth** | Orders, samples, production, incidents, and shipments share one PostgreSQL-backed data model with audit trails. |
+| **Live production cockpit** | Daily local-order metrics feed dashboards and notes overlays so managers can coach lines without chasing WhatsApp updates. |
+| **Sampling discipline** | Structured workflows for Lab Dip → PP samples with rejection reasons, resubmission plans, and document snapshots. |
+| **Financial compliance** | Versioned PIs, LC milestone clocks, and document vaults reduce banking surprises. |
+| **Instant visibility** | Notifications service, unread counters, and role-appropriate landing pages surface risk before it hits the floor. |
+
+---
+
+## 🖼️ Screens & Visuals
+
+| Dashboard & Navigation | Sample Orders | Notifications |
+| --- | --- | --- |
+| ![Dashboard](images/Screenshot%202025-12-20%20214058.jpg) | ![Sample Orders](images/Screenshot%202025-12-20%20214151.jpg) | ![Notifications](images/Screenshot%202025-12-20%20214210.jpg) |
+
+---
+
+## 🗺️ Feature Map
+
+### Core Modules
+
+1. **Foreign Order Management**
+   - Order + style hierarchy with fabric specs, buyer info, and colorways.
+   - Document stack (POs, CADs, lab approvals) with Google Cloud Storage-backed presigned URLs.
+   - Categorization pipelines (Upcoming, Running, Archived) and approval history timelines.
+
+2. **Development & Sampling**
+   - Lab Dip, Hand Loom, Strike-Off, Presentation, and PP sample tracking.
+   - Versioned submissions, courier/receipt logging, and mandatory resubmission plans.
+   - Photo viewer dialog for merchandisers to review latest strikes without page reloads.
+
+3. **Financials**
+   - Multi-version Proforma Invoices (Draft/Sent/Revised/Confirmed).
+   - Letter of Credit tracker with expiry alerts, discrepancy notes, and document attachments.
+
+4. **Local Production & Daily Metrics**
+   - Floor-level tracker for local orders with throughput, cuts, finishing, and delivery status.
+   - Inline order/line notes surfaced inside the production board for instant coaching.
+   - KPI widgets and gradient cards on the landing/dashboard screens.
+
+5. **Incidents & Blockers**
+   - Capture rejections, machine breakdowns, delays, and action plans with owners + due dates.
+   - Status transitions and evidence uploads to keep escalation trails auditable.
+
+6. **Shipments & Logistics**
+   - Packing list, invoice, and AWB uploads per shipment.
+   - ETD/ETA tracking with delivery confirmation workflow.
+
+7. **Notifications & Activity**
+   - Real-time unread counter in the navbar, polling every 30 seconds.
+   - Role-based subscription model for incidents, approvals, and LC milestones.
+
+### System Capabilities
+
+- JWT Authentication powered by Django + SimpleJWT.
+- Role-based permissions (`admin`, `manager`, `merchandiser`, specialist roles) enforced server-side through custom DRF permissions.
+- Secure file storage via Google Cloud Storage w/ presigned access.
+- Audit logging + notification feeds for every critical mutation.
+- Next.js App Router frontend with Zustand state, React Query data hooks, Tailwind + shadcn UI kit.
+
+---
+
+## 🔄 Recently Shipped Improvements
+
+_Dec 2025 sprint highlights:_
+
+- **Production cockpit refresh** – Order and line notes now appear directly inside the Local Orders table so teams never miss operator context.
+- **Visual polish** – Header aligns with the sidebar palette and expanded table height improves data density on large screens.
+- **Sampling photo viewer fix** – Dialog now lives outside conditional render blocks, preventing remount flicker when merchandisers open multiple photos.
+- **Environment hardening** – Default local `.env` now points to the managed DigitalOcean PostgreSQL replica used in staging for parity.
+
+---
+
+## 🏗️ Architecture & Tech
+
+- **Frontend:** Next.js 14 (App Router) + TypeScript + Tailwind CSS + shadcn/ui + React Query + Zustand + Axios (auto appends trailing slashes to API calls).
+- **Backend (current):** Django 5 + DRF + PostgreSQL + SimpleJWT auth + django-filter + drf-spectacular for Swagger docs.
+- **Storage:** Google Cloud Storage buckets for large documents and sample imagery.
+- **Notifications & Background jobs:** Django signals + Celery-ready architecture (see `backend_django/apps/core`).
+- **Legacy backend (optional):** NestJS + TypeORM codebase retained for reference inside `/backend`.
+
+---
+
+## 📁 Project Structure
+
+```
+provabook/
+├── backend/             # Legacy NestJS REST API (reference only)
+├── backend_django/      # Current Django REST API
+├── frontend/            # Next.js application
+├── images/              # Marketing/product screenshots used in this README
+└── README.md            # You are here
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Django Backend
+
+```powershell
+cd backend_django
+python -m venv venv
+.\venv\Scripts\activate        # Use source venv/bin/activate on macOS/Linux
+pip install -r requirements.txt
+copy .env.example .env         # Fill DATABASE_URL, SECRET_KEY, storage creds, etc.
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
+```
+
+- Swagger / OpenAPI UI: `http://localhost:8000/api/docs/`
+- Admin panel: `http://localhost:8000/admin/`
+
+### 2. Next.js Frontend
+
+```powershell
+cd frontend
+npm install
+cp .env.example .env.local
+# NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+npm run dev -- --port 3001
+```
+
+Access the UI at `http://localhost:3001`.
+
+### 3. Legacy NestJS backend (optional)
+
+Only required for historical comparison. Instructions live in `backend/README.md`.
+
+---
+
+## 👤 Demo Accounts
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Administrator | `admin@provabook.com` | `Admin@123` |
+| Manager | `manager@provabook.com` | `Manager@123` |
+| Merchandiser | `merchandiser@provabook.com` | `Merchandiser@123` |
+
+---
+
+## 📚 API & Docs
+
+- Django Swagger UI: `http://localhost:8000/api/docs/`
+- `backend_django/README.md` – module status, settings, and extended commands.
+- `backend_django/SETUP_AND_MIGRATION_GUIDE.md` – environment bootstrap + migration strategy from the NestJS data model.
+
+---
+
+## 🧪 Testing
+
+### Backend (NestJS legacy suite)
+
+```powershell
+cd backend
+npm run test        # Unit tests
+npm run test:e2e    # End-to-end tests
+npm run test:cov    # Coverage report
+```
+
+### Frontend
+
+```powershell
+cd frontend
+npm run test        # Jest / React Testing Library
+npm run test:e2e    # Playwright smoke tests
+```
+
+_Django tests are configured but currently lean on manual QA for domain flows._
+
+---
+
+## ☁️ Deployment Notes
+
+### Backend
+1. Push to GitHub.
+2. Deploy to your preferred host (DigitalOcean App Platform, Render, Railway, etc.).
+3. Configure environment variables (`DATABASE_URL`, `R2_*` storage keys, `SECRET_KEY`, CORS/ALLOWED_HOSTS).
+4. Run migrations and create service accounts.
+
+### Frontend
+1. Deploy via Vercel (recommended) or any Next.js-compatible host.
+2. Mirror `.env.local` values (especially `NEXT_PUBLIC_API_URL`).
+3. Clean `.next` cache after every pull / deploy to avoid module corruption (see `frontend/clean-restart.ps1`).
+
+### Database
+- Managed PostgreSQL (DigitalOcean) for staging + production; enable SSL and automated backups.
+
+---
+
+## 🗺️ Documentation Map
+
+- `OFFICE_SETUP_GUIDE.md` – hardware/software prep for new teammates.
+- `IMPLEMENTATION_GUIDE.md` – domain workflows and acceptance criteria.
+- `POST_PULL_GUIDE.md` – routines after syncing branches.
+- `TRAILING_SLASH_SOLUTION.md` – how frontend/backend auto-handle API slashes.
+- Frontend specific notes: `frontend/README.md`.
+
+
+---
+
+**Built with ❤️ for resilient, insight-driven textile operations.**

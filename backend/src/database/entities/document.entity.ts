@@ -26,14 +26,26 @@ export class Document {
   @Column()
   storagePath: string;
 
+  @Column()
+  fileUrl: string; // Supabase public/signed URL
+
   @Column({ nullable: true })
-  documentType: string; // PO, CAD, Tech Pack, Invoice, etc.
+  documentType: string; // Legacy field - deprecated
+
+  @Column()
+  category: string; // sample, lc, pi, test_report, email, other
+
+  @Column({ nullable: true })
+  subcategory: string; // lab_dip, strike_off, pp_sample, bulk_swatch (for samples)
 
   @Column('text', { nullable: true })
   description: string;
 
   @Column('uuid')
   uploadedBy: string;
+
+  @Column()
+  uploadedByName: string; // User's full name for display
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, any>;

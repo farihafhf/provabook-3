@@ -20,17 +20,29 @@ export class FinancialsService {
   ) {}
 
   // Proforma Invoice methods
-  async createPI(createPiDto: CreateProformaInvoiceDto) {
+  async createPI(createPiDto: CreateProformaInvoiceDto, userId: string) {
     const piNumber = await this.generatePINumber();
-    const pi = this.piRepository.create({ ...createPiDto, piNumber });
+    const pi = this.piRepository.create({ 
+      ...createPiDto, 
+      piNumber,
+      created_by_id: userId,
+    });
     return this.piRepository.save(pi);
   }
 
-  async findAllPIs(orderId?: string) {
-    const query = this.piRepository.createQueryBuilder('pi').leftJoinAndSelect('pi.order', 'order');
+  async findAllPIs(orderId?: string, userId?: string, userRole?: string) {
+    const query = this.piRepository
+      .createQueryBuilder('pi')
+      .leftJoinAndSelect('pi.order', 'order')
+      .leftJoinAndSelect('pi.createdBy', 'createdBy');
+
+    // Merchandisers only see their own PIs
+    if (userRole === 'merchandiser' && userId) {
+      query.andWhere('pi.created_by_id = :userId', { userId });
+    }
 
     if (orderId) {
-      query.where('pi.order_id = :orderId', { orderId });
+      query.andWhere('pi.order_id = :orderId', { orderId });
     }
 
     query.orderBy('pi.createdAt', 'DESC');
@@ -62,16 +74,27 @@ export class FinancialsService {
   }
 
   // Letter of Credit methods
-  async createLC(createLcDto: CreateLetterOfCreditDto) {
-    const lc = this.lcRepository.create(createLcDto);
+  async createLC(createLcDto: CreateLetterOfCreditDto, userId: string) {
+    const lc = this.lcRepository.create({
+      ...createLcDto,
+      created_by_id: userId,
+    });
     return this.lcRepository.save(lc);
   }
 
-  async findAllLCs(orderId?: string) {
-    const query = this.lcRepository.createQueryBuilder('lc').leftJoinAndSelect('lc.order', 'order');
+  async findAllLCs(orderId?: string, userId?: string, userRole?: string) {
+    const query = this.lcRepository
+      .createQueryBuilder('lc')
+      .leftJoinAndSelect('lc.order', 'order')
+      .leftJoinAndSelect('lc.createdBy', 'createdBy');
+
+    // Merchandisers only see their own LCs
+    if (userRole === 'merchandiser' && userId) {
+      query.andWhere('lc.created_by_id = :userId', { userId });
+    }
 
     if (orderId) {
-      query.where('lc.order_id = :orderId', { orderId });
+      query.andWhere('lc.order_id = :orderId', { orderId });
     }
 
     query.orderBy('lc.createdAt', 'DESC');

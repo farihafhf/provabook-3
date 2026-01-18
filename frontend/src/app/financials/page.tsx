@@ -1,22 +1,740 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { api } from '@/lib/api';
+import { Plus, FileText, DollarSign, MoreHorizontal, Download, Search, History, Trash2, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
+import { useToast } from '@/components/ui/use-toast';
+import { formatDate } from '@/lib/utils';
+
+interface ProformaInvoice {
+  id: string;
+  orderId: string;
+  poNumber?: string;
+  customerName?: string;
+  piNumber: string;
+  version: number;
+  status: string;
+  amount: number;
+  currency: string;
+  issueDate?: string;
+  pdfUrl?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface LetterOfCredit {
+  id: string;
+  orderId: string;
+  poNumber?: string;
+  customerName?: string;
+  lcNumber: string;
+  status: string;
+  amount: number;
+  currency: string;
+  issueDate: string;
+  expiryDate: string;
+  issuingBank?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface Order {
+  id: string;
+  poNumber: string;
+  customerName: string;
+  buyerName?: string;
+  styleNumber?: string;
+  quantity?: number;
+  unit?: string;
+  currency?: string;
+  millPrice?: number;
+  provaPrice?: number;
+  potentialProfit?: number;
+  realizedProfit?: number;
+  totalDeliveredQuantity?: number;
+  shortageExcessQuantity?: number;
+  merchandiserDetails?: {
+    id: string;
+    fullName: string;
+  };
+}
+
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+
+const PI_STATUS_BADGE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: BadgeVariant;
+  }
+> = {
+  draft: { label: 'Draft', variant: 'secondary' },
+  sent: { label: 'Sent', variant: 'default' },
+  confirmed: { label: 'Confirmed', variant: 'success' },
+  cancelled: { label: 'Cancelled', variant: 'destructive' },
+  canceled: { label: 'Cancelled', variant: 'destructive' },
+};
+
+const LC_STATUS_BADGE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    variant: BadgeVariant;
+  }
+> = {
+  pending: { label: 'Pending', variant: 'secondary' },
+  issued: { label: 'Issued', variant: 'default' },
+  confirmed: { label: 'Confirmed', variant: 'success' },
+  expired: { label: 'Expired', variant: 'destructive' },
+};
+
+function getPiStatusBadge(status: string) {
+  const key = status?.toLowerCase() ?? '';
+  const config = PI_STATUS_BADGE_CONFIG[key];
+
+  if (config) {
+    return config;
+  }
+
+  if (!status) {
+    return { label: 'Unknown', variant: 'secondary' as BadgeVariant };
+  }
+
+  return {
+    label: status.charAt(0).toUpperCase() + status.slice(1),
+    variant: 'secondary' as BadgeVariant,
+  };
+}
+
+function getLcStatusBadge(status: string) {
+  const key = status?.toLowerCase() ?? '';
+  const config = LC_STATUS_BADGE_CONFIG[key];
+
+  if (config) {
+    return config;
+  }
+
+  if (!status) {
+    return { label: 'Unknown', variant: 'secondary' as BadgeVariant };
+  }
+
+  return {
+    label: status.charAt(0).toUpperCase() + status.slice(1),
+    variant: 'secondary' as BadgeVariant,
+  };
+}
+
+const PI_STATUS_OPTIONS = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const LC_STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'issued', label: 'Issued' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'expired', label: 'Expired' },
+];
+
+const PAGE_SIZE = 10;
 
 export default function FinancialsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [pis, setPis] = useState<ProformaInvoice[]>([]);
+  const [lcs, setLcs] = useState<LetterOfCredit[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [piDialogOpen, setPiDialogOpen] = useState(false);
+  const [lcDialogOpen, setLcDialogOpen] = useState(false);
+  const [piSubmitting, setPiSubmitting] = useState(false);
+  const [lcSubmitting, setLcSubmitting] = useState(false);
+  const [piPage, setPiPage] = useState(0);
+  const [lcPage, setLcPage] = useState(0);
+  const [editPiDialogOpen, setEditPiDialogOpen] = useState(false);
+  const [editLcDialogOpen, setEditLcDialogOpen] = useState(false);
+  const [editingPi, setEditingPi] = useState<ProformaInvoice | null>(null);
+  const [editingLc, setEditingLc] = useState<LetterOfCredit | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  
+  const [deletePiDialogOpen, setDeletePiDialogOpen] = useState(false);
+  const [deleteLcDialogOpen, setDeleteLcDialogOpen] = useState(false);
+  const [piToDelete, setPiToDelete] = useState<ProformaInvoice | null>(null);
+  const [lcToDelete, setLcToDelete] = useState<LetterOfCredit | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Order Profits state
+  const [orderProfits, setOrderProfits] = useState<Order[]>([]);
+  const [profitsLoading, setProfitsLoading] = useState(false);
+  const [profitsSearchQuery, setProfitsSearchQuery] = useState<string>('');
+
+  const [piFormData, setPiFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+  });
+
+  const [lcFormData, setLcFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+    expiryDate: '',
+    issuingBank: '',
+  });
+
+  const [editPiFormData, setEditPiFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+  });
+
+  const [editLcFormData, setEditLcFormData] = useState({
+    orderId: '',
+    amount: '',
+    currency: 'USD',
+    issueDate: '',
+    expiryDate: '',
+    issuingBank: '',
+  });
 
   useEffect(() => {
     if (!isAuthenticated()) {
       router.push('/login');
+      return;
     }
+
+    fetchFinancials();
+    fetchOrders();
+    fetchOrderProfits();
   }, [isAuthenticated, router]);
+
+  useEffect(() => {
+    setPiPage(0);
+  }, [pis.length]);
+
+  useEffect(() => {
+    setLcPage(0);
+  }, [lcs.length]);
+
+  const fetchFinancials = async (search?: string) => {
+    try {
+      const params: any = { _t: Date.now() };
+      if (search) {
+        params.search = search;
+      }
+      
+      const [pisResponse, lcsResponse] = await Promise.all([
+        api.get('/financials/pis', { params }),
+        api.get('/financials/lcs', { params }),
+      ]);
+      setPis(pisResponse.data);
+      setLcs(lcsResponse.data);
+    } catch (error) {
+      console.error('Failed to fetch financials:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchFinancials(searchQuery || undefined);
+  };
+
+  const handleResetSearch = () => {
+    setSearchQuery('');
+    fetchFinancials();
+  };
+
+  const handlePdfFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedPdfFile(file);
+    } else if (file) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please select a PDF file',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await api.get('/orders');
+      setOrders(response.data);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    }
+  };
+
+  const fetchOrderProfits = async (search?: string) => {
+    setProfitsLoading(true);
+    try {
+      const params: any = { _t: Date.now() };
+      if (search) {
+        params.search = search;
+      }
+      const response = await api.get('/financials/order-profits/', { params });
+      setOrderProfits(response.data);
+    } catch (error) {
+      console.error('Failed to fetch order profits:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load order profits',
+        variant: 'destructive',
+      });
+    } finally {
+      setProfitsLoading(false);
+    }
+  };
+
+  const handleProfitsSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchOrderProfits(profitsSearchQuery || undefined);
+  };
+
+  const handleResetProfitsSearch = () => {
+    setProfitsSearchQuery('');
+    fetchOrderProfits();
+  };
+
+  const handleOpenEditPI = (pi: ProformaInvoice) => {
+    setEditingPi(pi);
+    setEditPiFormData({
+      orderId: pi.orderId,
+      amount: pi.amount != null ? pi.amount.toString() : '',
+      currency: pi.currency || 'USD',
+      issueDate: pi.issueDate ? pi.issueDate.slice(0, 10) : '',
+    });
+    setEditPiDialogOpen(true);
+  };
+
+  const handleOpenEditLC = (lc: LetterOfCredit) => {
+    setEditingLc(lc);
+    setEditLcFormData({
+      orderId: lc.orderId,
+      amount: lc.amount != null ? lc.amount.toString() : '',
+      currency: lc.currency || 'USD',
+      issueDate: lc.issueDate ? lc.issueDate.slice(0, 10) : '',
+      expiryDate: lc.expiryDate ? lc.expiryDate.slice(0, 10) : '',
+      issuingBank: lc.issuingBank || '',
+    });
+    setEditLcDialogOpen(true);
+  };
+
+  const handleCreatePI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPiSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('orderId', piFormData.orderId);
+      formData.append('amount', piFormData.amount);
+      formData.append('currency', piFormData.currency);
+      if (piFormData.issueDate) {
+        formData.append('issueDate', piFormData.issueDate);
+      }
+      if (selectedPdfFile) {
+        formData.append('pdfFile', selectedPdfFile);
+      }
+
+      console.log('Creating PI with data:', piFormData);
+
+      const token = localStorage.getItem('access_token');
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/financials/pis/`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create PI');
+      }
+
+      const newPi = await response.json();
+
+      // Immediately add the new PI to the state
+      setPis((prevPis) => [newPi, ...prevPis]);
+
+      toast({
+        title: 'Success',
+        description: 'Proforma Invoice created successfully',
+      });
+
+      setPiDialogOpen(false);
+      setPiFormData({
+        orderId: '',
+        amount: '',
+        currency: 'USD',
+        issueDate: '',
+      });
+      setSelectedPdfFile(null);
+    } catch (error: any) {
+      console.error('Error creating PI:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+      
+      const errorMessage = Array.isArray(error.response?.data?.message) 
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to create Proforma Invoice';
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setPiSubmitting(false);
+    }
+  };
+
+  const handleUpdatePI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPi) {
+      return;
+    }
+    setPiSubmitting(true);
+
+    try {
+      const piData = {
+        orderId: editPiFormData.orderId,
+        amount: parseFloat(editPiFormData.amount),
+        currency: editPiFormData.currency,
+        issueDate: editPiFormData.issueDate || undefined,
+      };
+
+      await api.patch(`/financials/pis/${editingPi.id}`, piData);
+
+      setPis((prev) =>
+        prev.map((pi) =>
+          pi.id === editingPi.id
+            ? {
+                ...pi,
+                orderId: editPiFormData.orderId,
+                amount: parseFloat(editPiFormData.amount),
+                currency: editPiFormData.currency,
+                issueDate: editPiFormData.issueDate || undefined,
+              }
+            : pi
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Proforma Invoice updated successfully',
+      });
+
+      setEditPiDialogOpen(false);
+      setEditingPi(null);
+    } catch (error: any) {
+      console.error('Error updating PI:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+
+      const errorMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to update Proforma Invoice';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setPiSubmitting(false);
+    }
+  };
+
+  const handleCreateLC = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLcSubmitting(true);
+
+    try {
+      const lcData = {
+        orderId: lcFormData.orderId,
+        amount: parseFloat(lcFormData.amount),
+        currency: lcFormData.currency,
+        issueDate: lcFormData.issueDate,
+        expiryDate: lcFormData.expiryDate,
+        issuingBank: lcFormData.issuingBank || undefined,
+      };
+
+      console.log('Creating LC with data:', lcData);
+
+      const response = await api.post('/financials/lcs', lcData);
+      const newLc = response.data;
+
+      // Immediately add the new LC to the state
+      setLcs((prevLcs) => [newLc, ...prevLcs]);
+
+      toast({
+        title: 'Success',
+        description: 'Letter of Credit created successfully',
+      });
+
+      setLcDialogOpen(false);
+      setLcFormData({
+        orderId: '',
+        amount: '',
+        currency: 'USD',
+        issueDate: '',
+        expiryDate: '',
+        issuingBank: '',
+      });
+    } catch (error: any) {
+      console.error('Error creating LC:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+      
+      const errorMessage = Array.isArray(error.response?.data?.message) 
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to create Letter of Credit';
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setLcSubmitting(false);
+    }
+  };
+
+  const handleUpdateLC = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLc) {
+      return;
+    }
+    setLcSubmitting(true);
+
+    try {
+      const lcData = {
+        orderId: editLcFormData.orderId,
+        amount: parseFloat(editLcFormData.amount),
+        currency: editLcFormData.currency,
+        issueDate: editLcFormData.issueDate,
+        expiryDate: editLcFormData.expiryDate,
+        issuingBank: editLcFormData.issuingBank || undefined,
+      };
+
+      await api.patch(`/financials/lcs/${editingLc.id}`, lcData);
+
+      setLcs((prev) =>
+        prev.map((lc) =>
+          lc.id === editingLc.id
+            ? {
+                ...lc,
+                orderId: editLcFormData.orderId,
+                amount: parseFloat(editLcFormData.amount),
+                currency: editLcFormData.currency,
+                issueDate: editLcFormData.issueDate,
+                expiryDate: editLcFormData.expiryDate,
+                issuingBank: editLcFormData.issuingBank || undefined,
+              }
+            : lc
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Letter of Credit updated successfully',
+      });
+
+      setEditLcDialogOpen(false);
+      setEditingLc(null);
+    } catch (error: any) {
+      console.error('Error updating LC:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Validation errors:', error.response?.data?.message);
+
+      const errorMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error.response?.data?.message || error.message || 'Failed to update Letter of Credit';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setLcSubmitting(false);
+    }
+  };
+
+  const handleStatusChange = async (id: string, newStatus: string, modelType: 'pi' | 'lc') => {
+    try {
+      const endpoint = modelType === 'pi' ? '/financials/pis' : '/financials/lcs';
+
+      console.log(`Updating ${modelType} ${id} status to ${newStatus}`);
+      const response = await api.patch(`${endpoint}/${id}`, { status: newStatus });
+      console.log('PATCH response:', response.data);
+
+      // Use the response data to update state to ensure we match what backend saved
+      if (modelType === 'pi') {
+        setPis((prev) =>
+          prev.map((pi) => (pi.id === id ? { ...pi, status: response.data.status } : pi))
+        );
+      } else {
+        setLcs((prev) =>
+          prev.map((lc) => (lc.id === id ? { ...lc, status: response.data.status } : lc))
+        );
+      }
+
+      toast({
+        title: 'Success',
+        description: `Status updated to ${response.data.status}`,
+      });
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+
+      const errorMessage = Array.isArray(error?.response?.data?.message)
+        ? error.response.data.message.join(', ')
+        : error?.response?.data?.message || error.message || 'Failed to update status';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeletePI = (pi: ProformaInvoice) => {
+    setPiToDelete(pi);
+    setDeletePiDialogOpen(true);
+  };
+
+  const handleDeleteLC = (lc: LetterOfCredit) => {
+    setLcToDelete(lc);
+    setDeleteLcDialogOpen(true);
+  };
+
+  const handleConfirmDeletePI = async () => {
+    if (!piToDelete) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/financials/pis/${piToDelete.id}`);
+
+      setPis((prev) => prev.filter((pi) => pi.id !== piToDelete.id));
+
+      toast({
+        title: 'Success',
+        description: 'Proforma Invoice deleted successfully',
+      });
+
+      setDeletePiDialogOpen(false);
+      setPiToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting PI:', error);
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete Proforma Invoice';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteLC = async () => {
+    if (!lcToDelete) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/financials/lcs/${lcToDelete.id}`);
+
+      setLcs((prev) => prev.filter((lc) => lc.id !== lcToDelete.id));
+
+      toast({
+        title: 'Success',
+        description: 'Letter of Credit deleted successfully',
+      });
+
+      setDeleteLcDialogOpen(false);
+      setLcToDelete(null);
+    } catch (error: any) {
+      console.error('Error deleting LC:', error);
+
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete Letter of Credit';
+
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const piTotalPages = Math.ceil(pis.length / PAGE_SIZE);
+  const lcTotalPages = Math.ceil(lcs.length / PAGE_SIZE);
+  const paginatedPis =
+    piTotalPages > 0
+      ? pis.slice(piPage * PAGE_SIZE, piPage * PAGE_SIZE + PAGE_SIZE)
+      : [];
+  const paginatedLcs =
+    lcTotalPages > 0
+      ? lcs.slice(lcPage * PAGE_SIZE, lcPage * PAGE_SIZE + PAGE_SIZE)
+      : [];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <p>Loading financials...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -26,37 +744,1028 @@ export default function FinancialsPage() {
           <p className="text-gray-500 mt-2">Manage Proforma Invoices and Letters of Credit</p>
         </div>
 
+        {/* Search Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Search Financials
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="space-y-4">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    id="search"
+                    placeholder="Search by order number, vendor name, PI number, or LC number..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Button type="submit">
+                  Search
+                </Button>
+                <Button type="button" variant="outline" onClick={handleResetSearch}>
+                  Reset
+                </Button>
+              </div>
+              {searchQuery && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">
+                    Searching for: {searchQuery}
+                  </Badge>
+                </div>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Order Profits Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Order Profits & Commissions
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOrderProfits()}
+              >
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search Bar */}
+            <form onSubmit={handleProfitsSearch} className="mb-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search by PO #, customer, buyer, style number..."
+                  value={profitsSearchQuery}
+                  onChange={(e) => setProfitsSearchQuery(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit">Search</Button>
+                <Button type="button" variant="outline" onClick={handleResetProfitsSearch}>
+                  Reset
+                </Button>
+              </div>
+            </form>
+
+            {/* Profits Table */}
+            {profitsLoading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Loading order profits...</p>
+              </div>
+            ) : orderProfits.length === 0 ? (
+              <div className="text-center py-12">
+                <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">No orders found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr className="text-left">
+                      <th className="p-3 font-semibold">PO #</th>
+                      <th className="p-3 font-semibold">Customer</th>
+                      <th className="p-3 font-semibold">Buyer</th>
+                      <th className="p-3 font-semibold">Style</th>
+                      <th className="p-3 font-semibold text-right">Quantity</th>
+                      <th className="p-3 font-semibold text-right">Delivered</th>
+                      <th className="p-3 font-semibold text-right">Potential Profit</th>
+                      <th className="p-3 font-semibold text-right">Realized Profit</th>
+                      <th className="p-3 font-semibold">Merchandiser</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orderProfits.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                      >
+                        <td className="p-3 font-medium">{order.poNumber}</td>
+                        <td className="p-3">{order.customerName}</td>
+                        <td className="p-3 text-gray-600">{order.buyerName || '-'}</td>
+                        <td className="p-3 text-gray-600">{order.styleNumber || '-'}</td>
+                        <td className="p-3 text-right">
+                          {order.quantity?.toLocaleString()} {order.unit}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.totalDeliveredQuantity !== undefined ? (
+                            <span className={
+                              order.shortageExcessQuantity !== undefined && order.shortageExcessQuantity < 0
+                                ? 'text-red-600 font-medium'
+                                : 'text-gray-900'
+                            }>
+                              {order.totalDeliveredQuantity.toLocaleString()} {order.unit}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.potentialProfit !== undefined ? (
+                            <span className="font-semibold text-blue-700">
+                              {order.currency} {order.potentialProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.realizedProfit !== undefined ? (
+                            <span className="font-semibold text-green-700">
+                              {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-gray-600">
+                          {order.merchandiserDetails?.fullName || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Proforma Invoices Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Proforma Invoices</CardTitle>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                New PI
-              </Button>
+              <Dialog open={piDialogOpen} onOpenChange={setPiDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New PI
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Create Proforma Invoice</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreatePI} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pi_order">Order *</Label>
+                        <Select value={piFormData.orderId} onValueChange={(value) => setPiFormData({ ...piFormData, orderId: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select order" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {orders.map((order) => (
+                              <SelectItem key={order.id} value={order.id}>
+                                {order.poNumber} - {order.customerName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pi_amount">Amount *</Label>
+                        <Input
+                          id="pi_amount"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={piFormData.amount}
+                          onChange={(e) => setPiFormData({ ...piFormData, amount: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pi_currency">Currency</Label>
+                        <Select value={piFormData.currency} onValueChange={(value) => setPiFormData({ ...piFormData, currency: value })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="BDT">BDT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pi_issueDate">Issue Date</Label>
+                        <Input
+                          id="pi_issueDate"
+                          type="date"
+                          value={piFormData.issueDate}
+                          onChange={(e) => setPiFormData({ ...piFormData, issueDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pi_pdf">Upload PDF (Optional)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="pi_pdf"
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          onChange={handlePdfFileSelect}
+                        />
+                        {selectedPdfFile && (
+                          <Badge variant="secondary">
+                            {selectedPdfFile.name}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500">Upload PI document in PDF format</p>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setPiDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={piSubmitting || !piFormData.orderId || !piFormData.amount}>
+                        {piSubmitting ? 'Creating...' : 'Create PI'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <p className="text-gray-500">No PIs found</p>
-              </div>
+              {pis.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-10 w-10 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-500">No PIs found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paginatedPis.map((pi) => {
+                    const statusBadge = getPiStatusBadge(pi.status);
+
+                    return (
+                      <div key={pi.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{pi.piNumber}</p>
+                              {pi.version > 1 && (
+                                <Badge variant="outline" className="text-xs">
+                                  <History className="h-3 w-3 mr-1" />
+                                  v{pi.version}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {pi.poNumber} - {pi.customerName}
+                            </p>
+                            {pi.createdByName && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Handled by: {pi.createdByName}
+                              </p>
+                            )}
+                            {pi.pdfUrl && (
+                              <a 
+                                href={pi.pdfUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-1"
+                              >
+                                <Download className="h-3 w-3" />
+                                Download PDF
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <Badge variant={statusBadge.variant} className="capitalize">
+                              {statusBadge.label}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenEditPI(pi)}>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {PI_STATUS_OPTIONS.map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        onClick={() => handleStatusChange(pi.id, option.value, 'pi')}
+                                        disabled={pi.status === option.value}
+                                      >
+                                        {option.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeletePI(pi)}
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            {pi.currency} {pi.amount.toLocaleString()}
+                          </span>
+                          {pi.issueDate && (
+                            <span className="text-gray-500">{formatDate(pi.issueDate)}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center justify-between pt-3">
+                    <p className="text-sm text-gray-500">
+                      Page {piPage + 1} of {piTotalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPiPage((prev) => Math.max(prev - 1, 0))}
+                        disabled={piPage === 0}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setPiPage((prev) =>
+                            Math.min(prev + 1, piTotalPages - 1)
+                          )
+                        }
+                        disabled={piPage >= piTotalPages - 1}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Letters of Credit Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Letters of Credit</CardTitle>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                New LC
-              </Button>
+              <Dialog open={lcDialogOpen} onOpenChange={setLcDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New LC
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create Letter of Credit</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateLC} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_order">Order *</Label>
+                        <Select value={lcFormData.orderId} onValueChange={(value) => setLcFormData({ ...lcFormData, orderId: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select order" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {orders.map((order) => (
+                              <SelectItem key={order.id} value={order.id}>
+                                {order.poNumber} - {order.customerName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_amount">Amount *</Label>
+                        <Input
+                          id="lc_amount"
+                          type="number"
+                          step="0.01"
+                          required
+                          value={lcFormData.amount}
+                          onChange={(e) => setLcFormData({ ...lcFormData, amount: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_currency">Currency</Label>
+                        <Select value={lcFormData.currency} onValueChange={(value) => setLcFormData({ ...lcFormData, currency: value })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="BDT">BDT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_issueDate">Issue Date *</Label>
+                        <Input
+                          id="lc_issueDate"
+                          type="date"
+                          required
+                          value={lcFormData.issueDate}
+                          onChange={(e) => setLcFormData({ ...lcFormData, issueDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_expiryDate">Expiry Date *</Label>
+                        <Input
+                          id="lc_expiryDate"
+                          type="date"
+                          required
+                          value={lcFormData.expiryDate}
+                          onChange={(e) => setLcFormData({ ...lcFormData, expiryDate: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lc_issuingBank">Issuing Bank</Label>
+                        <Input
+                          id="lc_issuingBank"
+                          value={lcFormData.issuingBank}
+                          onChange={(e) => setLcFormData({ ...lcFormData, issuingBank: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setLcDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={lcSubmitting || !lcFormData.orderId || !lcFormData.amount || !lcFormData.issueDate || !lcFormData.expiryDate}>
+                        {lcSubmitting ? 'Creating...' : 'Create LC'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <p className="text-gray-500">No LCs found</p>
-              </div>
+              {lcs.length === 0 ? (
+                <div className="text-center py-8">
+                  <DollarSign className="h-10 w-10 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-500">No LCs found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paginatedLcs.map((lc) => {
+                    const statusBadge = getLcStatusBadge(lc.status);
+
+                    return (
+                      <div key={lc.id} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-medium">{lc.lcNumber}</p>
+                            {lc.issuingBank && (
+                              <p className="text-sm text-gray-500">{lc.issuingBank}</p>
+                            )}
+                            {lc.createdByName && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Handled by: {lc.createdByName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <Badge variant={statusBadge.variant} className="capitalize">
+                              {statusBadge.label}
+                            </Badge>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenEditLC(lc)}>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>Update Status</DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    {LC_STATUS_OPTIONS.map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        onClick={() => handleStatusChange(lc.id, option.value, 'lc')}
+                                        disabled={lc.status === option.value}
+                                      >
+                                        {option.label}
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteLC(lc)}
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Amount:</span>
+                            <span className="font-medium">
+                              {lc.currency} {lc.amount.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Issue:</span>
+                            <span className="text-gray-500">{formatDate(lc.issueDate)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Expiry:</span>
+                            <span className="text-gray-500">{formatDate(lc.expiryDate)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center justify-between pt-3">
+                    <p className="text-sm text-gray-500">
+                      Page {lcPage + 1} of {lcTotalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLcPage((prev) => Math.max(prev - 1, 0))}
+                        disabled={lcPage === 0}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setLcPage((prev) =>
+                            Math.min(prev + 1, lcTotalPages - 1)
+                          )
+                        }
+                        disabled={lcPage >= lcTotalPages - 1}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Order Profits Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+                Order Profits & Commissions
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchOrderProfits()}
+              >
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search Bar */}
+            <form onSubmit={handleProfitsSearch} className="mb-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search by PO #, customer, buyer, style number..."
+                  value={profitsSearchQuery}
+                  onChange={(e) => setProfitsSearchQuery(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit">Search</Button>
+                <Button type="button" variant="outline" onClick={handleResetProfitsSearch}>
+                  Reset
+                </Button>
+              </div>
+            </form>
+
+            {/* Profits Table */}
+            {profitsLoading ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">Loading order profits...</p>
+              </div>
+            ) : orderProfits.length === 0 ? (
+              <div className="text-center py-12">
+                <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                <p className="text-gray-500">No orders found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-gray-50">
+                    <tr className="text-left">
+                      <th className="p-3 font-semibold">PO #</th>
+                      <th className="p-3 font-semibold">Customer</th>
+                      <th className="p-3 font-semibold">Buyer</th>
+                      <th className="p-3 font-semibold">Style</th>
+                      <th className="p-3 font-semibold text-right">Quantity</th>
+                      <th className="p-3 font-semibold text-right">Delivered</th>
+                      <th className="p-3 font-semibold text-right">Potential Profit</th>
+                      <th className="p-3 font-semibold text-right">Realized Profit</th>
+                      <th className="p-3 font-semibold">Merchandiser</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {orderProfits.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                      >
+                        <td className="p-3 font-medium">{order.poNumber}</td>
+                        <td className="p-3">{order.customerName}</td>
+                        <td className="p-3 text-gray-600">{order.buyerName || '-'}</td>
+                        <td className="p-3 text-gray-600">{order.styleNumber || '-'}</td>
+                        <td className="p-3 text-right">
+                          {order.quantity?.toLocaleString()} {order.unit}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.totalDeliveredQuantity !== undefined ? (
+                            <span className={
+                              order.shortageExcessQuantity !== undefined && order.shortageExcessQuantity < 0
+                                ? 'text-red-600 font-medium'
+                                : 'text-gray-900'
+                            }>
+                              {order.totalDeliveredQuantity.toLocaleString()} {order.unit}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.potentialProfit !== undefined ? (
+                            <span className="font-semibold text-blue-700">
+                              {order.currency} {order.potentialProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {order.realizedProfit !== undefined ? (
+                            <span className="font-semibold text-green-700">
+                              {order.currency} {order.realizedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-gray-600">
+                          {order.merchandiserDetails?.fullName || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog
+          open={editPiDialogOpen}
+          onOpenChange={(open) => {
+            setEditPiDialogOpen(open);
+            if (!open) {
+              setEditingPi(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Proforma Invoice</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdatePI} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_number">PI Number</Label>
+                  <Input id="edit_pi_number" value={editingPi?.piNumber ?? ''} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_order">Customer / Order *</Label>
+                  <Select
+                    value={editPiFormData.orderId}
+                    onValueChange={(value) =>
+                      setEditPiFormData({ ...editPiFormData, orderId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.poNumber} - {order.customerName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_amount">Amount *</Label>
+                  <Input
+                    id="edit_pi_amount"
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editPiFormData.amount}
+                    onChange={(e) =>
+                      setEditPiFormData({ ...editPiFormData, amount: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_currency">Currency</Label>
+                  <Select
+                    value={editPiFormData.currency}
+                    onValueChange={(value) =>
+                      setEditPiFormData({ ...editPiFormData, currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="BDT">BDT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_pi_issueDate">Issue Date</Label>
+                  <Input
+                    id="edit_pi_issueDate"
+                    type="date"
+                    value={editPiFormData.issueDate}
+                    onChange={(e) =>
+                      setEditPiFormData({ ...editPiFormData, issueDate: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditPiDialogOpen(false);
+                    setEditingPi(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={piSubmitting || !editPiFormData.orderId || !editPiFormData.amount}
+                >
+                  {piSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={editLcDialogOpen}
+          onOpenChange={(open) => {
+            setEditLcDialogOpen(open);
+            if (!open) {
+              setEditingLc(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Letter of Credit</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleUpdateLC} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_number">LC Number</Label>
+                  <Input id="edit_lc_number" value={editingLc?.lcNumber ?? ''} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_order">Customer / Order *</Label>
+                  <Select
+                    value={editLcFormData.orderId}
+                    onValueChange={(value) =>
+                      setEditLcFormData({ ...editLcFormData, orderId: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select order" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {orders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.poNumber} - {order.customerName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_amount">Amount *</Label>
+                  <Input
+                    id="edit_lc_amount"
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editLcFormData.amount}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, amount: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_currency">Currency</Label>
+                  <Select
+                    value={editLcFormData.currency}
+                    onValueChange={(value) =>
+                      setEditLcFormData({ ...editLcFormData, currency: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="BDT">BDT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_issueDate">Issue Date *</Label>
+                  <Input
+                    id="edit_lc_issueDate"
+                    type="date"
+                    required
+                    value={editLcFormData.issueDate}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, issueDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_expiryDate">Expiry Date *</Label>
+                  <Input
+                    id="edit_lc_expiryDate"
+                    type="date"
+                    required
+                    value={editLcFormData.expiryDate}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, expiryDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lc_issuingBank">Issuing Bank</Label>
+                  <Input
+                    id="edit_lc_issuingBank"
+                    value={editLcFormData.issuingBank}
+                    onChange={(e) =>
+                      setEditLcFormData({ ...editLcFormData, issuingBank: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditLcDialogOpen(false);
+                    setEditingLc(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    lcSubmitting ||
+                    !editLcFormData.orderId ||
+                    !editLcFormData.amount ||
+                    !editLcFormData.issueDate ||
+                    !editLcFormData.expiryDate
+                  }
+                >
+                  {lcSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete PI Confirmation Dialog */}
+        <Dialog open={deletePiDialogOpen} onOpenChange={setDeletePiDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Proforma Invoice</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this Proforma Invoice? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {piToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>PI Number:</strong> {piToDelete.piNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {piToDelete.poNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {piToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Amount:</strong> {piToDelete.currency} {piToDelete.amount.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeletePiDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeletePI}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete PI'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete LC Confirmation Dialog */}
+        <Dialog open={deleteLcDialogOpen} onOpenChange={setDeleteLcDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Letter of Credit</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this Letter of Credit? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {lcToDelete && (
+              <div className="py-4">
+                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm"><strong>LC Number:</strong> {lcToDelete.lcNumber}</p>
+                  <p className="text-sm"><strong>Order:</strong> {lcToDelete.poNumber}</p>
+                  <p className="text-sm"><strong>Customer:</strong> {lcToDelete.customerName}</p>
+                  <p className="text-sm"><strong>Amount:</strong> {lcToDelete.currency} {lcToDelete.amount.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteLcDialogOpen(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeleteLC}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete LC'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

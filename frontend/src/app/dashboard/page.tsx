@@ -2,24 +2,85 @@
 
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
-import { Package, TrendingUp, AlertTriangle, Truck } from 'lucide-react';
+import { Package, TrendingUp, Activity, Plus, Sparkles } from 'lucide-react';
+import { CreateOrderDialog } from '@/components/orders/create-order-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
+import OrdersByStageChart from '@/components/dashboard/charts/OrdersByStageChart';
+import MerchandiserWorkloadChart from '@/components/dashboard/charts/MerchandiserWorkloadChart';
+import MonthlyTrendsChart from '@/components/dashboard/charts/MonthlyTrendsChart';
+import { FinancialCharts } from '@/components/dashboard/financial-charts';
+import { MyTasksWidget } from '@/components/dashboard/my-tasks-widget';
 
-interface Stats {
-  totalOrders: number;
-  upcomingOrders: number;
-  runningOrders: number;
-  archivedOrders: number;
+interface DashboardActivity {
+  id: string;
+  action: string;
+  userName: string;
+  orderNumber: string;
+  customerName?: string;
+  buyerName?: string;
+  timestamp: string;
+  details: any;
+}
+
+type DateWindow = {
+  next7: number;
+  next14: number;
+  next30: number;
+  overdue: number;
+}
+
+interface ManagerDashboard {
+  totalCount: number;
+  upcomingCount: number;
+  runningCount: number;
+  archivedCount: number;
+  recentActivities: DashboardActivity[];
+  byStage?: Record<string, number>;
+  upcoming?: {
+    etd: DateWindow;
+    eta: DateWindow;
+  };
+}
+
+interface MerchandiserDashboard {
+  myTotalCount: number;
+  myUpcomingCount: number;
+  myRunningCount: number;
+  myArchivedCount: number;
+  recentActivities: DashboardActivity[];
+  byStage?: Record<string, number>;
+  upcoming?: {
+    etd: DateWindow;
+    eta: DateWindow;
+  };
+}
+
+interface ChartData {
+  name: string;
+  value: number;
+}
+
+interface DashboardStats {
+  orders_by_stage: ChartData[];
+  orders_by_merchandiser: ChartData[];
+  orders_trend: ChartData[];
+  total_orders: number;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [dashboardData, setDashboardData] = useState<ManagerDashboard | MerchandiserDashboard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isManager, setIsManager] = useState(false);
+  const [chartData, setChartData] = useState<DashboardStats | null>(null);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [createOrderOpen, setCreateOrderOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -27,18 +88,62 @@ export default function DashboardPage() {
       return;
     }
 
-    fetchStats();
+    fetchDashboard();
+    fetchChartData();
   }, [isAuthenticated, router]);
 
-  const fetchStats = async () => {
+  // Refetch data when window gains focus to ensure fresh counts
+  useEffect(() => {
+    const handleFocus = () => {
+      if (isAuthenticated()) {
+        fetchDashboard();
+        fetchChartData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isAuthenticated]);
+
+  const fetchDashboard = async () => {
     try {
-      const response = await api.get('/orders/stats');
-      setStats(response.data);
+      const response = await api.get('/dashboard');
+      setDashboardData(response.data);
+      // If response has upcomingCount, it's a manager dashboard
+      setIsManager('upcomingCount' in response.data);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('Failed to fetch dashboard:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+
+  const fetchChartData = async () => {
+    try {
+      const response = await api.get('/dashboard/stats', {
+        params: { _t: Date.now() }
+      });
+      setChartData(response.data);
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
   };
 
   if (loading) {
@@ -51,92 +156,499 @@ export default function DashboardPage() {
     );
   }
 
+  // Manager Dashboard View
+  if (isManager && dashboardData && 'upcomingCount' in dashboardData) {
+    const data = dashboardData as ManagerDashboard;
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Manager Dashboard</h1>
+              <p className="text-gray-500 mt-2">Company-wide overview and activity</p>
+            </div>
+            
+            {/* Create Order Button - Visually Appealing */}
+            <Button
+              onClick={() => setCreateOrderOpen(true)}
+              className="group relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 h-auto"
+              size="lg"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="relative flex items-center gap-3">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold flex items-center gap-1">
+                    Create New Order
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                  </div>
+                  <div className="text-xs opacity-90">Local or Foreign</div>
+                </div>
+              </div>
+            </Button>
+          </div>
+          
+          {/* Create Order Dialog - Shows type selection popup */}
+          <CreateOrderDialog
+            open={createOrderOpen}
+            onOpenChange={setCreateOrderOpen}
+            onSuccess={() => {
+              fetchDashboard();
+              fetchChartData();
+            }}
+          />
+
+          {/* Key Metrics & Charts - Top Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Orders by Stage with Visual Breakdown */}
+            {data.byStage && (
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardTitle className="text-lg">Orders Distribution by Stage</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {chartLoading ? (
+                    <div className="flex items-center justify-center h-[280px]">
+                      <p className="text-gray-500 text-sm">Loading chart...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-3 text-xs text-gray-500 text-center">
+                        Total parent orders:{' '}
+                        <span className="font-semibold text-gray-700">
+                          {chartData?.total_orders ?? 0}
+                        </span>
+                      </div>
+                      <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Monthly Trends */}
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+                <CardTitle className="text-lg">Monthly Trends (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[280px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-indigo-600">{data.totalCount}</div>
+                    <p className="text-xs text-gray-500">Total Orders</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-emerald-600">{data.runningCount}</div>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-600">{data.archivedCount}</div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Timeline, Workload & My Tasks - Second Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming ETD/ETA Timeline */}
+            {data.upcoming && (
+              <Card className="lg:col-span-2 shadow-md">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
+                  <CardTitle className="text-lg">Upcoming Delivery Timeline</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-blue-600" />
+                        ETD (Estimated Time of Dispatch)
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                          <span className="text-sm text-gray-600">0-5 days (High risk)</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.etd.next7}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <span className="text-sm text-gray-600">6-10 days (Medium risk)</span>
+                          <span className="text-xl font-bold text-amber-600">{data.upcoming.etd.next14}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <span className="text-sm text-gray-600">11-30 days</span>
+                          <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next30}</span>
+                        </div>
+                        {data.upcoming.etd.overdue > 0 && (
+                          <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                            <span className="text-sm text-gray-600">Overdue</span>
+                            <span className="text-xl font-bold text-red-600">{data.upcoming.etd.overdue}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-green-600" />
+                        ETA (Estimated Time of Arrival)
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                          <span className="text-sm text-gray-600">0-5 days</span>
+                          <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next7}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                          <span className="text-sm text-gray-600">6-10 days</span>
+                          <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next14}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                          <span className="text-sm text-gray-600">11-30 days</span>
+                          <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next30}</span>
+                        </div>
+                        {data.upcoming.eta.overdue > 0 && (
+                          <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                            <span className="text-sm text-gray-600">Overdue</span>
+                            <span className="text-xl font-bold text-red-600">{data.upcoming.eta.overdue}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Merchandiser Workload */}
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <CardTitle className="text-lg">Team Workload</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <p className="text-gray-500 text-sm">Loading...</p>
+                  </div>
+                ) : (
+                  <MerchandiserWorkloadChart data={chartData?.orders_by_merchandiser || []} />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* My Tasks */}
+            <MyTasksWidget />
+          </div>
+
+
+          {/* Financial Analytics */}
+          <FinancialCharts />
+
+          {/* Recent Activity Feed */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Recent Company-Wide Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.recentActivities.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No recent activity</p>
+              ) : (
+                <div className="space-y-3">
+                  {data.recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <Package className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">
+                          <span className="font-medium text-gray-900">{activity.userName}</span>
+                          {' '}
+                          <span className="text-gray-600">{activity.action}</span>
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {activity.customerName && (
+                            <span className="text-sm text-gray-700">
+                              <span className="text-gray-500">Customer:</span> {activity.customerName}
+                            </span>
+                          )}
+                          {activity.buyerName && (
+                            <>
+                              {activity.customerName && <span className="text-gray-400">•</span>}
+                              <span className="text-sm text-gray-700">
+                                <span className="text-gray-500">Buyer:</span> {activity.buyerName}
+                              </span>
+                            </>
+                          )}
+                          {(activity.customerName || activity.buyerName) && (
+                            <span className="text-gray-400">•</span>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {activity.orderNumber}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatTimestamp(activity.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Merchandiser Dashboard View
+  if (dashboardData && 'myUpcomingCount' in dashboardData) {
+    const data = dashboardData as MerchandiserDashboard;
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">My Dashboard</h1>
+              <p className="text-gray-500 mt-2">Your assigned orders and recent activity</p>
+            </div>
+            
+            {/* Create Order Button - Visually Appealing */}
+            <Button
+              onClick={() => setCreateOrderOpen(true)}
+              className="group relative overflow-hidden bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 h-auto"
+              size="lg"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              <div className="relative flex items-center gap-3">
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold flex items-center gap-1">
+                    Create New Order
+                    <Sparkles className="h-4 w-4 animate-pulse" />
+                  </div>
+                  <div className="text-xs opacity-90">Local or Foreign</div>
+                </div>
+              </div>
+            </Button>
+          </div>
+          
+          {/* Create Order Dialog - Shows type selection popup */}
+          <CreateOrderDialog
+            open={createOrderOpen}
+            onOpenChange={setCreateOrderOpen}
+            onSuccess={() => {
+              fetchDashboard();
+              fetchChartData();
+            }}
+          />
+
+          {/* Key Metrics & Charts - Top Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* My Orders by Stage with Visual Breakdown */}
+            {data.byStage && (
+              <Card className="shadow-md">
+                <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                  <CardTitle className="text-lg">My Orders Distribution by Stage</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {chartLoading ? (
+                    <div className="flex items-center justify-center h-[280px]">
+                      <p className="text-gray-500 text-sm">Loading chart...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-3 text-xs text-gray-500 text-center">
+                        Total parent orders:{' '}
+                        <span className="font-semibold text-gray-700">
+                          {chartData?.total_orders ?? 0}
+                        </span>
+                      </div>
+                      <OrdersByStageChart data={chartData?.orders_by_stage || []} />
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* My Monthly Trends */}
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+                <CardTitle className="text-lg">My Monthly Trends (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[280px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-indigo-600">{data.myTotalCount}</div>
+                    <p className="text-xs text-gray-500">Total Orders</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-emerald-600">{data.myRunningCount}</div>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-600">{data.myArchivedCount}</div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Timeline Overview & My Tasks - Second Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming Timeline */}
+            {data.upcoming && (
+            <Card className="lg:col-span-2 shadow-md">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50">
+                <CardTitle className="text-lg">My Upcoming Delivery Timeline</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-blue-600" />
+                      ETD (Estimated Time of Dispatch)
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-200">
+                        <span className="text-sm text-gray-600">0-5 days (High risk)</span>
+                        <span className="text-xl font-bold text-red-600">{data.upcoming.etd.next7}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <span className="text-sm text-gray-600">6-10 days (Medium risk)</span>
+                        <span className="text-xl font-bold text-amber-600">{data.upcoming.etd.next14}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <span className="text-sm text-gray-600">11-30 days</span>
+                        <span className="text-xl font-bold text-blue-600">{data.upcoming.etd.next30}</span>
+                      </div>
+                      {data.upcoming.etd.overdue > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                          <span className="text-sm text-gray-600">Overdue</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.etd.overdue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <Package className="h-4 w-4 text-green-600" />
+                      ETA (Estimated Time of Arrival)
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">0-5 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next7}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">6-10 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next14}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-200">
+                        <span className="text-sm text-gray-600">11-30 days</span>
+                        <span className="text-xl font-bold text-green-600">{data.upcoming.eta.next30}</span>
+                      </div>
+                      {data.upcoming.eta.overdue > 0 && (
+                        <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-300">
+                          <span className="text-sm text-gray-600">Overdue</span>
+                          <span className="text-xl font-bold text-red-600">{data.upcoming.eta.overdue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* My Tasks */}
+            <MyTasksWidget />
+          </div>
+
+
+          {/* My Financial Analytics */}
+          <FinancialCharts />
+
+          {/* My Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                My Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.recentActivities.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No recent activity on your orders</p>
+              ) : (
+                <div className="space-y-3">
+                  {data.recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <Package className="h-5 w-5 text-gray-400 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">
+                          <span className="font-medium text-gray-900">{activity.userName}</span>
+                          {' '}
+                          <span className="text-gray-600">{activity.action}</span>
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {activity.customerName && (
+                            <span className="text-sm text-gray-700">
+                              <span className="text-gray-500">Customer:</span> {activity.customerName}
+                            </span>
+                          )}
+                          {activity.buyerName && (
+                            <>
+                              {activity.customerName && <span className="text-gray-400">•</span>}
+                              <span className="text-sm text-gray-700">
+                                <span className="text-gray-500">Buyer:</span> {activity.buyerName}
+                              </span>
+                            </>
+                          )}
+                          {(activity.customerName || activity.buyerName) && (
+                            <span className="text-gray-400">•</span>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {activity.orderNumber}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatTimestamp(activity.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Fallback
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-gray-500 mt-2">Welcome to Provabook Operations Platform</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Orders</CardTitle>
-              <Package className="h-4 w-4 text-gray-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats?.totalOrders || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">All time</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Upcoming</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600">{stats?.upcomingOrders || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">Pending orders</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Running</CardTitle>
-              <Truck className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600">{stats?.runningOrders || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">Active production</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Archived</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-gray-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats?.archivedOrders || 0}</div>
-              <p className="text-xs text-gray-500 mt-1">Completed</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-500">No recent activity to display</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <button 
-                onClick={() => router.push('/orders')}
-                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
-              >
-                <p className="font-medium">View Orders</p>
-                <p className="text-sm text-gray-500">Manage your textile orders</p>
-              </button>
-              <button 
-                onClick={() => router.push('/samples')}
-                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
-              >
-                <p className="font-medium">Track Samples</p>
-                <p className="text-sm text-gray-500">Monitor sample submissions</p>
-              </button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-500">No dashboard data available</p>
       </div>
     </DashboardLayout>
   );
