@@ -207,8 +207,15 @@ class OrderSerializer(serializers.ModelSerializer):
         total_delivered = max(order_level_delivered, line_level_delivered)
         
         # Calculate denominators
-        greige_denominator = total_greige if total_greige > 0 else ordered_qty
-        yarn_denominator = total_yarn if total_yarn > 0 else total_greige if total_greige > 0 else ordered_qty
+        # KEY: When order-level finished fabric is set, use IT as primary denominator
+        # This is what the user enters as the expected total amount
+        if order_finished_fabric:
+            greige_denominator = order_finished_fabric
+            yarn_denominator = order_finished_fabric
+        else:
+            # Fallback to line-level totals or order quantity
+            greige_denominator = total_greige if total_greige > 0 else ordered_qty
+            yarn_denominator = total_yarn if total_yarn > 0 else total_greige if total_greige > 0 else ordered_qty
         
         total_knitting = float(summary['total_knitting'] or 0)
         total_dyeing = float(summary['total_dyeing'] or 0)
@@ -230,6 +237,10 @@ class OrderSerializer(serializers.ModelSerializer):
             'knittingEntriesCount': summary['knitting_entries_count'] or 0,
             'dyeingEntriesCount': summary['dyeing_entries_count'] or 0,
             'finishingEntriesCount': summary['finishing_entries_count'] or 0,
+            # Order-level finished fabric (primary denominator when set)
+            'orderFinishedFabric': order_finished_fabric,
+            'greigeDenominator': greige_denominator,
+            'yarnDenominator': yarn_denominator,
             # Calculate percentages with effective values (max of entry vs delivered)
             'knittingPercent': round((effective_knitting / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,
             'dyeingPercent': round((effective_dyeing / greige_denominator) * 100, 1) if greige_denominator > 0 else 0,

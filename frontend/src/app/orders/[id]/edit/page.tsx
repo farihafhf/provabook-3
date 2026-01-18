@@ -129,6 +129,11 @@ export default function OrderEditPage() {
       });
       const order = response.data;
       
+      // DEBUG: Log finished fabric from API
+      console.log('=== LOADED FROM API ===');
+      console.log('Order finishedFabricQuantity:', order.finishedFabricQuantity);
+      console.log('Order finishedFabricUnit:', order.finishedFabricUnit);
+      
       // Set basic order data
       setFormData({
         poNumber: order.poNumber || '',
