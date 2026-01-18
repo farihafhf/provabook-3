@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
@@ -40,6 +40,7 @@ interface DashboardLayoutProps {
 function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -84,9 +85,8 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   // Helper function to check if a nav item is active
   const isNavItemActive = (item: typeof navigation[0]) => {
     // Check if we're on an order detail page from production by checking URL
-    if (pathname?.startsWith('/orders/') && typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const isLocalOrderDetail = searchParams.get('from') === 'production';
+    if (pathname?.startsWith('/orders/')) {
+      const isLocalOrderDetail = searchParams?.get('from') === 'production';
       
       // Special case: Local order detail pages should highlight Local Orders
       if (isLocalOrderDetail && item.href === '/production') {
