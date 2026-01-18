@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api } from '@/lib/api';
-import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight, Scissors, Droplets, Calculator, FlaskConical, Percent } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Clock, XCircle, Package, FileText, Printer, Download, Calendar, Edit2, Truck, Plus, Trash2, Pencil, DollarSign, ChevronDown, ChevronRight, Scissors, Droplets, Calculator, FlaskConical, Percent, ClipboardList } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,7 @@ import { OrderTimeline, type TimelineEvent } from '@/components/orders/order-tim
 import { LineItemCard } from '@/components/orders/line-item-card';
 import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet';
 import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
+import { ActivityLogDialog } from '@/components/orders/activity-log-dialog';
 
 interface MillOffer {
   id: string;
@@ -328,6 +329,9 @@ export default function OrderDetailPage() {
 
   // Greige/Yarn Calculations Dialog state
   const [showCalculationsDialog, setShowCalculationsDialog] = useState(false);
+
+  // Activity Log Dialog state
+  const [showActivityLog, setShowActivityLog] = useState(false);
 
   // Helper function to calculate greige for a line
   const calculateLineGreige = (line: OrderLine): number => {
@@ -1562,6 +1566,14 @@ export default function OrderDetailPage() {
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" />
               Print Order
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowActivityLog(true)}
+              className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Activity Log
             </Button>
             {(order.currentStage === 'In Development' || order.currentStage === 'Production') && (
               <Button onClick={handleMarkDelivered} disabled={updating}>
@@ -3406,6 +3418,14 @@ export default function OrderDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Activity Log Dialog */}
+        <ActivityLogDialog
+          open={showActivityLog}
+          onClose={() => setShowActivityLog(false)}
+          orderId={order.id}
+          onRefresh={fetchOrder}
+        />
       </div>
     </DashboardLayout>
   );

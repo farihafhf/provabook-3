@@ -406,6 +406,77 @@ class ApprovalHistory(TimestampedModel):
         return f"{self.order.order_number} - {self.get_approval_type_display()} - {self.get_status_display()}"
 
 
+class OrderActivityLog(TimestampedModel):
+    """
+    Order Activity Log model - Tracks timestamped updates/notes for orders
+    Unlike the notes field which gets overwritten, this maintains a full history.
+    
+    Use cases:
+    - Production progress updates (e.g., "Knitting completed 500 yards today")
+    - Factory communications (e.g., "Factory plans to finish dyeing tomorrow")
+    - Status updates and milestones
+    - Any timestamped notes the user wants to track
+    
+    Can be linked to either order-level or line-level.
+    """
+    
+    CATEGORY_CHOICES = [
+        ('general', 'General Update'),
+        ('production', 'Production Update'),
+        ('quality', 'Quality Note'),
+        ('communication', 'Communication'),
+        ('milestone', 'Milestone'),
+        ('issue', 'Issue/Problem'),
+        ('plan', 'Plan/Schedule'),
+    ]
+    
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        related_name='activity_logs'
+    )
+    
+    order_line = models.ForeignKey(
+        'OrderLine',
+        on_delete=models.SET_NULL,
+        related_name='activity_logs',
+        null=True,
+        blank=True,
+        help_text='If set, this log entry is specific to this order line'
+    )
+    
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='general'
+    )
+    
+    content = models.TextField(help_text='The update/note content')
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs'
+    )
+    
+    class Meta:
+        db_table = 'order_activity_logs'
+        ordering = ['-created_at']
+        verbose_name = 'Order Activity Log'
+        verbose_name_plural = 'Order Activity Logs'
+        indexes = [
+            models.Index(fields=['order', 'created_at']),
+            models.Index(fields=['order_line', 'created_at']),
+            models.Index(fields=['category']),
+        ]
+    
+    def __str__(self):
+        line_info = f" - {self.order_line.line_label}" if self.order_line else ""
+        return f"{self.order.order_number}{line_info} - {self.get_category_display()} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
 class CustomApprovalGate(TimestampedModel):
     """
     Custom Approval Gate model - Allows users to create custom approval gates for order lines.

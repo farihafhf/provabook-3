@@ -1157,3 +1157,154 @@ class OrderViewSet(viewsets.ModelViewSet):
             
             response_serializer = CustomApprovalGateSerializer(gate)
             return Response(response_serializer.data)
+
+    # ==================== Activity Log Endpoints ====================
+    
+    @action(detail=True, methods=['get', 'post'], url_path='activity-logs')
+    def activity_logs(self, request, pk=None):
+        """
+        GET /orders/{id}/activity-logs/
+        List all activity log entries for an order
+        
+        POST /orders/{id}/activity-logs/
+        Create a new activity log entry
+        
+        Request body for POST:
+        {
+            "category": "production",  // optional, default: "general"
+            "content": "Knitting completed 500 yards today",
+            "orderLineId": "uuid",  // optional, for line-level logs
+            "customTimestamp": "2024-01-15T10:30:00Z"  // optional
+        }
+        """
+        order = self.get_object()
+        
+        if request.method == 'GET':
+            # Get optional query params for filtering
+            line_id = request.query_params.get('lineId')
+            category = request.query_params.get('category')
+            
+            logs = OrderActivityLog.objects.filter(order=order).select_related('created_by', 'order_line')
+            
+            if line_id:
+                logs = logs.filter(order_line_id=line_id)
+            if category:
+                logs = logs.filter(category=category)
+            
+            logs = logs.order_by('-created_at')
+            serializer = OrderActivityLogSerializer(logs, many=True)
+            return Response({'logs': serializer.data})
+        
+        elif request.method == 'POST':
+            serializer = OrderActivityLogCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            order_line = None
+            order_line_id = serializer.validated_data.get('order_line_id')
+            if order_line_id:
+                from .models_order_line import OrderLine
+                try:
+                    order_line = OrderLine.objects.get(id=order_line_id, style__order=order)
+                except OrderLine.DoesNotExist:
+                    return Response(
+                        {'error': 'Order line not found'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            
+            log_entry = OrderActivityLog.objects.create(
+                order=order,
+                order_line=order_line,
+                category=serializer.validated_data.get('category', 'general'),
+                content=serializer.validated_data['content'],
+                created_by=request.user if request.user.is_authenticated else None
+            )
+            
+            # Apply custom timestamp if provided
+            custom_timestamp = serializer.validated_data.get('custom_timestamp')
+            if custom_timestamp:
+                OrderActivityLog.objects.filter(pk=log_entry.pk).update(created_at=custom_timestamp)
+                log_entry.refresh_from_db()
+            
+            response_serializer = OrderActivityLogSerializer(log_entry)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch', 'delete'], url_path='activity-logs/(?P<log_id>[^/.]+)')
+    def update_activity_log(self, request, pk=None, log_id=None):
+        """
+        PATCH /orders/{id}/activity-logs/{log_id}/
+        Update an activity log entry
+        
+        DELETE /orders/{id}/activity-logs/{log_id}/
+        Delete an activity log entry
+        
+        Request body for PATCH:
+        {
+            "category": "production",  // optional
+            "content": "Updated content",  // optional
+            "customTimestamp": "2024-01-15T10:30:00Z"  // optional
+        }
+        """
+        order = self.get_object()
+        
+        try:
+            log_entry = OrderActivityLog.objects.get(id=log_id, order=order)
+        except OrderActivityLog.DoesNotExist:
+            return Response(
+                {'error': 'Activity log entry not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if request.method == 'DELETE':
+            log_entry.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        elif request.method == 'PATCH':
+            serializer = OrderActivityLogUpdateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            if 'category' in serializer.validated_data:
+                log_entry.category = serializer.validated_data['category']
+            if 'content' in serializer.validated_data:
+                log_entry.content = serializer.validated_data['content']
+            
+            log_entry.save()
+            
+            # Update created_at if custom timestamp provided
+            custom_timestamp = serializer.validated_data.get('custom_timestamp')
+            if custom_timestamp:
+                OrderActivityLog.objects.filter(pk=log_entry.pk).update(created_at=custom_timestamp)
+                log_entry.refresh_from_db()
+            
+            response_serializer = OrderActivityLogSerializer(log_entry)
+            return Response(response_serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='lines/(?P<line_id>[^/.]+)/activity-logs')
+    def get_line_activity_logs(self, request, pk=None, line_id=None):
+        """
+        GET /orders/{id}/lines/{line_id}/activity-logs/
+        Get activity logs for a specific order line
+        """
+        from .models_order_line import OrderLine
+        
+        order = self.get_object()
+        
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        category = request.query_params.get('category')
+        
+        logs = OrderActivityLog.objects.filter(
+            order=order,
+            order_line=line
+        ).select_related('created_by').order_by('-created_at')
+        
+        if category:
+            logs = logs.filter(category=category)
+        
+        serializer = OrderActivityLogSerializer(logs, many=True)
+        return Response({'logs': serializer.data})
