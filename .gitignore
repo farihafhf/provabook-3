@@ -57,3 +57,7 @@ Thumbs.db
 */.git*
 ProvaBook_todoList.md
 .windsurf/
+
+*.env
+*.env.*
+backend_django/.env

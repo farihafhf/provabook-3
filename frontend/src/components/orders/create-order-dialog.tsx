@@ -533,6 +533,8 @@ export function CreateOrderDialog({
         fabricType: '',
         orderDate: '',
         notes: '',
+        finishedFabricQuantity: '',
+        finishedFabricUnit: 'kg',
       });
       setOrderLines([
         {
