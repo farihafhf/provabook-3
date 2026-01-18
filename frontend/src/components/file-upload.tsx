@@ -88,11 +88,11 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
       return;
     }
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (60MB max)
+    if (file.size > 60 * 1024 * 1024) {
       toast({
         title: 'File too large',
-        description: 'File size must be less than 10MB',
+        description: 'File size must be less than 60MB',
         variant: 'destructive',
       });
       return;
@@ -243,7 +243,7 @@ export function FileUpload({ orderId, orderLines, onUploadComplete }: FileUpload
               <span className="font-semibold text-blue-600">Click to upload</span> or drag and drop
             </div>
             <p className="text-xs text-gray-500">
-              PNG, JPG, PDF, Excel, Word (max 10MB)
+              PNG, JPG, PDF, Excel, Word (max 60MB)
             </p>
           </div>
         ) : (

@@ -107,6 +107,15 @@ const formatApprovalType = (type: string) => {
     qualityTest: 'Quality Test',
     bulkSwatch: 'Bulk Swatch',
   };
+  
+  // Handle custom gate keys (format: custom_gate_name)
+  if (type.startsWith('custom_')) {
+    const customName = type.replace('custom_', '').replace(/_/g, ' ');
+    return customName.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ') + ' (Custom)';
+  }
+  
   return mapping[type] || type;
 };
 

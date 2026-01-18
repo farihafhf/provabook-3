@@ -3,6 +3,7 @@ Serializers for OrderLine - handles style+color+CAD combinations
 """
 from rest_framework import serializers
 from .models_order_line import OrderLine, MillOffer
+from .models import CustomApprovalGate
 
 
 class MillOfferSerializer(serializers.ModelSerializer):
@@ -57,6 +58,8 @@ class OrderLineSerializer(serializers.ModelSerializer):
     days_overdue_at_delivery = serializers.SerializerMethodField()
     # Mill offers for development stage - use SerializerMethodField for resilience
     mill_offers = serializers.SerializerMethodField()
+    # Custom approval gates for this line
+    custom_gates = serializers.SerializerMethodField()
     
     class Meta:
         model = OrderLine
@@ -80,7 +83,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
             'swatch_received_date', 'swatch_sent_date',
-            'mill_offers',
+            'mill_offers', 'custom_gates',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -116,6 +119,27 @@ class OrderLineSerializer(serializers.ModelSerializer):
             return MillOfferSerializer(mill_offers, many=True).data
         except Exception:
             # Return empty list if table doesn't exist (migration not yet run)
+            return []
+    
+    def get_custom_gates(self, obj):
+        """Get custom approval gates for this order line"""
+        try:
+            gates = CustomApprovalGate.objects.filter(order_line=obj)
+            return [
+                {
+                    'id': str(gate.id),
+                    'orderLineId': str(gate.order_line_id),
+                    'name': gate.name,
+                    'gateKey': gate.gate_key,
+                    'status': gate.status,
+                    'createdBy': str(gate.created_by_id) if gate.created_by_id else None,
+                    'createdByName': gate.created_by.full_name if gate.created_by else None,
+                    'createdAt': gate.created_at.isoformat() if gate.created_at else None,
+                    'updatedAt': gate.updated_at.isoformat() if gate.updated_at else None,
+                }
+                for gate in gates
+            ]
+        except Exception:
             return []
     
     def to_representation(self, instance):
@@ -181,6 +205,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'swatchReceivedDate': data.get('swatch_received_date'),
             'swatchSentDate': data.get('swatch_sent_date'),
             'millOffers': data.get('mill_offers', []),
+            'customGates': data.get('custom_gates', []),
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
         }
