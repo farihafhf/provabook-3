@@ -1063,7 +1063,7 @@ function LocalOrdersPageContent() {
                                   size="sm"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    router.push(`/orders/${order.id}/edit`);
+                                    router.push(`/orders/${order.id}/edit?from=production`);
                                   }}
                                   title="Edit Order"
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"

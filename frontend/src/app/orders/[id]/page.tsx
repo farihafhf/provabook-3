@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -277,6 +277,7 @@ interface Order {
 export default function OrderDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const currentUser = useAuthStore((state) => state.user);
@@ -1568,7 +1569,11 @@ export default function OrderDetailPage() {
             </div>
             <Button
               variant="outline"
-              onClick={() => router.push(`/orders/${order.id}/edit`)}
+              onClick={() => {
+                const fromSource = searchParams?.get('from');
+                const query = fromSource ? `?from=${fromSource}` : '';
+                router.push(`/orders/${order.id}/edit${query}`);
+              }}
             >
               <Edit2 className="mr-2 h-4 w-4" />
               Edit Order

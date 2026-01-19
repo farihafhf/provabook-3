@@ -32,6 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { api } from '@/lib/api';
+import { useNavigationStore } from '@/store/navigation-store';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,6 +43,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, logout } = useAuthStore();
+  const { activeContext, setActiveContext } = useNavigationStore();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -50,6 +52,43 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
     logout();
     router.push('/login');
   };
+
+  useEffect(() => {
+    // 1. Production List -> Always Local
+    if (pathname?.startsWith('/production')) {
+      if (activeContext !== 'local') setActiveContext('local');
+      return;
+    }
+
+    // 2. Foreign Orders List -> Always Foreign
+    if (pathname === '/orders') {
+      if (activeContext !== 'foreign') setActiveContext('foreign');
+      return;
+    }
+
+    // 3. Inside Order Details/Edit
+    if (pathname?.startsWith('/orders/')) {
+      // Check for explicit signal via query param
+      const fromProduction = searchParams?.get('from') === 'production';
+      
+      if (fromProduction) {
+        if (activeContext !== 'local') setActiveContext('local');
+        return;
+      }
+      
+      // If no explicit signal, retain existing 'local' context if set.
+      // Otherwise, default to 'foreign' for standard order routes.
+      if (activeContext !== 'local') {
+        if (activeContext !== 'foreign') setActiveContext('foreign');
+      }
+      return;
+    }
+
+    // 4. Other Modules (Dashboard, Samples, etc.) -> Clear Order context
+    if (activeContext !== null) {
+      setActiveContext(null);
+    }
+  }, [pathname, searchParams, activeContext, setActiveContext]);
 
   useEffect(() => {
     fetchUnreadCount();
@@ -84,20 +123,21 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
 
   // Helper function to check if a nav item is active
   const isNavItemActive = (item: typeof navigation[0]) => {
-    // Check if we're on an order detail page from production by checking URL
-    if (pathname?.startsWith('/orders/')) {
-      const isLocalOrderDetail = searchParams?.get('from') === 'production';
-      
-      // Special case: Local order detail pages should highlight Local Orders
-      if (isLocalOrderDetail && item.href === '/production') {
-        return true;
-      }
-      // Special case: Prevent Foreign Orders from being highlighted on local order details
-      if (isLocalOrderDetail && item.href === '/orders') {
-        return false;
-      }
+    // Special handling for Local Orders (Production)
+    if (item.href === '/production') {
+      // Active if explicitly in production OR if context is marked as local (even if URL is /orders/...)
+      return pathname?.startsWith('/production') || activeContext === 'local';
     }
-    // Default: match by pathname prefix
+
+    // Special handling for Foreign Orders
+    if (item.href === '/orders') {
+      // Active only if context is foreign AND we are in the orders section
+      // OR if we are in /orders and context hasn't initialized yet (fallback)
+      return (pathname?.startsWith('/orders') && activeContext === 'foreign') || 
+             (pathname === '/orders');
+    }
+
+    // Default: match by pathname prefix for other items
     return pathname?.startsWith(item.href);
   };
 

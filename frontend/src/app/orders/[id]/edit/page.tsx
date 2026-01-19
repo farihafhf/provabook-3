@@ -379,7 +379,9 @@ export default function OrderEditPage() {
         description: 'Order updated successfully',
       });
 
-      router.push(`/orders/${params.id}`);
+      const fromSource = searchParams.get('from');
+      const query = fromSource ? `?from=${fromSource}` : '';
+      router.push(`/orders/${params.id}${query}`);
     } catch (error: any) {
       console.error('Error updating order:', error);
       // Extract error message, ensuring it's always a string
