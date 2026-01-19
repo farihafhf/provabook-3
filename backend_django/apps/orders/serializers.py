@@ -39,6 +39,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'etd', 'eta', 'order_date', 'expected_delivery_date', 'actual_delivery_date',
             'status', 'category', 'approval_status', 'current_stage',
             'order_type', 'finished_fabric_quantity', 'finished_fabric_unit',
+            'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent',
+            'greige_quantity', 'yarn_required',
             'notes', 'metadata', 'merchandiser', 'merchandiser_details', 'created_by', 'created_by_details',
             'total_value', 'total_delivered_quantity', 'shortage_excess_quantity',
             'potential_profit', 'realized_profit', 'realized_value',
@@ -590,6 +592,7 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'status', 'category', 'current_stage', 'notes', 'metadata', 'merchandiser', 'styles',
             'order_type',
             'finished_fabric_quantity', 'finished_fabric_unit',
+            'process_loss_percent', 'mixed_fabric_type', 'mixed_fabric_percent',
         ]
     
     def to_internal_value(self, data):
@@ -616,6 +619,9 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             'orderType': 'order_type',
             'finishedFabricQuantity': 'finished_fabric_quantity',
             'finishedFabricUnit': 'finished_fabric_unit',
+            'processLossPercent': 'process_loss_percent',
+            'mixedFabricType': 'mixed_fabric_type',
+            'mixedFabricPercent': 'mixed_fabric_percent',
         }
         
         # Convert camelCase to snake_case

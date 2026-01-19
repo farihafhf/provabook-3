@@ -333,14 +333,16 @@ class OrderLine(TimestampedModel):
         
         finished = Decimal(str(base_qty))
         
-        # Get process loss (default 0 if not set)
-        loss_percent = Decimal(str(self.process_loss_percent or 0)) / Decimal('100')
+        # Get process loss from Line (override) or Order (default)
+        loss_val = self.process_loss_percent if self.process_loss_percent is not None else (self.style.order.process_loss_percent if self.style and self.style.order else 0)
+        loss_percent = Decimal(str(loss_val or 0)) / Decimal('100')
         
         # Calculate greige: finished * (1 + loss)
         self.greige_quantity = finished * (Decimal('1') + loss_percent)
         
-        # Get mixed fabric percent (default 0 if not set)
-        mixed_percent = Decimal(str(self.mixed_fabric_percent or 0)) / Decimal('100')
+        # Get mixed fabric percent from Line (override) or Order (default)
+        mixed_val = self.mixed_fabric_percent if self.mixed_fabric_percent is not None else (self.style.order.mixed_fabric_percent if self.style and self.style.order else 0)
+        mixed_percent = Decimal(str(mixed_val or 0)) / Decimal('100')
         
         # Calculate yarn: greige * (1 - mixed)
         self.yarn_required = self.greige_quantity * (Decimal('1') - mixed_percent)

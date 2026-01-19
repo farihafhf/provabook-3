@@ -61,13 +61,10 @@ interface OrderLineFormData {
   notes?: string;
   
   // Local Order Production Fields (only used for local orders)
-  // Finished Fabric fields
+  // Finished Fabric fields - MOVED TO ORDER LEVEL
   finishedFabricQuantity?: string;
   finishedFabricUnit?: string;
-  // Greige/Yarn calculation fields
-  processLossPercent?: string;
-  mixedFabricType?: string;
-  mixedFabricPercent?: string;
+  
   // Yarn fields (yarnRequired is now auto-calculated)
   yarnBookedDate?: string;
   yarnReceivedDate?: string;
@@ -113,6 +110,9 @@ export function CreateOrderDialog({
     notes: '',
     finishedFabricQuantity: '',
     finishedFabricUnit: 'kg',
+    processLossPercent: '',
+    mixedFabricType: '',
+    mixedFabricPercent: '',
   });
   
   const [orderLines, setOrderLines] = useState<OrderLineFormData[]>([
@@ -478,10 +478,8 @@ export function CreateOrderDialog({
                 // Finished Fabric fields
                 lineData.finishedFabricQuantity = line.finishedFabricQuantity ? parseFloat(line.finishedFabricQuantity) : undefined;
                 lineData.finishedFabricUnit = line.finishedFabricUnit || undefined;
-                // Greige/Yarn calculation fields (yarnRequired is auto-calculated on backend)
-                lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
-                lineData.mixedFabricType = line.mixedFabricType || undefined;
-                lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
+                // Greige/Yarn calculation fields (percentages are now order-level only)
+                
                 // Yarn dates
                 lineData.yarnBookedDate = line.yarnBookedDate || undefined;
                 lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;

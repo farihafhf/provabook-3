@@ -43,12 +43,7 @@ interface OrderLineFormData {
   // Finished Fabric fields
   finishedFabricQuantity?: string;
   finishedFabricUnit?: string;
-  // Greige/Yarn calculation fields
-  processLossPercent?: string;
-  mixedFabricType?: string;
-  mixedFabricPercent?: string;
-  greigeQuantity?: string;
-  yarnRequired?: string;
+  // Yarn fields (yarnRequired is now auto-calculated)
   yarnBookedDate?: string;
   yarnReceivedDate?: string;
   ppYards?: string;
@@ -89,6 +84,9 @@ export default function OrderEditPage() {
     notes: '',
     finishedFabricQuantity: '',
     finishedFabricUnit: 'kg',
+    processLossPercent: '',
+    mixedFabricType: '',
+    mixedFabricPercent: '',
   });
   
   const [orderType, setOrderType] = useState<'foreign' | 'local'>('foreign');
@@ -144,6 +142,9 @@ export default function OrderEditPage() {
         notes: order.notes || '',
         finishedFabricQuantity: order.finishedFabricQuantity ? order.finishedFabricQuantity.toString() : '',
         finishedFabricUnit: order.finishedFabricUnit || 'kg',
+        processLossPercent: order.processLossPercent ? order.processLossPercent.toString() : '',
+        mixedFabricType: order.mixedFabricType || '',
+        mixedFabricPercent: order.mixedFabricPercent ? order.mixedFabricPercent.toString() : '',
       });
       
       // Set order type
@@ -186,12 +187,8 @@ export default function OrderEditPage() {
               // Finished Fabric fields
               finishedFabricQuantity: item.finishedFabricQuantity ? item.finishedFabricQuantity.toString() : '',
               finishedFabricUnit: item.finishedFabricUnit || 'kg',
-              // Greige/Yarn calculation fields
-              processLossPercent: item.processLossPercent ? item.processLossPercent.toString() : '',
-              mixedFabricType: item.mixedFabricType || '',
-              mixedFabricPercent: item.mixedFabricPercent ? item.mixedFabricPercent.toString() : '',
-              greigeQuantity: item.greigeQuantity ? item.greigeQuantity.toString() : '',
-              yarnRequired: item.yarnRequired ? item.yarnRequired.toString() : '',
+              // Greige/Yarn calculation fields - use order level now
+              
               yarnBookedDate: item.yarnBookedDate || '',
               yarnReceivedDate: item.yarnReceivedDate || '',
               ppYards: item.ppYards ? item.ppYards.toString() : '',
@@ -297,6 +294,9 @@ export default function OrderEditPage() {
         unit: currentOrderLines[0]?.unit || 'meters',
         finishedFabricQuantity: orderType === 'local' && formData.finishedFabricQuantity ? parseFloat(formData.finishedFabricQuantity) : undefined,
         finishedFabricUnit: orderType === 'local' && formData.finishedFabricUnit ? formData.finishedFabricUnit : undefined,
+        processLossPercent: orderType === 'local' && formData.processLossPercent ? parseFloat(formData.processLossPercent) : undefined,
+        mixedFabricType: orderType === 'local' && formData.mixedFabricType ? formData.mixedFabricType : undefined,
+        mixedFabricPercent: orderType === 'local' && formData.mixedFabricPercent ? parseFloat(formData.mixedFabricPercent) : undefined,
         // Each line becomes its own style - completely independent
         styles: currentOrderLines.map((line, index) => {
           // Build line data
@@ -320,9 +320,7 @@ export default function OrderEditPage() {
           if (orderType === 'local') {
             lineData.finishedFabricQuantity = line.finishedFabricQuantity ? parseFloat(line.finishedFabricQuantity) : undefined;
             lineData.finishedFabricUnit = line.finishedFabricUnit || undefined;
-            lineData.processLossPercent = line.processLossPercent ? parseFloat(line.processLossPercent) : undefined;
-            lineData.mixedFabricType = line.mixedFabricType || undefined;
-            lineData.mixedFabricPercent = line.mixedFabricPercent ? parseFloat(line.mixedFabricPercent) : undefined;
+            // Percentages are now order-level
             lineData.yarnBookedDate = line.yarnBookedDate || undefined;
             lineData.yarnReceivedDate = line.yarnReceivedDate || undefined;
             lineData.ppYards = line.ppYards ? parseFloat(line.ppYards) : undefined;
@@ -537,9 +535,7 @@ export default function OrderEditPage() {
         if (index === sourceIndex) return line;
         return {
           ...line,
-          processLossPercent: sourceLine.processLossPercent,
-          mixedFabricType: sourceLine.mixedFabricType,
-          mixedFabricPercent: sourceLine.mixedFabricPercent,
+          // Percentages are now at order level
           yarnBookedDate: sourceLine.yarnBookedDate,
           yarnReceivedDate: sourceLine.yarnReceivedDate,
           ppYards: sourceLine.ppYards,
@@ -697,6 +693,77 @@ export default function OrderEditPage() {
                           <SelectItem value="lbs">lbs</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    
+                    {/* Greige & Yarn Calculation Parameters (Order Level) */}
+                    <div className="col-span-3 grid grid-cols-3 gap-4 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
+                      <div className="col-span-3">
+                        <Label className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                          Greige & Yarn Calculation Parameters
+                        </Label>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="processLossPercent">Process Loss (%)</Label>
+                        <Input
+                          id="processLossPercent"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          placeholder="e.g., 10"
+                          value={formData.processLossPercent}
+                          onChange={(e) => setFormData({ ...formData, processLossPercent: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="mixedFabricType">Mixed Fabric Type</Label>
+                        <Input
+                          id="mixedFabricType"
+                          placeholder="e.g., Lycra"
+                          value={formData.mixedFabricType}
+                          onChange={(e) => setFormData({ ...formData, mixedFabricType: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="mixedFabricPercent">Mixed Fabric (%)</Label>
+                        <Input
+                          id="mixedFabricPercent"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          placeholder="e.g., 4"
+                          value={formData.mixedFabricPercent}
+                          onChange={(e) => setFormData({ ...formData, mixedFabricPercent: e.target.value })}
+                        />
+                      </div>
+                      
+                      {/* Calculation Preview */}
+                      {formData.finishedFabricQuantity && (
+                        <div className="col-span-3 mt-2 text-sm text-amber-800 bg-white p-3 rounded border border-amber-100">
+                          <span className="font-semibold block mb-1">Production Calculation Preview:</span>
+                          {(() => {
+                            const finished = parseFloat(formData.finishedFabricQuantity || '0');
+                            const loss = parseFloat(formData.processLossPercent || '0') / 100;
+                            const mixed = parseFloat(formData.mixedFabricPercent || '0') / 100;
+                            
+                            const greige = finished * (1 + loss);
+                            const yarn = greige * (1 - mixed);
+                            
+                            return (
+                              <div className="flex gap-4">
+                                <span>
+                                  Total Greige: <strong>{greige.toLocaleString(undefined, { maximumFractionDigits: 2 })} {formData.finishedFabricUnit}</strong>
+                                </span>
+                                <span>
+                                  Total Yarn: <strong>{yarn.toLocaleString(undefined, { maximumFractionDigits: 2 })} {formData.finishedFabricUnit}</strong>
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

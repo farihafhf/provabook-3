@@ -190,6 +190,7 @@ interface ProductionSummary {
   // New fields from backend
   orderFinishedFabric?: number;
   greigeDenominator?: number;
+  finishingDenominator?: number;
   yarnDenominator?: number;
 }
 
@@ -215,6 +216,11 @@ interface Order {
   // Local order fields
   finishedFabricQuantity?: number;
   finishedFabricUnit?: string;
+  processLossPercent?: number;
+  mixedFabricType?: string;
+  mixedFabricPercent?: number;
+  greigeQuantity?: number;
+  yarnRequired?: number;
   colorQuantityBreakdown?: Array<{ color: string; quantity: number }>;
   etd?: string;
   eta?: string;

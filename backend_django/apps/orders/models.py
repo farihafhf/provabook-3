@@ -116,6 +116,28 @@ class Order(TimestampedModel):
         help_text='Unit for finished fabric quantity (e.g., kg, yards, meters)'
     )
     
+    # Production Calculation Fields (Order Level)
+    process_loss_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        help_text='Process loss percentage from finished fabric to greige (e.g., 10 for 10%)'
+    )
+    mixed_fabric_type = models.CharField(
+        max_length=100, blank=True, null=True,
+        help_text='Name of mixed fabric (e.g., lycra, spandex)'
+    )
+    mixed_fabric_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True,
+        help_text='Percentage of mixed fabric in greige (e.g., 4 for 4%)'
+    )
+    greige_quantity = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Calculated total greige quantity (finished fabric + process loss)'
+    )
+    yarn_required = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True,
+        help_text='Calculated total yarn required (greige minus mixed fabric portion)'
+    )
+    
     # Additional Information
     notes = models.TextField(blank=True, null=True)
     metadata = models.JSONField(blank=True, null=True, default=dict)
@@ -164,6 +186,20 @@ class Order(TimestampedModel):
         if not self.order_number:
             from apps.core.utils import generate_order_number
             self.order_number = generate_order_number()
+            
+        # Auto-calculate production values for local orders
+        if self.order_type == OrderType.LOCAL and self.finished_fabric_quantity:
+            from decimal import Decimal
+            
+            finished = Decimal(str(self.finished_fabric_quantity))
+            
+            # Calculate Greige: Finished * (1 + Process Loss %)
+            loss_percent = Decimal(str(self.process_loss_percent or 0)) / Decimal('100')
+            self.greige_quantity = finished * (Decimal('1') + loss_percent)
+            
+            # Calculate Yarn: Greige * (1 - Mixed Fabric %)
+            mixed_percent = Decimal(str(self.mixed_fabric_percent or 0)) / Decimal('100')
+            self.yarn_required = self.greige_quantity * (Decimal('1') - mixed_percent)
         
         super().save(*args, **kwargs)
     
