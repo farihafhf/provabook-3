@@ -258,9 +258,7 @@ export function CreateOrderDialog({
       if (index === sourceIndex) return line;
       return {
         ...line,
-        processLossPercent: sourceLine.processLossPercent,
-        mixedFabricType: sourceLine.mixedFabricType,
-        mixedFabricPercent: sourceLine.mixedFabricPercent,
+        // Percentages are now at order level
         yarnBookedDate: sourceLine.yarnBookedDate,
         yarnReceivedDate: sourceLine.yarnReceivedDate,
         ppYards: sourceLine.ppYards,
@@ -442,6 +440,9 @@ export function CreateOrderDialog({
         unit: orderLines[0]?.unit || 'meters',
         finishedFabricQuantity: orderType === 'local' && formData.finishedFabricQuantity ? parseFloat(formData.finishedFabricQuantity) : undefined,
         finishedFabricUnit: orderType === 'local' && formData.finishedFabricUnit ? formData.finishedFabricUnit : undefined,
+        processLossPercent: orderType === 'local' && formData.processLossPercent ? parseFloat(formData.processLossPercent) : undefined,
+        mixedFabricType: orderType === 'local' && formData.mixedFabricType ? formData.mixedFabricType : undefined,
+        mixedFabricPercent: orderType === 'local' && formData.mixedFabricPercent ? parseFloat(formData.mixedFabricPercent) : undefined,
         styles: Array.from(styleGroups.entries()).map(([styleNumber, lines]) => {
           const firstLine = lines[0];
           return {
@@ -533,6 +534,9 @@ export function CreateOrderDialog({
         notes: '',
         finishedFabricQuantity: '',
         finishedFabricUnit: 'kg',
+        processLossPercent: '',
+        mixedFabricType: '',
+        mixedFabricPercent: '',
       });
       setOrderLines([
         {
@@ -778,6 +782,77 @@ export function CreateOrderDialog({
                         <SelectItem value="lbs">lbs</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  
+                  {/* Greige & Yarn Calculation Parameters (Order Level) */}
+                  <div className="col-span-2 grid grid-cols-3 gap-4 bg-amber-50 p-4 rounded-lg border border-amber-200 mt-2">
+                    <div className="col-span-3">
+                      <Label className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                        Greige & Yarn Calculation Parameters
+                      </Label>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="processLossPercent">Process Loss (%)</Label>
+                      <Input
+                        id="processLossPercent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="e.g., 10"
+                        value={formData.processLossPercent}
+                        onChange={(e) => setFormData({ ...formData, processLossPercent: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mixedFabricType">Mixed Fabric Type</Label>
+                      <Input
+                        id="mixedFabricType"
+                        placeholder="e.g., Lycra"
+                        value={formData.mixedFabricType}
+                        onChange={(e) => setFormData({ ...formData, mixedFabricType: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mixedFabricPercent">Mixed Fabric (%)</Label>
+                      <Input
+                        id="mixedFabricPercent"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="e.g., 4"
+                        value={formData.mixedFabricPercent}
+                        onChange={(e) => setFormData({ ...formData, mixedFabricPercent: e.target.value })}
+                      />
+                    </div>
+                    
+                    {/* Calculation Preview */}
+                    {formData.finishedFabricQuantity && (
+                      <div className="col-span-3 mt-2 text-sm text-amber-800 bg-white p-3 rounded border border-amber-100">
+                        <span className="font-semibold block mb-1">Production Calculation Preview:</span>
+                        {(() => {
+                          const finished = parseFloat(formData.finishedFabricQuantity || '0');
+                          const loss = parseFloat(formData.processLossPercent || '0') / 100;
+                          const mixed = parseFloat(formData.mixedFabricPercent || '0') / 100;
+                          
+                          const greige = finished * (1 + loss);
+                          const yarn = greige * (1 - mixed);
+                          
+                          return (
+                            <div className="flex gap-4">
+                              <span>
+                                Total Greige: <strong>{greige.toLocaleString(undefined, { maximumFractionDigits: 2 })} {formData.finishedFabricUnit}</strong>
+                              </span>
+                              <span>
+                                Total Yarn: <strong>{yarn.toLocaleString(undefined, { maximumFractionDigits: 2 })} {formData.finishedFabricUnit}</strong>
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -1275,63 +1350,40 @@ export function CreateOrderDialog({
                         </div>
                       </div>
 
-                      {/* Greige & Yarn Calculation Section */}
-                      <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
-                        <Label className="text-sm font-semibold text-amber-800 mb-2 block">
-                          Greige & Yarn Calculation
-                        </Label>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div>
-                            <Label htmlFor={`line-${lineIndex}-processLossPercent`}>Process Loss (%)</Label>
-                            <Input
-                              id={`line-${lineIndex}-processLossPercent`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              placeholder="e.g., 10"
-                              value={line.processLossPercent || ''}
-                              onChange={(e) => updateOrderLine(lineIndex, 'processLossPercent', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`line-${lineIndex}-mixedFabricType`}>Mixed Fabric Type</Label>
-                            <Input
-                              id={`line-${lineIndex}-mixedFabricType`}
-                              placeholder="e.g., Lycra, Spandex"
-                              value={line.mixedFabricType || ''}
-                              onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricType', e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`line-${lineIndex}-mixedFabricPercent`}>Mixed Fabric (%)</Label>
-                            <Input
-                              id={`line-${lineIndex}-mixedFabricPercent`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              max="100"
-                              placeholder="e.g., 4"
-                              value={line.mixedFabricPercent || ''}
-                              onChange={(e) => updateOrderLine(lineIndex, 'mixedFabricPercent', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        {/* Preview calculated values */}
-                        {line.quantity && (
-                          <div className="mt-2 text-xs text-amber-700 bg-amber-100 p-2 rounded">
-                            <span className="font-medium">Preview: </span>
+                      {/* Greige & Yarn Calculation Preview (based on Order Parameters) */}
+                      {line.finishedFabricQuantity && (
+                        <div className="mb-3 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                          <Label className="text-sm font-semibold text-amber-800 mb-2 block">
+                            Calculation Preview (using Order parameters)
+                          </Label>
+                          <div className="text-xs text-amber-700">
                             {(() => {
-                              const finished = parseFloat(line.quantity || '0');
-                              const loss = parseFloat(line.processLossPercent || '0') / 100;
-                              const mixed = parseFloat(line.mixedFabricPercent || '0') / 100;
+                              const finished = parseFloat(line.finishedFabricQuantity || '0');
+                              // Use order-level percentages from formData
+                              const loss = parseFloat(formData.processLossPercent || '0') / 100;
+                              const mixed = parseFloat(formData.mixedFabricPercent || '0') / 100;
+                              
                               const greige = finished * (1 + loss);
                               const yarn = greige * (1 - mixed);
-                              return `Greige: ${greige.toFixed(2)} ${line.unit} | Yarn Required: ${yarn.toFixed(2)} ${line.unit}`;
+                              
+                              return (
+                                <div className="space-y-1">
+                                  <div>Process Loss: {formData.processLossPercent || 0}%</div>
+                                  {formData.mixedFabricType && (
+                                    <div>Mixed Fabric: {formData.mixedFabricType} ({formData.mixedFabricPercent || 0}%)</div>
+                                  )}
+                                  <div className="font-semibold mt-1">
+                                    Greige: {greige.toFixed(2)} {line.finishedFabricUnit || 'kg'}
+                                  </div>
+                                  <div className="font-semibold">
+                                    Yarn Required: {yarn.toFixed(2)} {line.finishedFabricUnit || 'kg'}
+                                  </div>
+                                </div>
+                              );
                             })()}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Yarn Dates Section */}
                       <div className="grid grid-cols-2 gap-3">

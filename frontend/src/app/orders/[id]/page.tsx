@@ -27,6 +27,7 @@ import { LineItemDetailSheet } from '@/components/orders/line-item-detail-sheet'
 import { DocumentTrackingTimeline } from '@/components/orders/document-tracking-timeline';
 import { ActivityLogDialog } from '@/components/orders/activity-log-dialog';
 import { ActivityLogTimeline } from '@/components/orders/activity-log-timeline';
+import { YarnBookedDialog } from '@/components/orders/yarn-booked-dialog';
 
 interface MillOffer {
   id: string;
