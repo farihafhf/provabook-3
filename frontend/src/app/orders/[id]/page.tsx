@@ -427,6 +427,20 @@ export default function OrderDetailPage() {
     return order?.productionSummary?.totalGreige || order?.quantity || 0;
   };
 
+  // Get finishing denominator - use finished fabric quantity as base (not greige)
+  const getFinishingDenominator = (): number => {
+    // Use backend finishing denominator if available
+    if (order?.productionSummary?.finishingDenominator) {
+      return order.productionSummary.finishingDenominator;
+    }
+    // Use order-level finished fabric quantity when available
+    if (order?.finishedFabricQuantity) {
+      return order.finishedFabricQuantity;
+    }
+    // Fallback to order quantity
+    return order?.quantity || 0;
+  };
+
   // Use backend-calculated percentages that account for delivered quantity
   // Progress = max(production_entries, delivered_qty)
   const getKnittingPercent = (): number => {
@@ -2638,13 +2652,13 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {getEffectiveFinishing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.finishedFabricQuantity ? (order.finishedFabricUnit || 'kg') : order.unit}
+                        {getEffectiveFinishing().toLocaleString()} / {Math.round(getFinishingDenominator()).toLocaleString()} {order.finishedFabricQuantity ? (order.finishedFabricUnit || 'kg') : order.unit}
                       </span>
                       <span className="font-semibold text-green-700">{getFinishingPercent()}%</span>
                     </div>
                     <Progress value={Math.min(getFinishingPercent(), 100)} className="h-2" />
                     <div className="text-xs text-gray-500">
-                      {order.productionSummary.finishingEntriesCount} entries{order.productionSummary.totalDelivered > 0 && order.productionSummary.totalFinishing === 0 ? ' (from delivery)' : ''} • <span className="text-amber-600">Greige base</span>
+                      {order.productionSummary.finishingEntriesCount} entries{order.productionSummary.totalDelivered > 0 && order.productionSummary.totalFinishing === 0 ? ' (from delivery)' : ''} • <span className="text-green-600">Finished fabric base</span>
                     </div>
                   </CardContent>
                 </Card>
