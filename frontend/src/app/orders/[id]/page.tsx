@@ -187,6 +187,10 @@ interface ProductionSummary {
   dyeingPercent: number;
   finishingPercent: number;
   yarnPercent: number;
+  // New fields from backend
+  orderFinishedFabric?: number;
+  greigeDenominator?: number;
+  yarnDenominator?: number;
 }
 
 interface Order {
@@ -208,6 +212,9 @@ interface Order {
   currency?: string;
   quantity: number;
   unit: string;
+  // Local order fields
+  finishedFabricQuantity?: number;
+  finishedFabricUnit?: string;
   colorQuantityBreakdown?: Array<{ color: string; quantity: number }>;
   etd?: string;
   eta?: string;
