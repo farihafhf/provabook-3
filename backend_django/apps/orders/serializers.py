@@ -135,6 +135,12 @@ class OrderSerializer(serializers.ModelSerializer):
             # Finished Fabric fields for local orders
             'finishedFabricQuantity': float(data['finished_fabric_quantity']) if data.get('finished_fabric_quantity') else None,
             'finishedFabricUnit': data.get('finished_fabric_unit'),
+            # Production calculation parameters (order-level)
+            'processLossPercent': float(data['process_loss_percent']) if data.get('process_loss_percent') else None,
+            'mixedFabricType': data.get('mixed_fabric_type'),
+            'mixedFabricPercent': float(data['mixed_fabric_percent']) if data.get('mixed_fabric_percent') else None,
+            'greigeQuantity': float(data['greige_quantity']) if data.get('greige_quantity') else None,
+            'yarnRequired': float(data['yarn_required']) if data.get('yarn_required') else None,
             # Production entry summary for local orders (aggregated from order lines)
             'productionSummary': data.get('production_summary'),
         }
