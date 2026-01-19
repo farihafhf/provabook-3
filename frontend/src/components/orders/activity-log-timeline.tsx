@@ -120,7 +120,7 @@ export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineP
 
   if (loading) {
     return (
-      <Card className="h-full">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-indigo-600" />
@@ -138,7 +138,7 @@ export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineP
 
   if (logs.length === 0) {
     return (
-      <Card className="h-full border-dashed">
+      <Card className="border-dashed">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-gray-500" />
@@ -159,7 +159,7 @@ export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineP
   }
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <ClipboardList className="h-4 w-4 text-indigo-600" />

@@ -85,7 +85,7 @@ export function DocumentTrackingTimeline({ documents }: DocumentTrackingTimeline
 
   if (timelineItems.length === 0) {
     return (
-      <Card className="h-full border-dashed">
+      <Card className="border-dashed">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
             <FileText className="h-4 w-4 text-gray-500" />
@@ -106,7 +106,7 @@ export function DocumentTrackingTimeline({ documents }: DocumentTrackingTimeline
   }
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
           <FileCheck className="h-4 w-4 text-indigo-600" />

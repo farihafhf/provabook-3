@@ -376,15 +376,22 @@ export default function OrderDetailPage() {
     return total > 0 ? total : order?.quantity || 0;
   };
 
-  // Get actual greige to use (calculated if not from backend)
+  // Get actual greige to use - prioritize order-level finished fabric when set
   const getActualTotalGreige = (): number => {
-    const backendGreige = order?.productionSummary?.totalGreige;
+    // Use order-level finished fabric as primary denominator when available
+    if (order?.finishedFabricQuantity) {
+      return order.finishedFabricQuantity;
+    }
+    // Use backend-calculated denominator if available
+    if (order?.productionSummary?.greigeDenominator) {
+      return order.productionSummary.greigeDenominator;
+    }
+    // Fallback to calculated greige from lines
     const calculatedGreige = calculateTotalGreige();
-    // Use calculated greige if it differs from order quantity (meaning process loss is set)
     if (calculatedGreige > (order?.quantity || 0)) {
       return calculatedGreige;
     }
-    return backendGreige || calculatedGreige;
+    return order?.productionSummary?.totalGreige || calculatedGreige;
   };
 
   // Use backend-calculated percentages that account for delivered quantity
@@ -2550,7 +2557,7 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {getEffectiveKnitting().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveKnitting().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.finishedFabricQuantity ? (order.finishedFabricUnit || 'kg') : order.unit}
                       </span>
                       <span className="font-semibold text-blue-700">{getKnittingPercent()}%</span>
                     </div>
@@ -2572,7 +2579,7 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {getEffectiveDyeing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveDyeing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.finishedFabricQuantity ? (order.finishedFabricUnit || 'kg') : order.unit}
                       </span>
                       <span className="font-semibold text-purple-700">{getDyeingPercent()}%</span>
                     </div>
@@ -2594,7 +2601,7 @@ export default function OrderDetailPage() {
                   <CardContent className="space-y-2">
                     <div className="flex items-baseline justify-between text-sm">
                       <span className="text-gray-500">
-                        {getEffectiveFinishing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.unit}
+                        {getEffectiveFinishing().toLocaleString()} / {Math.round(getActualTotalGreige()).toLocaleString()} {order.finishedFabricQuantity ? (order.finishedFabricUnit || 'kg') : order.unit}
                       </span>
                       <span className="font-semibold text-green-700">{getFinishingPercent()}%</span>
                     </div>
@@ -3298,24 +3305,19 @@ export default function OrderDetailPage() {
                   <div className="bg-white p-3 rounded border">
                     <p className="text-gray-500 text-xs mb-1">Total Finished Fabric</p>
                     <p className="font-bold text-lg text-indigo-700">
-                      {order?.quantity?.toLocaleString() || 0} <span className="text-sm font-normal">{order?.unit}</span>
+                      {(order?.finishedFabricQuantity || order?.quantity)?.toLocaleString() || 0} <span className="text-sm font-normal">{order?.finishedFabricQuantity ? (order?.finishedFabricUnit || 'kg') : order?.unit}</span>
                     </p>
                   </div>
                   <div className="bg-white p-3 rounded border">
                     <p className="text-gray-500 text-xs mb-1">Total Greige Required</p>
                     <p className="font-bold text-lg text-amber-700">
-                      {Math.round(getActualTotalGreige()).toLocaleString()} <span className="text-sm font-normal">{order?.unit}</span>
+                      {Math.round(getActualTotalGreige()).toLocaleString()} <span className="text-sm font-normal">{order?.finishedFabricQuantity ? (order?.finishedFabricUnit || 'kg') : order?.unit}</span>
                     </p>
-                    {getActualTotalGreige() > (order?.quantity || 0) && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        +{Math.round(getActualTotalGreige() - (order?.quantity || 0)).toLocaleString()} for process loss
-                      </p>
-                    )}
                   </div>
                   <div className="bg-white p-3 rounded border">
                     <p className="text-gray-500 text-xs mb-1">Total Yarn Required</p>
                     <p className="font-bold text-lg text-blue-700">
-                      {Math.round(calculateTotalYarn()).toLocaleString()} <span className="text-sm font-normal">{order?.unit}</span>
+                      {Math.round(getActualTotalGreige()).toLocaleString()} <span className="text-sm font-normal">{order?.finishedFabricQuantity ? (order?.finishedFabricUnit || 'kg') : order?.unit}</span>
                     </p>
                   </div>
                 </div>
