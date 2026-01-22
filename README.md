@@ -66,6 +66,10 @@ We don't just maintain; we evolve. Here is what we deployed this week to give yo
 - **📜 The "Mega-Timeline":** A revamped Activity Log and Document Timeline that sits right in your order details. It aggregates every document, note, and status change into a single chronological feed.
 - **⚡ Local Order Intelligence:** We overhauled the local production order fields to support granular tracking of greige, yarn, and finishing stages independently.
 
+| Precision Loss Tracking | Production Progress | The "Mega-Timeline" |
+| --- | --- | --- |
+| ![Loss Tracking](images/calculationPopup.jpg) | ![Production Progress](images/deliveries&productiontab.jpg) | ![Timeline](images/orderDetail_LineCard_Timelines.jpg) |
+
 ---
 
 ## 🛠️ For The Tech Team (Architecture & Setup)
