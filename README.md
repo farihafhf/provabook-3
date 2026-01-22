@@ -49,6 +49,14 @@ Every action is recorded in a permanent, un-editable timeline.
 
 ---
 
+## 🖼️ Screens & Visuals
+
+| Dashboard & Navigation | Sample Orders | Notifications |
+| --- | --- | --- |
+| ![Dashboard](images/Screenshot%202025-12-20%20214058.jpg) | ![Sample Orders](images/Screenshot%202025-12-20%20214151.jpg) | ![Notifications](images/Screenshot%202025-12-20%20214210.jpg) |
+
+---
+
 ## 🚀 Recent Power-Ups (Latest Updates)
 
 We don't just maintain; we evolve. Here is what we deployed this week to give you tighter control:
