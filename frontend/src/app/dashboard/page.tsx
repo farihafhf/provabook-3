@@ -228,38 +228,24 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* Monthly Trends */}
+            {/* Merchandiser Workload */}
             <Card className="shadow-md">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
-                <CardTitle className="text-lg">Monthly Trends (Last 6 Months)</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <CardTitle className="text-lg">Team Workload</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {chartLoading ? (
                   <div className="flex items-center justify-center h-[280px]">
-                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                    <p className="text-gray-500 text-sm">Loading...</p>
                   </div>
                 ) : (
-                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                  <MerchandiserWorkloadChart data={chartData?.orders_by_merchandiser || []} />
                 )}
-                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
-                  <div>
-                    <div className="text-lg font-semibold text-indigo-600">{data.totalCount}</div>
-                    <p className="text-xs text-gray-500">Total Orders</p>
-                  </div>
-                  <div>
-                    <div className="text-lg font-semibold text-emerald-600">{data.runningCount}</div>
-                    <p className="text-xs text-gray-500">Active</p>
-                  </div>
-                  <div>
-                    <div className="text-lg font-semibold text-slate-600">{data.archivedCount}</div>
-                    <p className="text-xs text-gray-500">Delivered</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Timeline, Workload & My Tasks - Second Row */}
+          {/* Timeline, Monthly Trends & My Tasks - Second Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Upcoming ETD/ETA Timeline */}
             {data.upcoming && (
@@ -326,19 +312,33 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* Merchandiser Workload */}
+            {/* Monthly Trends */}
             <Card className="shadow-md">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
-                <CardTitle className="text-lg">Team Workload</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+                <CardTitle className="text-lg">Monthly Trends (Last 6 Months)</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {chartLoading ? (
-                  <div className="flex items-center justify-center h-[300px]">
-                    <p className="text-gray-500 text-sm">Loading...</p>
+                  <div className="flex items-center justify-center h-[280px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
                   </div>
                 ) : (
-                  <MerchandiserWorkloadChart data={chartData?.orders_by_merchandiser || []} />
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
                 )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-indigo-600">{data.totalCount}</div>
+                    <p className="text-xs text-gray-500">Total Orders</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-emerald-600">{data.runningCount}</div>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-600">{data.archivedCount}</div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -480,38 +480,33 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* My Monthly Trends */}
+            {/* Note: Team Workload chart would go here for merchandisers if they had one */}
             <Card className="shadow-md">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
-                <CardTitle className="text-lg">My Monthly Trends (Last 6 Months)</CardTitle>
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                <CardTitle className="text-lg">My Work Overview</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
-                {chartLoading ? (
-                  <div className="flex items-center justify-center h-[280px]">
-                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                <div className="flex flex-col items-center justify-center h-[280px] space-y-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-indigo-600">{data.myTotalCount}</div>
+                    <p className="text-sm text-gray-500 mt-1">Total Orders</p>
                   </div>
-                ) : (
-                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
-                )}
-                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
-                  <div>
-                    <div className="text-lg font-semibold text-indigo-600">{data.myTotalCount}</div>
-                    <p className="text-xs text-gray-500">Total Orders</p>
-                  </div>
-                  <div>
-                    <div className="text-lg font-semibold text-emerald-600">{data.myRunningCount}</div>
-                    <p className="text-xs text-gray-500">Active</p>
-                  </div>
-                  <div>
-                    <div className="text-lg font-semibold text-slate-600">{data.myArchivedCount}</div>
-                    <p className="text-xs text-gray-500">Delivered</p>
+                  <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                    <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                      <div className="text-2xl font-semibold text-emerald-600">{data.myRunningCount}</div>
+                      <p className="text-xs text-gray-500 mt-1">Active</p>
+                    </div>
+                    <div className="text-center p-3 bg-slate-50 rounded-lg">
+                      <div className="text-2xl font-semibold text-slate-600">{data.myArchivedCount}</div>
+                      <p className="text-xs text-gray-500 mt-1">Delivered</p>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Timeline Overview & My Tasks - Second Row */}
+          {/* Timeline, Monthly Trends & My Tasks - Second Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Upcoming Timeline */}
             {data.upcoming && (
@@ -577,6 +572,36 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
             )}
+
+            {/* My Monthly Trends */}
+            <Card className="shadow-md">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+                <CardTitle className="text-lg">My Monthly Trends (Last 6 Months)</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-[280px]">
+                    <p className="text-gray-500 text-sm">Loading chart...</p>
+                  </div>
+                ) : (
+                  <MonthlyTrendsChart data={chartData?.orders_trend || []} />
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-around text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-indigo-600">{data.myTotalCount}</div>
+                    <p className="text-xs text-gray-500">Total Orders</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-emerald-600">{data.myRunningCount}</div>
+                    <p className="text-xs text-gray-500">Active</p>
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold text-slate-600">{data.myArchivedCount}</div>
+                    <p className="text-xs text-gray-500">Delivered</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* My Tasks */}
             <MyTasksWidget />
