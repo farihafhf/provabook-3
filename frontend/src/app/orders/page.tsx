@@ -814,10 +814,7 @@ function OrdersPageContent() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent 
-            ref={mainScrollRef}
-            className="max-h-[calc(100vh-320px)] overflow-y-auto"
-          >
+          <CardContent>
             {orders.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 mb-4">No orders found</p>
@@ -827,7 +824,10 @@ function OrdersPageContent() {
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div 
+                ref={mainScrollRef}
+                className="max-h-[calc(100vh-320px)] overflow-y-auto overflow-x-auto"
+              >
                 <table className="w-full border-collapse">
                   <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
                     <tr className="text-center text-xs uppercase tracking-wide text-slate-700">
