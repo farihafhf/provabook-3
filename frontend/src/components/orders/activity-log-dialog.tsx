@@ -438,8 +438,13 @@ export function ActivityLogDialog({
                         </div>
                       </div>
 
-                      {/* Content */}
-                      <p className="text-gray-900 whitespace-pre-wrap">{log.content}</p>
+                      {/* Content - truncated by default, expands on hover */}
+                      <p 
+                        className="text-gray-900 whitespace-pre-wrap line-clamp-3 hover:line-clamp-none cursor-pointer transition-all duration-200"
+                        title={log.content}
+                      >
+                        {log.content}
+                      </p>
 
                       {/* Footer */}
                       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
