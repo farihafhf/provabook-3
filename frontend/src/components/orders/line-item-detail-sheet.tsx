@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory, Pencil, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, AlertCircle, Calendar, Plus, Trash2, Factory, Pencil, Loader2, Package, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -80,6 +80,8 @@ interface OrderLine {
   // Swatch dates for In Development status
   swatchReceivedDate?: string;
   swatchSentDate?: string;
+  // Production progress for garments (pieces)
+  producedQuantity?: number;
 }
 
 interface LineItemDetailSheetProps {
@@ -94,6 +96,7 @@ interface LineItemDetailSheetProps {
   onMillOfferDelete?: (millOfferId: string) => Promise<void>;
   onSwatchDatesChange?: (lineId: string, swatchReceivedDate: string | null, swatchSentDate: string | null) => Promise<void>;
   onCustomGateChange?: () => Promise<void>;
+  onProducedQuantityChange?: (lineId: string, producedQuantity: number) => Promise<void>;
   updating?: boolean;
 }
 
@@ -168,6 +171,7 @@ export function LineItemDetailSheet({
   onMillOfferDelete,
   onSwatchDatesChange,
   onCustomGateChange,
+  onProducedQuantityChange,
   updating = false,
 }: LineItemDetailSheetProps) {
   const router = useRouter();
@@ -190,6 +194,10 @@ export function LineItemDetailSheet({
   const [swatchReceivedDate, setSwatchReceivedDate] = useState('');
   const [swatchSentDate, setSwatchSentDate] = useState('');
   const [savingSwatchDates, setSavingSwatchDates] = useState(false);
+
+  // Production progress state
+  const [producedQuantityInput, setProducedQuantityInput] = useState('');
+  const [savingProducedQuantity, setSavingProducedQuantity] = useState(false);
 
   // Custom approval gate state
   const [customGates, setCustomGates] = useState<CustomApprovalGate[]>([]);
@@ -300,6 +308,8 @@ export function LineItemDetailSheet({
       // Initialize swatch dates
       setSwatchReceivedDate(line.swatchReceivedDate || '');
       setSwatchSentDate(line.swatchSentDate || '');
+      // Initialize produced quantity
+      setProducedQuantityInput(line.producedQuantity?.toString() || '');
     } else {
       setSelectedStatus('');
       setSelectedApprovals({});
@@ -308,8 +318,9 @@ export function LineItemDetailSheet({
       setNewMillPrice('');
       setSwatchReceivedDate('');
       setSwatchSentDate('');
+      setProducedQuantityInput('');
     }
-  }, [open, line?.id, line?.approvalStatus, line?.status, line?.swatchReceivedDate, line?.swatchSentDate]);
+  }, [open, line?.id, line?.approvalStatus, line?.status, line?.swatchReceivedDate, line?.swatchSentDate, line?.producedQuantity]);
 
   // Handle adding a new mill offer
   const handleAddMillOffer = async () => {
@@ -347,6 +358,32 @@ export function LineItemDetailSheet({
       );
     } finally {
       setSavingSwatchDates(false);
+    }
+  };
+
+  // Handle saving produced quantity
+  const handleSaveProducedQuantity = async () => {
+    if (!line || !onProducedQuantityChange) return;
+    
+    const quantity = parseInt(producedQuantityInput) || 0;
+    if (quantity < 0 || quantity > line.quantity) {
+      toast({
+        title: 'Invalid Quantity',
+        description: `Produced quantity must be between 0 and ${line.quantity.toLocaleString()}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setSavingProducedQuantity(true);
+    try {
+      await onProducedQuantityChange(line.id, quantity);
+      toast({
+        title: 'Production Updated',
+        description: `Produced quantity updated to ${quantity.toLocaleString()} ${line.unit}`,
+      });
+    } finally {
+      setSavingProducedQuantity(false);
     }
   };
 
@@ -579,6 +616,84 @@ export function LineItemDetailSheet({
               )}
             </div>
           </div>
+
+          {/* Production Progress Section - Only show for pieces unit */}
+          {line.unit.toLowerCase() === 'pieces' && onProducedQuantityChange && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Package className="h-5 w-5 text-emerald-600" />
+                Production Progress
+              </h3>
+              
+              {/* Progress Visual */}
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg space-y-4">
+                {/* Progress Stats */}
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Total Order</p>
+                    <p className="text-xl font-bold text-gray-800">{line.quantity.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">{line.unit}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Produced</p>
+                    <p className="text-xl font-bold text-emerald-600">{(line.producedQuantity || 0).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">{line.unit}</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Remaining</p>
+                    <p className="text-xl font-bold text-orange-600">{(line.quantity - (line.producedQuantity || 0)).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">{line.unit}</p>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Progress</span>
+                    <span className="font-semibold text-emerald-700">
+                      {line.quantity > 0 ? Math.round(((line.producedQuantity || 0) / line.quantity) * 100) : 0}%
+                    </span>
+                  </div>
+                  <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
+                      style={{ width: `${line.quantity > 0 ? Math.min(100, ((line.producedQuantity || 0) / line.quantity) * 100) : 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Update Input */}
+                <div className="flex items-end gap-3 pt-2 border-t border-emerald-200">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs text-gray-600">Update Produced Quantity</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={line.quantity}
+                      placeholder={`0 - ${line.quantity.toLocaleString()}`}
+                      value={producedQuantityInput}
+                      onChange={(e) => setProducedQuantityInput(e.target.value)}
+                      className="bg-white"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSaveProducedQuantity}
+                    disabled={savingProducedQuantity || !producedQuantityInput}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {savingProducedQuantity ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        Update
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Mill Offers Section - Only show for In Development status */}
           {(line.status === 'in_development' || selectedStatus === 'in_development') && onMillOfferAdd && (

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, AlertTriangle, History, Percent, FlaskConical, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, History, Percent, FlaskConical, CheckCircle2, Package } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { ApprovalTimelineDialog } from './approval-timeline-dialog';
 
@@ -32,6 +32,8 @@ interface LineItemCardProps {
     mixedFabricPercent?: number;
     greigeQuantity?: number;
     yarnRequired?: number;
+    // Production progress for garments
+    producedQuantity?: number;
   };
   orderId?: string;
   orderType?: string; // 'local' or 'foreign'
@@ -230,6 +232,29 @@ export function LineItemCard({ line, orderId, orderType, onClick, onRefresh }: L
             )}
           </div>
         </div>
+
+        {/* Production Progress - Only for pieces unit with produced quantity */}
+        {line.unit.toLowerCase() === 'pieces' && (line.producedQuantity !== undefined && line.producedQuantity > 0) && (
+          <div className="mt-4 pt-3 border-t border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 -mx-6 px-6 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-semibold text-emerald-800">Production Progress</span>
+              <span className="text-xs font-bold text-emerald-700 ml-auto">
+                {line.quantity > 0 ? Math.round((line.producedQuantity / line.quantity) * 100) : 0}%
+              </span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all"
+                style={{ width: `${line.quantity > 0 ? Math.min(100, (line.producedQuantity / line.quantity) * 100) : 0}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs mt-1.5">
+              <span className="text-emerald-700 font-medium">{line.producedQuantity.toLocaleString()} produced</span>
+              <span className="text-orange-600 font-medium">{(line.quantity - line.producedQuantity).toLocaleString()} remaining</span>
+            </div>
+          </div>
+        )}
 
         {/* Greige/Yarn Calculation Summary - Only for Local Orders with calculations */}
         {hasCalculations && (

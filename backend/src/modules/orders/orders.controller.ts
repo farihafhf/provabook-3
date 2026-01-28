@@ -190,4 +190,21 @@ export class OrdersController {
   ) {
     return this.ordersService.deleteDocument(documentId, user);
   }
+
+  @Patch(':id/lines/:lineId/produced-quantity')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.MERCHANDISER)
+  @ApiOperation({ summary: 'Update produced quantity for an order line' })
+  async updateLineProducedQuantity(
+    @Param('id') orderId: string,
+    @Param('lineId') lineId: string,
+    @Body() body: { producedQuantity: number },
+    @CurrentUser() user: any,
+  ) {
+    return this.ordersService.updateLineProducedQuantity(
+      orderId,
+      lineId,
+      body.producedQuantity,
+      user,
+    );
+  }
 }

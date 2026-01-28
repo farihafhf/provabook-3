@@ -355,4 +355,56 @@ export class OrdersService {
 
     return `${prefix}${sequence.toString().padStart(4, '0')}`;
   }
+
+  async updateLineProducedQuantity(
+    orderId: string,
+    lineId: string,
+    producedQuantity: number,
+    user: any,
+  ) {
+    const order = await this.findOne(orderId);
+
+    if (!order.metadata || !order.metadata.orderLines) {
+      throw new NotFoundException('Order lines not found');
+    }
+
+    const lineIndex = order.metadata.orderLines.findIndex(
+      (line: any) => line.id === lineId,
+    );
+
+    if (lineIndex === -1) {
+      throw new NotFoundException(`Order line with ID ${lineId} not found`);
+    }
+
+    const line = order.metadata.orderLines[lineIndex];
+    const oldProducedQuantity = line.producedQuantity || 0;
+
+    // Update the produced quantity
+    order.metadata.orderLines[lineIndex].producedQuantity = producedQuantity;
+
+    const updatedOrder = await this.orderRepository.save(order);
+
+    // Log the activity
+    await this.activityLogService.logActivity({
+      userId: user.id,
+      userEmail: user.email,
+      action: 'UPDATE_PRODUCTION_QUANTITY',
+      entityType: 'Order',
+      entityId: orderId,
+      metadata: {
+        merchandiser_id: order.merchandiser_id,
+        orderNumber: order.orderNumber,
+        customerName: order.customerName,
+        buyerName: order.buyerName,
+        lineId,
+        lineLabel: line.lineLabel || `${line.styleNumber}-${line.colorCode}`,
+        oldProducedQuantity,
+        newProducedQuantity: producedQuantity,
+        totalQuantity: line.quantity,
+        userName: user.fullName || user.email,
+      },
+    });
+
+    return updatedOrder;
+  }
 }

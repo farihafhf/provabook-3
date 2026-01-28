@@ -1346,6 +1346,27 @@ export default function OrderDetailPage() {
     }
   };
 
+  // Produced Quantity Handler for garment orders
+  const handleProducedQuantityChange = async (lineId: string, producedQuantity: number) => {
+    if (!order) return;
+    
+    try {
+      await api.patch(`/orders/${order.id}/lines/${lineId}/produced-quantity`, {
+        producedQuantity,
+      });
+
+      // Refetch order to get updated data
+      await fetchOrder();
+    } catch (error: any) {
+      console.error('Failed to update produced quantity:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update produced quantity',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const formatApprovalName = (type: string): string => {
     const names: Record<string, string> = {
       labDip: 'Lab Dip',
@@ -3287,6 +3308,7 @@ export default function OrderDetailPage() {
           onMillOfferAdd={handleMillOfferAdd}
           onMillOfferDelete={handleMillOfferDelete}
           onSwatchDatesChange={handleSwatchDatesChange}
+          onProducedQuantityChange={handleProducedQuantityChange}
           onCustomGateChange={async () => {
             // Refresh order data when custom gates are modified
             await fetchOrder();
