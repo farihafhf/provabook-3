@@ -697,7 +697,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Log activity
         OrderActivityLog.objects.create(
             order=order,
-            user=request.user,
+            created_by=request.user,
             category='production',
             content=f"Updated production progress for {line.style.style_number or ''} {line.color_code or ''}: {old_produced:,} → {produced_quantity:,} pieces"
         )
