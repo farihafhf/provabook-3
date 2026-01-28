@@ -93,6 +93,7 @@ const formatDateTime = (dateString: string): { date: string; time: string } => {
 export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineProps) {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   useEffect(() => {
     if (orderId) {
@@ -200,7 +201,11 @@ export function ActivityLogTimeline({ orderId, onRefresh }: ActivityLogTimelineP
                       )}
                     </div>
                     
-                    <p className="text-sm text-gray-800 line-clamp-2 mb-2">
+                    <p 
+                      className={`text-sm text-gray-800 mb-2 cursor-pointer hover:bg-gray-100 rounded p-1 -m-1 transition-colors ${expandedLogId === log.id ? '' : 'line-clamp-2'}`}
+                      onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                      title="Click to expand/collapse"
+                    >
                       {log.content}
                     </p>
                     
