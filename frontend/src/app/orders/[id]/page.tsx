@@ -1351,7 +1351,7 @@ export default function OrderDetailPage() {
     if (!order) return;
     
     try {
-      await api.patch(`/orders/${order.id}/lines/${lineId}/produced-quantity`, {
+      await api.patch(`/orders/${order.id}/lines/${lineId}/produced-quantity/`, {
         producedQuantity,
       });
 
