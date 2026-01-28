@@ -83,7 +83,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
-            'swatch_received_date', 'swatch_sent_date',
+            'swatch_received_date', 'swatch_sent_date', 'produced_quantity',
             'mill_offers', 'custom_gates',
             'created_at', 'updated_at'
         ]
@@ -207,6 +207,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'exFactoryDate': data.get('ex_factory_date'),
             'swatchReceivedDate': data.get('swatch_received_date'),
             'swatchSentDate': data.get('swatch_sent_date'),
+            'producedQuantity': data.get('produced_quantity') or 0,
             'millOffers': data.get('mill_offers', []),
             'customGates': data.get('custom_gates', []),
             'createdAt': data['created_at'],
@@ -256,6 +257,7 @@ class OrderLineSerializer(serializers.ModelSerializer):
             'exFactoryDate': 'ex_factory_date',
             'swatchReceivedDate': 'swatch_received_date',
             'swatchSentDate': 'swatch_sent_date',
+            'producedQuantity': 'produced_quantity',
         }
         
         converted_data = {}
@@ -288,7 +290,7 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'print_send_date', 'print_received_date',
             'sewing_input_date', 'sewing_finish_date',
             'packing_complete_date', 'final_inspection_date', 'ex_factory_date',
-            'swatch_received_date', 'swatch_sent_date'
+            'swatch_received_date', 'swatch_sent_date', 'produced_quantity'
         ]
         # CRITICAL: Make 'id' writable so nested update logic can identify existing lines
         extra_kwargs = {
@@ -337,6 +339,7 @@ class OrderLineCreateUpdateSerializer(serializers.ModelSerializer):
             'exFactoryDate': 'ex_factory_date',
             'swatchReceivedDate': 'swatch_received_date',
             'swatchSentDate': 'swatch_sent_date',
+            'producedQuantity': 'produced_quantity',
         }
         
         converted_data = {}

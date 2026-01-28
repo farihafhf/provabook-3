@@ -160,6 +160,12 @@ class OrderLine(TimestampedModel):
         help_text='Date when swatch was sent'
     )
     
+    # Production progress for garment orders (pieces unit)
+    produced_quantity = models.PositiveIntegerField(
+        blank=True, null=True, default=0,
+        help_text='Number of pieces already produced (for garment orders)'
+    )
+    
     # ========== Local Order Production Fields ==========
     # These fields are only relevant for local orders (order.order_type == 'local')
     

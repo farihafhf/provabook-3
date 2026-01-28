@@ -636,6 +636,76 @@ class OrderViewSet(viewsets.ModelViewSet):
         response_serializer = OrderSerializer(order)
         return Response(response_serializer.data)
     
+    @action(detail=True, methods=['patch'], url_path='lines/(?P<line_id>[^/.]+)/produced-quantity')
+    def update_produced_quantity(self, request, pk=None, line_id=None):
+        """
+        PATCH /orders/{id}/lines/{line_id}/produced-quantity/
+        Update order line produced quantity (for garment/pieces orders)
+        
+        Request body:
+        {
+            "producedQuantity": 5000
+        }
+        """
+        from .models_order_line import OrderLine
+        
+        order = self.get_object()
+        
+        # Get the line
+        try:
+            line = OrderLine.objects.get(id=line_id, style__order=order)
+        except OrderLine.DoesNotExist:
+            return Response(
+                {'error': 'Order line not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get and validate produced quantity
+        produced_quantity = request.data.get('producedQuantity')
+        
+        if produced_quantity is None:
+            return Response(
+                {'error': 'producedQuantity is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            produced_quantity = int(produced_quantity)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'producedQuantity must be a valid integer'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if produced_quantity < 0:
+            return Response(
+                {'error': 'producedQuantity cannot be negative'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if produced_quantity > line.quantity:
+            return Response(
+                {'error': f'producedQuantity cannot exceed total quantity ({line.quantity})'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Update the produced quantity
+        old_produced = line.produced_quantity or 0
+        line.produced_quantity = produced_quantity
+        line.save(update_fields=['produced_quantity', 'updated_at'])
+        
+        # Log activity
+        OrderActivityLog.objects.create(
+            order=order,
+            user=request.user,
+            category='production',
+            content=f"Updated production progress for {line.style_number or ''} {line.color_code or ''}: {old_produced:,} → {produced_quantity:,} pieces"
+        )
+        
+        # Return updated order
+        response_serializer = OrderSerializer(order)
+        return Response(response_serializer.data)
+    
     @action(detail=True, methods=['get'], url_path='documents')
     def get_documents(self, request, pk=None):
         """
