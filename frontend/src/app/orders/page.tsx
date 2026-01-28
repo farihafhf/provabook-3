@@ -174,6 +174,7 @@ function OrdersPageContent() {
   const [requestingApproval, setRequestingApproval] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
+  const [samplePhotoZoom, setSamplePhotoZoom] = useState(1);
   // State for search highlighting - tracks which lines match the current search
   const [highlightedLines, setHighlightedLines] = useState<Set<string>>(new Set());
   // State for lines that should animate (pulse effect) - cleared after animation completes
@@ -1521,20 +1522,34 @@ function OrdersPageContent() {
           </CardContent>
         </Card>
 
-        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) setSamplePhotoViewer(null); }}>
+        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) { setSamplePhotoViewer(null); setSamplePhotoZoom(1); } }}>
           <DialogContent className="max-w-3xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="truncate">
                 {samplePhotoViewer?.fileName || 'Sample Photo'}
               </DialogTitle>
             </DialogHeader>
-            <div className="mt-4 flex items-center justify-center">
+            <div 
+              className="mt-4 flex items-center justify-center relative overflow-auto cursor-zoom-in"
+              onWheel={(e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                setSamplePhotoZoom(prev => Math.max(1, Math.min(3, prev + delta)));
+              }}
+            >
               {samplePhotoViewer && (
                 <img
                   src={samplePhotoViewer.fileUrl}
                   alt={samplePhotoViewer.fileName}
-                  className="max-h-[70vh] w-full object-contain rounded-md"
+                  className="max-h-[70vh] max-w-full object-contain rounded-md transition-transform duration-150"
+                  style={{ transform: `scale(${samplePhotoZoom})` }}
+                  draggable={false}
                 />
+              )}
+              {samplePhotoZoom > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
+                  {Math.round(samplePhotoZoom * 100)}% - Scroll to zoom
+                </div>
               )}
             </div>
           </DialogContent>
