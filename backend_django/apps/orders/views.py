@@ -699,7 +699,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             order=order,
             user=request.user,
             category='production',
-            content=f"Updated production progress for {line.style_number or ''} {line.color_code or ''}: {old_produced:,} → {produced_quantity:,} pieces"
+            content=f"Updated production progress for {line.style.style_number or ''} {line.color_code or ''}: {old_produced:,} → {produced_quantity:,} pieces"
         )
         
         # Return updated order
