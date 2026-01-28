@@ -67,6 +67,7 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
     fileType: string; 
     signedUrl: string;
   } | null>(null);
+  const [imageZoom, setImageZoom] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<{ id: string; fileName: string } | null>(null);
 
@@ -361,20 +362,36 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
       )}
 
       {/* Image Viewer Modal */}
-      <Dialog open={!!viewingDocument} onOpenChange={() => setViewingDocument(null)}>
+      <Dialog open={!!viewingDocument} onOpenChange={() => { setViewingDocument(null); setImageZoom(1); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center justify-between">
               <span className="truncate pr-8">{viewingDocument?.fileName}</span>
             </DialogTitle>
           </DialogHeader>
-          <div className="relative w-full overflow-auto p-6 pt-4">
+          <div 
+            className="relative w-full overflow-auto p-6 pt-4 cursor-zoom-in"
+            onWheel={(e) => {
+              e.preventDefault();
+              const delta = e.deltaY > 0 ? -0.1 : 0.1;
+              setImageZoom(prev => Math.max(1, Math.min(3, prev + delta)));
+            }}
+          >
             {viewingDocument && (
-              <img
-                src={viewingDocument.signedUrl}
-                alt={viewingDocument.fileName}
-                className="w-full h-auto object-contain max-h-[70vh] mx-auto rounded-lg"
-              />
+              <div className="flex items-center justify-center min-h-[50vh]">
+                <img
+                  src={viewingDocument.signedUrl}
+                  alt={viewingDocument.fileName}
+                  className="max-w-full h-auto object-contain max-h-[70vh] rounded-lg transition-transform duration-150"
+                  style={{ transform: `scale(${imageZoom})` }}
+                  draggable={false}
+                />
+              </div>
+            )}
+            {imageZoom > 1 && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
+                {Math.round(imageZoom * 100)}% - Scroll to zoom
+              </div>
             )}
           </div>
           <div className="flex items-center justify-end gap-2 p-6 pt-0 border-t">
