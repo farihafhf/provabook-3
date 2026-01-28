@@ -175,6 +175,9 @@ function OrdersPageContent() {
   const [exporting, setExporting] = useState(false);
   const [samplePhotoViewer, setSamplePhotoViewer] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [samplePhotoZoom, setSamplePhotoZoom] = useState(1);
+  const [samplePhotoPan, setSamplePhotoPan] = useState({ x: 0, y: 0 });
+  const [isPhotoDragging, setIsPhotoDragging] = useState(false);
+  const [photoDragStart, setPhotoDragStart] = useState({ x: 0, y: 0 });
   // State for search highlighting - tracks which lines match the current search
   const [highlightedLines, setHighlightedLines] = useState<Set<string>>(new Set());
   // State for lines that should animate (pulse effect) - cleared after animation completes
@@ -1522,7 +1525,7 @@ function OrdersPageContent() {
           </CardContent>
         </Card>
 
-        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) { setSamplePhotoViewer(null); setSamplePhotoZoom(1); } }}>
+        <Dialog open={!!samplePhotoViewer} onOpenChange={(open) => { if (!open) { setSamplePhotoViewer(null); setSamplePhotoZoom(1); setSamplePhotoPan({ x: 0, y: 0 }); } }}>
           <DialogContent className="max-w-3xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle className="truncate">
@@ -1530,25 +1533,41 @@ function OrdersPageContent() {
               </DialogTitle>
             </DialogHeader>
             <div 
-              className="mt-4 flex items-center justify-center relative overflow-auto cursor-zoom-in"
+              className={`mt-4 flex items-center justify-center relative overflow-hidden min-h-[50vh] ${samplePhotoZoom > 1 ? (isPhotoDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'}`}
               onWheel={(e) => {
                 e.preventDefault();
                 const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                setSamplePhotoZoom(prev => Math.max(1, Math.min(3, prev + delta)));
+                const newZoom = Math.max(1, Math.min(3, samplePhotoZoom + delta));
+                setSamplePhotoZoom(newZoom);
+                if (newZoom === 1) setSamplePhotoPan({ x: 0, y: 0 });
               }}
+              onMouseDown={(e) => {
+                if (samplePhotoZoom > 1) {
+                  e.preventDefault();
+                  setIsPhotoDragging(true);
+                  setPhotoDragStart({ x: e.clientX - samplePhotoPan.x, y: e.clientY - samplePhotoPan.y });
+                }
+              }}
+              onMouseMove={(e) => {
+                if (isPhotoDragging && samplePhotoZoom > 1) {
+                  setSamplePhotoPan({ x: e.clientX - photoDragStart.x, y: e.clientY - photoDragStart.y });
+                }
+              }}
+              onMouseUp={() => setIsPhotoDragging(false)}
+              onMouseLeave={() => setIsPhotoDragging(false)}
             >
               {samplePhotoViewer && (
                 <img
                   src={samplePhotoViewer.fileUrl}
                   alt={samplePhotoViewer.fileName}
-                  className="max-h-[70vh] max-w-full object-contain rounded-md transition-transform duration-150"
-                  style={{ transform: `scale(${samplePhotoZoom})` }}
+                  className={`max-h-[70vh] max-w-full object-contain rounded-md ${isPhotoDragging ? '' : 'transition-transform duration-150'}`}
+                  style={{ transform: `scale(${samplePhotoZoom}) translate(${samplePhotoPan.x / samplePhotoZoom}px, ${samplePhotoPan.y / samplePhotoZoom}px)` }}
                   draggable={false}
                 />
               )}
               {samplePhotoZoom > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
-                  {Math.round(samplePhotoZoom * 100)}% - Scroll to zoom
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full pointer-events-none">
+                  {Math.round(samplePhotoZoom * 100)}% - Scroll to zoom, drag to pan
                 </div>
               )}
             </div>

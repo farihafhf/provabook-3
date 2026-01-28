@@ -68,6 +68,9 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
     signedUrl: string;
   } | null>(null);
   const [imageZoom, setImageZoom] = useState(1);
+  const [imagePan, setImagePan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<{ id: string; fileName: string } | null>(null);
 
@@ -362,7 +365,7 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
       )}
 
       {/* Image Viewer Modal */}
-      <Dialog open={!!viewingDocument} onOpenChange={() => { setViewingDocument(null); setImageZoom(1); }}>
+      <Dialog open={!!viewingDocument} onOpenChange={() => { setViewingDocument(null); setImageZoom(1); setImagePan({ x: 0, y: 0 }); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center justify-between">
@@ -370,27 +373,43 @@ export function DocumentList({ documents, orderId, onDelete }: DocumentListProps
             </DialogTitle>
           </DialogHeader>
           <div 
-            className="relative w-full overflow-auto p-6 pt-4 cursor-zoom-in"
+            className={`relative w-full overflow-hidden p-6 pt-4 ${imageZoom > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in'}`}
             onWheel={(e) => {
               e.preventDefault();
               const delta = e.deltaY > 0 ? -0.1 : 0.1;
-              setImageZoom(prev => Math.max(1, Math.min(3, prev + delta)));
+              const newZoom = Math.max(1, Math.min(3, imageZoom + delta));
+              setImageZoom(newZoom);
+              if (newZoom === 1) setImagePan({ x: 0, y: 0 });
             }}
+            onMouseDown={(e) => {
+              if (imageZoom > 1) {
+                e.preventDefault();
+                setIsDragging(true);
+                setDragStart({ x: e.clientX - imagePan.x, y: e.clientY - imagePan.y });
+              }
+            }}
+            onMouseMove={(e) => {
+              if (isDragging && imageZoom > 1) {
+                setImagePan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+              }
+            }}
+            onMouseUp={() => setIsDragging(false)}
+            onMouseLeave={() => setIsDragging(false)}
           >
             {viewingDocument && (
               <div className="flex items-center justify-center min-h-[50vh]">
                 <img
                   src={viewingDocument.signedUrl}
                   alt={viewingDocument.fileName}
-                  className="max-w-full h-auto object-contain max-h-[70vh] rounded-lg transition-transform duration-150"
-                  style={{ transform: `scale(${imageZoom})` }}
+                  className={`max-w-full h-auto object-contain max-h-[70vh] rounded-lg ${isDragging ? '' : 'transition-transform duration-150'}`}
+                  style={{ transform: `scale(${imageZoom}) translate(${imagePan.x / imageZoom}px, ${imagePan.y / imageZoom}px)` }}
                   draggable={false}
                 />
               </div>
             )}
             {imageZoom > 1 && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full">
-                {Math.round(imageZoom * 100)}% - Scroll to zoom
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full pointer-events-none">
+                {Math.round(imageZoom * 100)}% - Scroll to zoom, drag to pan
               </div>
             )}
           </div>
